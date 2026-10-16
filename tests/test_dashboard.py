@@ -3,16 +3,19 @@ temporary library, and check rebuilding, uploads, reverse-proxy prefixes and Web
 
 Run with:  python3 -m unittest discover -s tests
 """
-import base64, datetime as dt, http.client, json, os, shutil, socket, sqlite3, subprocess, sys, tempfile, time
-import unittest, zipfile
+import base64, datetime as dt, http.client, http.server, json, os, shutil, socket, sqlite3, subprocess, sys, tempfile
+import struct, threading, time, unittest, urllib.parse, zipfile, zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOKEN = 'test-token'
 DAY0 = (dt.date(2026, 3, 1) - dt.date(1970, 1, 1)).days
+PNG = b'\x89PNG\r\n\x1a\n' + b'\0' * 32
+JPEG = b'\xff\xd8\xff\xe0' + b'\0' * 32
 
 
 def make_backup(path):
-    """A minimal .mrpro: a zip with _names.list, the mrbooks.db database and positions10.xml."""
+    """A minimal .mrpro: a zip with _names.list, the mrbooks.db database, positions10.xml and
+    Alpha's cover (Beta has none)."""
     tmp = tempfile.mkdtemp()
     db = os.path.join(tmp, 'mrbooks.db')
     c = sqlite3.connect(db)
@@ -35,9 +38,13 @@ def make_backup(path):
     with zipfile.ZipFile(path, 'w') as z:
         base = 'com.flyersoft.moonreaderp/'
         z.writestr(base + '_names.list', 'com.flyersoft.moonreaderp/databases/mrbooks.db\n'
-                   'com.flyersoft.moonreaderp/shared_prefs/positions10.xml\n')
+                   'com.flyersoft.moonreaderp/shared_prefs/positions10.xml\n'
+                   '?/sdcard/Books/.MoonReader/Alpha - Ann Author.epub_1.png\n'
+                   '?/sdcard/Books/.MoonReader/Alpha - Ann Author.epub_2.png\n')
         z.write(db, base + '1.tag')
         z.writestr(base + '2.tag', xml)
+        z.writestr(base + '3.tag', PNG[:12])   # the small thumbnail
+        z.writestr(base + '4.tag', PNG)        # the cover
     shutil.rmtree(tmp)
 
 
@@ -48,11 +55,12 @@ def free_port():
 
 
 class Server:
-    def __init__(self, base_path=''):
+    def __init__(self, base_path='', **extra_env):
         self.lib = tempfile.mkdtemp()
         self.port = free_port()
         env = dict(os.environ, LIBRARY=self.lib, PORT=str(self.port), UPLOAD_TOKEN=TOKEN, POLL_SECONDS='5',
-                   BASE_PATH=base_path, PUID=str(os.getuid()), PGID=str(os.getgid()))
+                   BASE_PATH=base_path, PUID=str(os.getuid()), PGID=str(os.getgid()), COVER_LOOKUP='off')
+        env.update(extra_env)
         self.proc = subprocess.Popen([sys.executable, os.path.join(ROOT, 'app', 'server.py')], env=env,
                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(50):
@@ -83,6 +91,33 @@ class Server:
         self.proc.terminate()
         self.proc.wait(5)
         shutil.rmtree(self.lib, ignore_errors=True)
+
+
+class FakeOpenLibrary(http.server.BaseHTTPRequestHandler):
+    """Knows one book, Beta, whose cover is id 42."""
+    searches = []
+
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        url = urllib.parse.urlparse(self.path)
+        if url.path == '/search.json':
+            title = urllib.parse.parse_qs(url.query)['title'][0]
+            self.searches.append(title)
+            docs = [{'title': 'Beta', 'cover_i': 42}] if title == 'Beta' else []
+            body, ctype = json.dumps({'docs': docs}).encode(), 'application/json'
+        elif url.path == '/b/id/42-M.jpg':
+            body, ctype = JPEG, 'image/jpeg'
+        else:
+            self.send_response(404)
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header('Content-Type', ctype)
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
 
 DAV_AUTH = {'Authorization': 'Basic ' + base64.b64encode(f'moon:{TOKEN}'.encode()).decode()}
@@ -133,6 +168,36 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(len(daily), 5)
         self.assertEqual(daily[0]['minutes'], 30.0)
         self.assertEqual(daily[0]['progress'], 40.0)
+
+    def test_covers_from_backup(self):
+        self.s = s = Server()
+        self.upload(s)
+        self.assertTrue(s.wait_for(lambda: os.path.exists(os.path.join(s.lib, 'data', 'books.json'))))
+        with open(os.path.join(s.lib, 'covers', 'alpha.png'), 'rb') as f:
+            self.assertEqual(f.read(), PNG)  # the larger of the two images
+        covers = json.loads(s.request('GET', '/api/covers')[2])
+        self.assertEqual(list(covers), ['alpha'])
+        self.assertTrue(covers['alpha'].startswith('covers/alpha.png?v='))
+        status, headers, body = s.request('GET', '/' + covers['alpha'])
+        self.assertEqual((status, headers['Content-Type'], body), (200, 'image/png', PNG))
+        for path in ('/covers/beta.png', '/covers/../catalogue.json', '/covers/.misses.json', '/covers/alpha.gif'):
+            self.assertEqual(s.request('GET', path)[0], 404, path)
+
+    def test_missing_covers_are_looked_up(self):
+        FakeOpenLibrary.searches = []
+        ol = http.server.ThreadingHTTPServer(('127.0.0.1', 0), FakeOpenLibrary)
+        threading.Thread(target=ol.serve_forever, daemon=True).start()
+        url = f'http://127.0.0.1:{ol.server_address[1]}'
+        try:
+            self.s = s = Server(COVER_LOOKUP='on', OPENLIBRARY_URL=url, OPENLIBRARY_COVERS_URL=url, COVER_PAUSE='0')
+            self.upload(s)
+            self.assertTrue(s.wait_for(lambda: os.path.exists(os.path.join(s.lib, 'covers', 'beta.jpg'))))
+            with open(os.path.join(s.lib, 'covers', 'beta.jpg'), 'rb') as f:
+                self.assertEqual(f.read(), JPEG)
+            self.assertNotIn('Alpha', FakeOpenLibrary.searches)  # the backup already had it
+            self.assertEqual(sorted(json.loads(s.request('GET', '/api/covers')[2])), ['alpha', 'beta'])
+        finally:
+            ol.shutdown()
 
     def test_upload_rejects_bad_token_and_files(self):
         self.s = s = Server()
@@ -199,6 +264,29 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(beta['last_read'], '2026-04-02')
         meta = json.load(open(os.path.join(s.lib, 'data', 'meta.json')))
         self.assertEqual(meta['synced_positions'], 1)
+
+
+class CoverTests(unittest.TestCase):
+    def test_large_png_is_scaled_down(self):
+        sys.path.insert(0, os.path.join(ROOT, 'app'))
+        import covers
+        w, h = 400, 30  # red on the left half, blue on the right, rows stored with the "Sub" filter
+        row = bytearray()
+        for x in range(w):
+            px = (255, 0, 0) if x < w // 2 else (0, 0, 255)
+            prev = (255, 0, 0) if x and x - 1 < w // 2 else (0, 0, 255) if x else (0, 0, 0)
+            row += bytes((a - b) & 255 for a, b in zip(px, prev))
+        raw = b''.join(b'\x01' + bytes(row) for _ in range(h))
+        chunk = lambda t, b: struct.pack('>I', len(b)) + t + b + struct.pack('>I', zlib.crc32(t + b))
+        png = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0))
+               + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b''))
+        small = covers.shrink_png(png, max_width=160)
+        nw, nh = struct.unpack('>II', small[16:24])
+        self.assertEqual((nw, nh), (133, 10))
+        pixels = zlib.decompress(small[small.index(b'IDAT') + 4:-16])
+        self.assertEqual(pixels[1:4], b'\xff\x00\x00')     # first pixel still red
+        self.assertEqual(pixels[-3:], b'\x00\x00\xff')     # last pixel still blue
+        self.assertEqual(covers.shrink_png(PNG), PNG)      # not a real PNG: left alone
 
 
 if __name__ == '__main__':

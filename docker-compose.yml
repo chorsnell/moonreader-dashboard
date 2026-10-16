@@ -16,5 +16,7 @@ services:
       # Only needed if your reverse proxy forwards /reading/... WITHOUT stripping the
       # prefix. With Traefik's stripPrefix (see examples/traefik.yml) leave it empty.
       BASE_PATH: ""
+      # Covers missing from the backup are looked up on openlibrary.org. "off" stops that.
+      COVER_LOOKUP: "on"
     volumes:
-      - ./library:/library       # inbox/, data/, dav/, catalogue.json and update.log
+      - ./library:/library       # inbox/, data/, dav/, covers/, catalogue.json and update.log

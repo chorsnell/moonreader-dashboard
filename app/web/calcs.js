@@ -200,12 +200,17 @@ dash.calc('diary', {
 });
 
 dash.calc('current', {
-  inputs: ['books', 'as_of'], title: 'On the go',
-  description: 'Books opened in the last 30 days that are not finished.',
-  fn: (books, as_of) => {
-    const end = Date.parse(as_of[0].date + 'T00:00:00Z');
+  inputs: ['books', 'as_of', 'reads'], title: 'On the go',
+  description: 'Books opened in the last 30 days that are not finished, with when the current read started, its days and its hours.',
+  fn: (books, as_of, reads) => {
+    const end = Date.parse(as_of[0].date + 'T00:00:00Z'), latest = new Map();
+    reads.forEach((r) => { if (!latest.has(r.book_id) || r.read_no > latest.get(r.book_id).read_no) latest.set(r.book_id, r); });
     return books.filter((b) => b.last_read && end - Date.parse(b.last_read + 'T00:00:00Z') <= 30 * 864e5 && b.status !== 'finished')
-      .map((b) => ({ id: b.id, title: b.title, author: b.author, progress: b.progress, last_read: b.last_read })).sort((a, b) => (a.last_read < b.last_read ? 1 : -1));
+      .map((b) => {
+        const r = latest.get(b.id) || {};
+        return { id: b.id, title: b.title, author: b.author, genre: b.genre, subgenre: b.subgenre, series: b.series, series_no: b.series_no,
+          progress: b.progress, last_read: b.last_read, start: r.start ?? null, days_read: r.days_read ?? null, hours: r.hours ?? null, read_no: r.read_no ?? 1 };
+      }).sort((a, b) => (a.last_read < b.last_read ? 1 : -1));
   },
 });
 
@@ -213,14 +218,14 @@ dash.calc('recent', {
   inputs: ['reads'], title: 'Recently finished',
   description: 'The ten most recent reads that ended at 99% or more.',
   fn: (reads) => reads.filter((r) => r.finished === true).sort((a, b) => (a.end < b.end ? 1 : -1)).slice(0, 10)
-    .map((r) => ({ read_id: r.read_id, title: r.title, author: r.author, end: r.end, days_read: r.days_read, hours: r.hours, read_no: r.read_no })),
+    .map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, author: r.author, genre: r.genre, end: r.end, days_read: r.days_read, hours: r.hours, read_no: r.read_no })),
 });
 
 dash.calc('big_reads', {
   inputs: ['reads'], title: 'Biggest reads',
   description: 'Finished reads with the most hours logged.',
   fn: (reads) => reads.filter((r) => r.finished === true && r.hours).sort((a, b) => b.hours - a.hours).slice(0, 10)
-    .map((r) => ({ read_id: r.read_id, title: r.title, author: r.author, hours: r.hours, days_read: r.days_read, end: r.end })),
+    .map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, author: r.author, genre: r.genre, hours: r.hours, days_read: r.days_read, end: r.end })),
 });
 
 dash.calc('stalled', {
@@ -229,7 +234,7 @@ dash.calc('stalled', {
   fn: (books, as_of) => {
     const end = Date.parse(as_of[0].date + 'T00:00:00Z');
     return books.filter((b) => b.progress >= 5 && b.progress <= 95 && b.last_read && end - Date.parse(b.last_read + 'T00:00:00Z') > 60 * 864e5)
-      .map((b) => ({ id: b.id, title: b.title, author: b.author, progress: b.progress, last_read: b.last_read })).sort((a, b) => b.progress - a.progress);
+      .map((b) => ({ id: b.id, title: b.title, author: b.author, genre: b.genre, progress: b.progress, last_read: b.last_read })).sort((a, b) => b.progress - a.progress);
   },
 });
 
