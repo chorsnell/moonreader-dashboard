@@ -4,13 +4,15 @@ A self-hosted dashboard for your [Moon+ Reader](https://www.moondownload.com/) r
 
 It reads the statistics Moon+ keeps inside its backups (every book, every day you read, minutes, words and progress). It keeps that history even for books whose files are long gone, and turns it into:
 
-- **Overview:** this year against last year, streaks, minutes per day, what's on the go, recently finished, books per year and hours per month.
+- **Overview:** this year against last year, streaks, minutes per day, what's on the go (shown large, with time left at your current pace, when it's a single book), recently finished, books per year and hours per month.
 - **Genres & authors:** genre and subgenre mix, how it shifts over the years, top authors and series progress.
-- **Speed:** your words-per-minute for every book, showing your page turners and your slow reads, plus speed by genre, subgenre and author against your average, and by year.
+- **Speed:** your words-per-minute over time, with the books you were reading laid over it (any date range), plus your words-per-minute for every book, showing your page turners and your slow reads, plus speed by genre, subgenre and author against your average, and by year.
 - **Timeline & habits:** a day-by-day heatmap and a "what you read when" timeline, each with its own date range (presets or custom dates), plus weekday rhythm, biggest reads and books left unfinished. Each timeline bar is faint from first to last day and solid on the days you actually opened the book.
 - **Diary:** a day-by-day log for any period showing which books you read, minutes, words, and progress from one day to the next, with started and finished markers. Click any heatmap square to jump to that day.
 - **Library:** every book and every re-read, searchable and sortable.
 - **Data checks:** things in the log that look odd. These include a book opened once and then left for weeks (which stretches its dates), reads spread thinly over months, long pauses, days with three or more books, implausible speeds, very long sessions, progress jumps, and untagged books. Click a date to open that day in the diary.
+
+Every book shows its cover, taken from the backup or looked up on Open Library (see [Book covers](#book-covers)).
 
 It's one small container with no dependencies beyond the Python standard library.
 
@@ -38,6 +40,7 @@ library/
   inbox/           backups (.mrpro); the newest is used, the 5 newest are kept
   data/            the generated data the page reads
   dav/             what Moon+ syncs over WebDAV
+  covers/          book covers, one <book id>.jpg or .png each
   catalogue.json   titles, authors, series and genres for your books
   update.log       what happened on each rebuild, upload and sync
 ```
@@ -87,6 +90,17 @@ Moon+ doesn't store genres, so they come from `catalogue.json`, keyed by the low
 
 You can also paste the untagged list into Claude and ask for the entries. To hide something that isn't a book, add its lower-case file name to `"exclude"`.
 
+## Book covers
+
+Moon+ only keeps covers for the books that are still on your device, so a backup usually has covers for a fraction of your history. On each rebuild the dashboard:
+
+1. saves the covers it finds in the backup to `library/covers/`, then
+2. looks up the rest on [Open Library](https://openlibrary.org) by title and author, in the background, about one book a second. The first run takes a few minutes, and `update.log` says how many were found. Books it can't find are tried again after 30 days.
+
+Books without a cover show a tile with their first letter. Covers appear when you reload the page.
+
+Each cover is saved as `library/covers/<book id>.jpg` (or `.png`), and an existing file is never replaced. To fix a wrong cover or add a missing one, save your own image under that name. The book id is the title in lower case with dashes, such as `project-hail-mary`. Set `COVER_LOOKUP: "off"` to never contact Open Library.
+
 ## Settings
 
 All of these are optional environment variables in `docker-compose.yml`:
@@ -98,9 +112,10 @@ All of these are optional environment variables in `docker-compose.yml`:
 | `PUID` / `PGID` | `1000` | Who owns the files in `library/` on the host |
 | `POLL_SECONDS` | `30` | How often to check the inbox |
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
+| `COVER_LOOKUP` | `on` | Set to `off` to stop looking up missing covers on Open Library |
 | `TZ` | UTC | Time zone for the log |
 
-The server also has two JSON endpoints: `/healthz`, which Docker uses as its health check, and `/api/config`, which reports the last rebuild and any error.
+The server also has three JSON endpoints: `/healthz`, which Docker uses as its health check, `/api/config`, which reports the last rebuild and any error, and `/api/covers`, which lists the saved covers.
 
 ## How the numbers are worked out
 
@@ -121,7 +136,8 @@ LIBRARY=./library UPLOAD_TOKEN=dev python3 app/server.py   # run without Docker 
 
 ```
 app/server.py        web server, rebuild watcher, uploads, WebDAV
-app/update.py        turns a .mrpro backup (plus synced positions) into data/*.json
+app/update.py        turns a .mrpro backup (plus synced positions) into data/*.json, and saves its covers
+app/covers.py        looks up missing covers on Open Library
 app/web/             the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js
 app/seed/            the starting catalogue.json
 examples/traefik.yml reverse-proxy example

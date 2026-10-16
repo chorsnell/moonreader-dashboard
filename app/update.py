@@ -7,10 +7,13 @@ Usage:
 
 Only needs the Python standard library. Book titles, authors, series and genres
 come from catalogue.json; books it doesn't know yet are listed at the end and
-show as "Untagged" until you add them to the catalogue.
+show as "Untagged" until you add them to the catalogue. Book covers Moon+ keeps
+in the backup are saved to covers/ (see covers.py for the rest).
 """
 import datetime as dt, html, json, os, re, sqlite3, sys, tempfile, zipfile
 from collections import defaultdict
+
+import covers as cover_store
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GAP_DAYS = 365          # a return after this many days starts a new read
@@ -44,7 +47,15 @@ def extract(backup, tmp):
                     return out
             return None
 
-        return get('databases/mrbooks.db'), get('shared_prefs/positions10.xml')
+        # Moon+ caches each book's cover as .MoonReader/<book file>_<n>.png; keep the largest
+        best, sizes = {}, {i.filename: i.file_size for i in z.infolist()}
+        for i, line in enumerate(listing, 1):
+            m = re.search(r'/\.moonreader/([^/]+)_\d\.png$', line.strip().lower())
+            tag = f'{base}{i}.tag'
+            if m and sizes.get(tag, 0) > best.get(m.group(1), ('', 0))[1]:
+                best[m.group(1)] = (tag, sizes[tag])
+        covers = {name: z.read(tag) for name, (tag, _) in best.items()}
+        return get('databases/mrbooks.db'), get('shared_prefs/positions10.xml'), covers
 
 
 def clean(fn):
@@ -106,7 +117,7 @@ def main():
     known, exclude = catalogue['books'], set(catalogue['exclude'])
 
     with tempfile.TemporaryDirectory() as tmp:
-        db_path, pos_path = extract(backup, tmp)
+        db_path, pos_path, backup_covers = extract(backup, tmp)
         c = sqlite3.connect(db_path)
         meta = {}
         for table in ('tmpbooks', 'books'):
@@ -262,6 +273,14 @@ def main():
 
     data_dir = os.environ.get('DATA_DIR', os.path.join(HERE, 'data'))
     os.makedirs(data_dir, exist_ok=True)
+    covers_dir = os.environ.get('COVERS_DIR', os.path.join(HERE, 'covers'))
+    new_covers = 0
+    for b in out:
+        for f in b['source_files']:
+            data = backup_covers.get(f.lower())
+            if data and cover_store.save(covers_dir, b['id'], data):
+                new_covers += 1
+                break
 
     def dump(name, value, pretty=False):
         tmp = os.path.join(data_dir, name + '.tmp')
@@ -295,7 +314,8 @@ def main():
                            untagged=len(untagged), synced_positions=synced))
 
     print(f'{os.path.basename(backup)}: {len(out)} books, {len(reads_rows)} reads, {len(daily_rows)} reading days'
-          + (f', {synced} synced position(s) applied' if synced else ''))
+          + (f', {synced} synced position(s) applied' if synced else '')
+          + (f', {new_covers} new cover(s) from the backup' if new_covers else ''))
     if untagged:
         print(f'\n{len(untagged)} file(s) not in catalogue.json (shown as "Untagged"):')
         for u in sorted(untagged):
