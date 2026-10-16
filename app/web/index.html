@@ -123,6 +123,9 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .fail::before{content:"";width:.375rem;height:.375rem;border-radius:50%;background:var(--color-bad)}
 .hm-legend{display:flex;align-items:center;gap:4px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-top:var(--cds-gap-sm);justify-content:flex-end}
 .hm-legend i{width:11px;height:11px;border-radius:2px;display:inline-block}
+.rh-kpi .val-sm{font-size:20px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rng-sel{font:inherit;font-size:var(--cds-font-size-caption);padding:3px 6px;border:1px solid var(--color-border-line);border-radius:6px;background:var(--color-bg);color:var(--color-fg)}
+.spd{font-variant-numeric:tabular-nums}.spd.up{color:var(--color-ok)}.spd.down{color:var(--color-warn)}
 .card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--cds-gap-sm) var(--cds-gap-md)}
 .rng{display:flex;flex-wrap:wrap;align-items:center;gap:var(--cds-gap-xs) var(--cds-gap-sm);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
 .rng select,.rng input{font:inherit;font-size:var(--cds-font-size-caption);padding:3px 6px;border:1px solid var(--color-border-line);border-radius:6px;background:var(--color-bg);color:var(--color-fg)}
@@ -165,6 +168,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
   <nav class="rh-tabs" role="tablist">
     <button role="tab" data-tab="overview" id="tab-overview" aria-selected="true">Overview</button>
     <button role="tab" data-tab="genres" id="tab-genres" aria-selected="false">Genres &amp; authors</button>
+    <button role="tab" data-tab="speed" id="tab-speed" aria-selected="false">Speed</button>
     <button role="tab" data-tab="timeline" id="tab-timeline" aria-selected="false">Timeline &amp; habits</button>
     <button role="tab" data-tab="diary" id="tab-diary" aria-selected="false">Diary</button>
     <button role="tab" data-tab="library" id="tab-library" aria-selected="false">Library</button>
@@ -239,6 +243,49 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
     </div>
   </section>
 
+  <!-- SPEED -->
+  <section class="rh-page" id="speed" hidden>
+    <div class="rh-kpis">
+      <div class="rh-kpi" id="kpi-avg-wpm"><div class="lbl">Your average speed</div>
+        <div class="val dash-skeleton"><span data-source="speed_overall" data-field="value" data-where="metric=avg_wpm">—</span> wpm</div>
+        <div class="sub">across <span data-source="speed_overall" data-field="value" data-where="metric=books_timed">—</span> books with 2+ hours timed</div></div>
+      <div class="rh-kpi" id="kpi-fastest"><div class="lbl">Fastest read</div>
+        <div class="val val-sm dash-skeleton" data-source="speed_overall" data-field="value" data-where="metric=fastest_title">—</div>
+        <div class="sub"><span data-source="speed_overall" data-field="value" data-where="metric=fastest_wpm">—</span> wpm</div></div>
+      <div class="rh-kpi" id="kpi-slowest"><div class="lbl">Slowest read</div>
+        <div class="val val-sm dash-skeleton" data-source="speed_overall" data-field="value" data-where="metric=slowest_title">—</div>
+        <div class="sub"><span data-source="speed_overall" data-field="value" data-where="metric=slowest_wpm">—</span> wpm</div></div>
+    </div>
+
+    <div class="rh-card wide" id="card-speed-books"><h2>Every book by speed</h2>
+      <p class="note">Words per minute for each book with 2+ hours of timed reading (Moon+ logs this from 2019). Right of the line is faster than your average. Bigger dots took longer. Hover for details.</p>
+      <div class="legend" id="leg-speed"></div>
+      <div class="chart tall" id="ch-speed-books" data-source="book_speed"></div></div>
+
+    <div class="rh-grid">
+      <div class="rh-card" id="card-fast"><h2>Page turners</h2>
+        <p class="note">The ten books you read fastest, compared with your average.</p>
+        <ul class="rh-list" id="fast" data-source="book_speed"></ul></div>
+      <div class="rh-card" id="card-slow"><h2>Slow reads</h2>
+        <p class="note">The ten books you read slowest. Dense prose, or savoured?</p>
+        <ul class="rh-list" id="slow" data-source="book_speed"></ul></div>
+    </div>
+
+    <div class="rh-grid">
+      <div class="rh-card" id="card-genre-speed"><div class="card-head"><h2>Speed by genre</h2>
+        <select id="genre-speed-kind" class="rng-sel" aria-label="Group by"><option value="genre">Genres</option><option value="subgenre">Subgenres</option></select></div>
+        <p class="note" id="genre-speed-note">All timed reading in each genre (3+ hours), against your average.</p>
+        <div class="chart" id="ch-genre-speed" data-source="group_speed"></div></div>
+      <div class="rh-card" id="card-author-speed"><h2>Speed by author</h2>
+        <p class="note">Authors with 2+ books and 5+ hours of timed reading.</p>
+        <div class="chart" id="ch-author-speed" data-source="group_speed"></div></div>
+    </div>
+
+    <div class="rh-card wide" id="card-speed"><h2>Reading speed by year</h2>
+      <p class="note">Words read per minute, from days where the app logged both.</p>
+      <div class="chart" id="ch-speed" data-source="speed_year"></div></div>
+  </section>
+
   <!-- TIMELINE -->
   <section class="rh-page" id="timeline" hidden>
     <div class="rh-card wide" id="card-heat"><div class="card-head"><h2>Day by day</h2>
@@ -258,12 +305,9 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
       <div class="legend" id="leg-gantt"></div>
       <div class="chart tall" id="ch-gantt" data-source="timeline"></div></div>
     <div class="rh-grid">
-      <div class="rh-card" id="card-week"><h2>Weekday rhythm</h2>
+      <div class="rh-card wide" id="card-week"><h2>Weekday rhythm</h2>
         <p class="note">Average minutes read per calendar day since 2019, by weekday.</p>
         <div class="chart" id="ch-week" data-source="weekday"></div></div>
-      <div class="rh-card" id="card-speed"><h2>Reading speed by year</h2>
-        <p class="note">Words read per minute, from days where the app logged both.</p>
-        <div class="chart" id="ch-speed" data-source="speed_year"></div></div>
     </div>
     <div class="rh-grid">
       <div class="rh-card" id="card-big"><h2>Biggest reads</h2>
@@ -308,6 +352,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
           <th data-field="last_read"><button>Last read</button></th>
           <th data-field="times_read" class="n"><button>Reads</button></th>
           <th data-field="hours" class="n hide-sm"><button>Hours</button></th>
+          <th data-field="wpm" data-source="book_speed" class="n hide-sm"><button>WPM</button></th>
           <th data-field="progress" class="n"><button>Progress</button></th>
         </tr></thead><tbody></tbody></table></div>
       <p class="note" id="lib-count" style="margin:var(--cds-gap-sm) 0 0"></p></div>

@@ -298,6 +298,98 @@
       .on('mouseleave', () => hideTip(tip));
   }
 
+  // ---------- speed ----------
+  const avgWpm = () => { const r = D('speed_overall'); const row = r.status === 'ok' ? r.data.find((x) => x.metric === 'avg_wpm') : null; return row ? row.value : null; };
+  const vsAvg = (v) => (v == null ? '' : Math.abs(v) < 0.005 ? 'your average' : `${Math.round(Math.abs(v) * 100)}% ${v > 0 ? 'faster' : 'slower'}`);
+
+  function drawSpeedBooks() {
+    const el = $('#ch-speed-books'), rows = state(el, 'book_speed'); if (!rows) return;
+    const avg = avgWpm();
+    if (!rows.length) { el.style.minHeight = '80px'; el.replaceChildren(Object.assign(document.createElement('div'), { className: 'dy-empty', textContent: 'Not enough timed reading yet.' })); return; }
+    const genres = genreOrder.filter((g) => rows.some((r) => r.genre === g)).concat([...new Set(rows.map((r) => r.genre))].filter((g) => !genreOrder.includes(g)));
+    legend($('#leg-speed'), genres.map((g) => [gColor(g), g]));
+    const w0 = Math.max(280, el.clientWidth), probe = d3.select(el).append('svg').attr('width', 0).attr('height', 0);
+    const lab = Math.min(w0 * 0.3, measure(probe, genres) + 12); probe.remove();
+    const m = { t: 22, r: 12, b: 26, l: lab };
+    const x = d3.scaleLinear(d3.extent(rows.concat(avg ? [{ wpm: avg }] : []), (r) => r.wpm), [m.l, w0 - m.r]).nice();
+    const rad = d3.scaleSqrt([0, d3.max(rows, (r) => r.hours)], [2.5, w0 < 500 ? 7 : 10]);
+    // beeswarm per genre row: place each dot at the smallest offset that doesn't overlap
+    const lanes = genres.map((g) => {
+      const placed = [], dots = rows.filter((r) => r.genre === g).sort((a, b) => b.hours - a.hours).map((r) => ({ ...r, x: x(r.wpm), r: rad(r.hours) }));
+      dots.forEach((d) => {
+        for (let k = 0; ; k++) {
+          const y = k === 0 ? 0 : (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 2;
+          if (placed.every((p) => (p.x - d.x) ** 2 + (p.y - y) ** 2 >= (p.r + d.r + 1) ** 2)) { d.y = y; break; }
+        }
+        placed.push(d);
+      });
+      const lo = d3.min(placed, (d) => d.y - d.r) ?? -10, hi = d3.max(placed, (d) => d.y + d.r) ?? 10;
+      return { g, dots: placed, lo, hi, h: Math.max(28, hi - lo + 10) };
+    });
+    let y0 = m.t; lanes.forEach((l) => { l.top = y0; l.mid = y0 + l.h / 2 - (l.hi + l.lo) / 2; y0 += l.h; });
+    const h = y0 + m.b;
+    el.style.minHeight = h + 'px';
+    const { svg, tip } = svgIn(el, h);
+    lanes.forEach((l, i) => { if (i) svg.append('line').attr('x1', m.l).attr('x2', w0 - m.r).attr('y1', l.top).attr('y2', l.top).attr('stroke', 'var(--cds-chart-grid)'); });
+    axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).ticks(Math.max(3, Math.floor(w0 / 80))).tickFormat((v) => v + ' wpm').tickSizeOuter(0));
+    if (avg) {
+      svg.append('line').attr('x1', x(avg)).attr('x2', x(avg)).attr('y1', m.t - 6).attr('y2', h - m.b).attr('stroke', 'var(--cds-chart-reference, var(--color-fg-muted))').attr('stroke-dasharray', '4 3');
+      svg.append('text').attr('class', 'axl').attr('x', x(avg)).attr('y', m.t - 10).attr('text-anchor', 'middle').text(`your average ${avg} wpm`);
+    }
+    lanes.forEach((l) => {
+      svg.append('text').attr('class', 'axl').attr('x', m.l - 10).attr('y', l.top + l.h / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text(l.g);
+      svg.append('g').selectAll('circle').data(l.dots).join('circle')
+        .attr('cx', (d) => d.x).attr('cy', (d) => l.mid + d.y).attr('r', (d) => d.r)
+        .attr('fill', gColor(l.g)).attr('fill-opacity', 0.75).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1)
+        .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.title, [[gColor(d.genre), d.subgenre || d.genre, ''], [null, 'Author', d.author || '—'], [null, 'Speed', `${d.wpm} wpm (${vsAvg(d.vs_avg)})`], [null, 'Timed', `${d.hours} h over ${d.days} days`]])))
+        .on('mouseleave', () => hideTip(tip));
+    });
+  }
+
+  // lollipops from your average to each group's speed
+  function speedDots(el, rows, avg) {
+    if (!rows.length) { el.style.minHeight = '80px'; el.replaceChildren(Object.assign(document.createElement('div'), { className: 'dy-empty', textContent: 'Not enough timed reading yet.' })); return; }
+    const rh = 26, m = { t: 20, r: 44, b: 6 }, h = m.t + rows.length * rh + m.b, w0 = Math.max(280, el.clientWidth);
+    el.style.minHeight = h + 'px';
+    const probe = d3.select(el).append('svg').attr('width', 0).attr('height', 0);
+    const short = (s) => (s.length > 26 ? s.slice(0, 25) + '…' : s);
+    const lab = Math.min(w0 * 0.42, measure(probe, rows.map((r) => short(r.name))) + 12); probe.remove();
+    const { svg, tip } = svgIn(el, h);
+    const ext = d3.extent(rows.map((r) => r.wpm).concat(avg ? [avg] : []));
+    const x = d3.scaleLinear([ext[0] - 8, ext[1] + 8], [lab, w0 - m.r]);
+    if (avg) {
+      svg.append('line').attr('x1', x(avg)).attr('x2', x(avg)).attr('y1', m.t - 4).attr('y2', h - m.b).attr('stroke', 'var(--cds-chart-reference, var(--color-fg-muted))').attr('stroke-dasharray', '4 3');
+      svg.append('text').attr('class', 'axl').attr('x', x(avg)).attr('y', m.t - 8).attr('text-anchor', 'middle').text(`avg ${avg}`);
+    }
+    const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (d, i) => `translate(0,${m.t + i * rh + rh / 2})`);
+    g.append('text').attr('class', 'axl').attr('x', lab - 10).attr('dy', '0.35em').attr('text-anchor', 'end').text((d) => short(d.name));
+    if (avg) g.append('line').attr('x1', x(avg)).attr('x2', (d) => x(d.wpm)).attr('stroke', (d) => gColor(d.genre)).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-opacity', 0.6);
+    g.append('circle').attr('cx', (d) => x(d.wpm)).attr('r', 5.5).attr('fill', (d) => gColor(d.genre));
+    const leftOf = (d) => avg && d.wpm < avg && x(d.wpm) - lab > 40; // room for the number between name and dot?
+    g.append('text').attr('class', 'lbl-in').attr('x', (d) => (leftOf(d) ? x(d.wpm) - 10 : avg && d.wpm < avg ? x(avg) + 8 : x(d.wpm) + 10)).attr('dy', '0.35em')
+      .attr('text-anchor', (d) => (leftOf(d) ? 'end' : 'start')).text((d) => d.wpm);
+    g.append('rect').attr('x', 0).attr('y', -rh / 2).attr('width', w0).attr('height', rh).attr('fill', 'transparent')
+      .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.name, [[gColor(d.genre), 'Speed', `${d.wpm} wpm`], [null, 'vs average', avg ? vsAvg(d.wpm / avg - 1) : '—'], [null, 'Timed', `${fmt(d.hours)} h · ${d.books} book${d.books === 1 ? '' : 's'}`]])))
+      .on('mouseleave', () => hideTip(tip));
+  }
+  const kindSel = $('#genre-speed-kind');
+  kindSel.addEventListener('change', () => dash.setParams({ speed_kind: kindSel.value }));
+  function drawSpeedTab() {
+    fillMetrics('speed_overall');
+    drawSpeedBooks();
+    const avg = avgWpm();
+    const li = (r) => [r.title, `${r.author || ''} · ${r.hours} h timed`, `${r.wpm} wpm · ${vsAvg(r.vs_avg)}`, null];
+    list('#fast', 'book_speed', li, (rows) => rows.slice(0, 10));
+    list('#slow', 'book_speed', li, (rows) => rows.slice(-10).reverse());
+    const gs = D('group_speed'), kind = (params().speed_kind) || 'genre';
+    kindSel.value = kind;
+    $('#genre-speed-note').textContent = kind === 'genre' ? 'All timed reading in each genre (3+ hours), against your average.' : 'All timed reading in each subgenre (5+ hours), against your average.';
+    const ge = $('#ch-genre-speed'), ae = $('#ch-author-speed');
+    if (state(ge, 'group_speed')) speedDots(ge, gs.data.filter((r) => r.kind === kind), avg);
+    if (state(ae, 'group_speed')) speedDots(ae, gs.data.filter((r) => r.kind === 'author'), avg);
+    drawSpeed();
+  }
+
   // ---------- diary ----------
   const DIARY_PAGE = 60;
   let diaryLimit = DIARY_PAGE, diaryFocus = null;
@@ -391,8 +483,9 @@
   function drawSpeed() { const el = $('#ch-speed'), rows = state(el, 'speed_year'); if (rows) vbars(el, rows, (r) => r.year, (r) => r.wpm, C[2], 'Words per minute'); }
 
   // ---------- lists ----------
-  function list(sel, id, item) {
-    const el = $(sel), rows = state(el, id); if (!rows) return;
+  function list(sel, id, item, pick) {
+    const el = $(sel), all = state(el, id); if (!all) return;
+    const rows = pick ? pick(all) : all;
     if (!rows.length) { el.replaceChildren(Object.assign(document.createElement('li'), { className: 'meta', textContent: 'Nothing here right now.' })); return; }
     el.replaceChildren(...rows.map((r) => {
       const [title, sub, meta, prog] = item(r);
@@ -411,7 +504,7 @@
     if (r.status !== 'ok') { body.replaceChildren(); return null; }
     let rows = opts.filter ? r.data.filter(opts.filter) : r.data.slice();
     const st = sorts[sel];
-    if (st) { const c = cols.find((c) => c.f === st.f); rows.sort((a, b) => { const x = a[st.f], y = b[st.f]; const n = x == null ? 1 : y == null ? -1 : c.num ? x - y : String(x).localeCompare(String(y)); return x == null || y == null ? n : n * st.dir; }); }
+    if (st) { const c = cols.find((c) => c.f === st.f); const val = c && c.get ? c.get : (row) => row[st.f]; rows.sort((a, b) => { const x = val(a), y = val(b); const n = x == null ? 1 : y == null ? -1 : c.num ? x - y : String(x).localeCompare(String(y)); return x == null || y == null ? n : n * st.dir; }); }
     tblEl.querySelectorAll('th').forEach((th) => th.setAttribute('aria-sort', st && th.dataset.field === st.f ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'));
     const key = tblEl.dataset.rowKey;
     body.replaceChildren(...rows.map((row) => {
@@ -433,11 +526,15 @@
   const date = (v) => (v ? fDay(pDate(v)) : '—');
   const titleCell = (td, r) => { td.textContent = r.title; if (r.series) { td.append(document.createElement('br')); const s = document.createElement('small'); s.textContent = r.series + (r.series_no != null ? ' #' + r.series_no : ''); td.append(s); } };
 
+  let speedMap = new Map();
+  const speedOf = (id) => speedMap.get(id) ?? null;
   function drawTables() {
+    const bs = D('book_speed'); speedMap = new Map(bs.status === 'ok' ? bs.data.map((r) => [r.book_id, r.wpm]) : []);
     const q = $('#lib-q').value.trim().toLowerCase(), gsel = $('#lib-genre').value, ssel = $('#lib-status').value, rr = $('#lib-reread').value;
     const n = table('#tbl-books', 'books', [
       { f: 'title', render: txt('title') }, { f: 'author', render: txt('author'), cls: 'hide-sm' }, { f: 'genre', render: txt('genre'), cls: 'hide-sm' },
       { f: 'last_read', render: txt('last_read', date) }, { f: 'times_read', num: true, render: txt('times_read') }, { f: 'hours', num: true, render: txt('hours', (v) => (v ? fmt(v) : '—')), cls: 'hide-sm' },
+      { f: 'wpm', num: true, cls: 'hide-sm', get: (r) => speedOf(r.id), render: (td, r) => { const v = speedOf(r.id); td.textContent = v ?? '—'; } },
       { f: 'progress', num: true, render: txt('progress', pct) },
     ], { filter: (b) => (!q || [b.title, b.author, b.series].join(' ').toLowerCase().includes(q)) && (!gsel || b.genre === gsel) && (!ssel || b.status === ssel) && (!rr || b.times_read > 1) });
     const total = D('books').status === 'ok' ? D('books').data.length : 0;
@@ -456,6 +553,18 @@
   ['#lib-q', '#lib-genre', '#lib-status', '#lib-reread'].forEach((s) => $(s).addEventListener('input', () => drawTables()));
 
   // ---------- KPIs & header ----------
+  function fillMetrics(id) {
+    const r = D(id);
+    document.querySelectorAll(`[data-source="${id}"][data-where]`).forEach((el) => {
+      if (r.status !== 'ok') { if (r.status === 'error') { el.textContent = '—'; el.classList.remove('dash-skeleton'); } return; }
+      const metric = new URLSearchParams(el.dataset.where).get('metric');
+      const row = r.data.find((x) => x.metric === metric);
+      el.textContent = row && row.value != null ? (typeof row.value === 'number' ? fmt(row.value) : row.value) : '—';
+      el.title = el.textContent;
+      el.classList.remove('dash-skeleton');
+      el.closest('.val')?.classList.remove('dash-skeleton');
+    });
+  }
   function drawKpis() {
     const r = D('kpis');
     document.querySelectorAll('[data-source="kpis"]').forEach((el) => {
@@ -497,8 +606,9 @@
       list('#recent', 'recent', (r) => [(r.read_no > 1 ? '↻ ' : '') + r.title, r.author, fDay(pDate(r.end)) + (r.hours ? ` · ${r.hours} h` : ''), null]);
     } else if (tab === 'genres') { drawGenre(); drawSub(); drawGenreYear(); drawAuthors(); drawTables(); }
     else if (tab === 'diary') drawDiary();
+    else if (tab === 'speed') drawSpeedTab();
     else if (tab === 'timeline') {
-      drawHeat(); drawGantt(); drawWeek(); drawSpeed();
+      drawHeat(); drawGantt(); drawWeek();
       list('#big', 'big_reads', (r) => [r.title, r.author, `${r.hours} h · ${r.days_read} days`, null]);
       list('#stalled', 'stalled', (r) => [r.title, r.author, 'last ' + fShort(pDate(r.last_read)), r.progress]);
     } else drawTables();

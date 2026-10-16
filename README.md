@@ -6,7 +6,8 @@ It reads the statistics Moon+ keeps inside its backups (every book, every day yo
 
 - **Overview:** this year against last year, streaks, minutes per day, what's on the go, recently finished, books per year and hours per month.
 - **Genres & authors:** genre and subgenre mix, how it shifts over the years, top authors and series progress.
-- **Timeline & habits:** a day-by-day heatmap and a "what you read when" timeline, each with its own date range (presets or custom dates), plus weekday rhythm, reading speed, biggest reads and books left unfinished.
+- **Speed:** your words-per-minute for every book, showing your page turners and your slow reads, plus speed by genre, subgenre and author against your average, and by year.
+- **Timeline & habits:** a day-by-day heatmap and a "what you read when" timeline, each with its own date range (presets or custom dates), plus weekday rhythm, biggest reads and books left unfinished.
 - **Diary:** a day-by-day log for any period showing which books you read, minutes, words, and progress from one day to the next, with started and finished markers. Click any heatmap square to jump to that day.
 - **Library:** every book and every re-read, searchable and sortable.
 
@@ -104,7 +105,8 @@ The server also has two JSON endpoints: `/healthz`, which Docker uses as its hea
 
 - **New reads:** returning to a book after 365 days or more starts a new read. A single day back in a book only counts as a read if the book has no longer one.
 - **Finished:** a read is finished when it ends at 99% or more. Before about 2019, Moon+ often didn't record progress, so early years undercount.
-- **Minutes and words:** these are only logged per day from 2019 onwards. Per-book totals use the app's lifetime counters.
+- **Minutes and words:** these are only logged per day from 2019 onwards.
+- **Speed:** words divided by minutes, over days where Moon+ logged both. Days above 800 wpm (flicking through) or below 40 wpm (book left open) are skipped, and a book needs 2+ hours of timed reading to get a speed. Per-book totals use the app's lifetime counters.
 - **Time of day:** Moon+ records which days you read, not what time, so the diary is per day.
 - **Changing the rules:** the thresholds are at the top of `app/update.py`, and every chart's calculation is in `app/web/calcs.js`.
 

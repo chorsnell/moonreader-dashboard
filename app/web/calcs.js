@@ -239,3 +239,65 @@ dash.calc('rereads', {
   fn: (reads) => reads.filter((r) => r.times_read > 1).map((r) => ({ read_id: r.read_id, title: r.title, author: r.author, read_no: r.read_no, start: r.start, end: r.end, days_read: r.days_read, hours: r.hours, progress: r.progress }))
     .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : a.read_no - b.read_no)),
 });
+
+// ---------- reading speed ----------
+// Words per minute from days where Moon+ logged both (from 2019). Days that look like
+// flicking through (> 800 wpm) or leaving the book open (< 40 wpm) are left out.
+dash.calc('book_speed', {
+  inputs: ['daily', 'books'], title: 'Speed per book',
+  description: 'Words per minute for each book with 2+ hours of timed reading, and how it compares with your overall average.',
+  fn: (daily, books) => {
+    const ok = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
+    const meta = new Map(books.map((b) => [b.id, b])), agg = new Map();
+    let W = 0, M = 0;
+    daily.filter(ok).forEach((d) => {
+      const a = agg.get(d.book_id) || { w: 0, m: 0, days: 0 };
+      a.w += d.words; a.m += d.minutes; a.days++; agg.set(d.book_id, a); W += d.words; M += d.minutes;
+    });
+    const avg = W / M;
+    return [...agg].filter(([, a]) => a.m >= 120).map(([id, a]) => {
+      const b = meta.get(id) || {};
+      return { book_id: id, title: b.title, author: b.author, genre: b.genre, subgenre: b.subgenre, status: b.status,
+        wpm: Math.round(a.w / a.m), hours: Math.round(a.m / 6) / 10, days: a.days, vs_avg: Math.round((a.w / a.m / avg - 1) * 1000) / 1000 };
+    }).sort((x, y) => y.wpm - x.wpm);
+  },
+});
+
+dash.calc('speed_overall', {
+  inputs: ['daily', 'book_speed'], title: 'Speed headline',
+  description: 'Your overall words per minute, and the fastest and slowest books.',
+  fn: (daily, book_speed) => {
+    const ok = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
+    const v = daily.filter(ok), w = v.reduce((s, d) => s + d.words, 0), m = v.reduce((s, d) => s + d.minutes, 0);
+    const f = book_speed[0] || {}, s = book_speed[book_speed.length - 1] || {};
+    return [
+      { metric: 'avg_wpm', value: m ? Math.round(w / m) : null },
+      { metric: 'books_timed', value: book_speed.length },
+      { metric: 'fastest_title', value: f.title || null }, { metric: 'fastest_wpm', value: f.wpm ?? null },
+      { metric: 'slowest_title', value: s.title || null }, { metric: 'slowest_wpm', value: s.wpm ?? null },
+    ];
+  },
+});
+
+dash.calc('group_speed', {
+  inputs: ['daily', 'books'], title: 'Speed by genre, subgenre and author',
+  description: 'Words per minute across all timed reading in each genre (3+ hours), subgenre (5+ hours) and author (2+ books, 5+ hours).',
+  fn: (daily, books) => {
+    const ok = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
+    const meta = new Map(books.map((b) => [b.id, b])), g = new Map();
+    const add = (kind, name, genre, d) => {
+      const k = kind + '|' + name, a = g.get(k) || { kind, name, genre, w: 0, m: 0, books: new Set() };
+      a.w += d.words; a.m += d.minutes; a.books.add(d.book_id); g.set(k, a);
+    };
+    daily.filter(ok).forEach((d) => {
+      const b = meta.get(d.book_id) || {};
+      add('genre', b.genre || d.genre, b.genre || d.genre, d);
+      add('subgenre', b.subgenre || 'Untagged', b.genre || d.genre, d);
+      add('author', b.author || 'Unknown', b.genre || d.genre, d);
+    });
+    const min = { genre: { h: 3, n: 1 }, subgenre: { h: 5, n: 1 }, author: { h: 5, n: 2 } };
+    return [...g.values()].filter((a) => a.m / 60 >= min[a.kind].h && a.books.size >= min[a.kind].n)
+      .map((a) => ({ key: a.kind + '|' + a.name, kind: a.kind, name: a.name, genre: a.genre, wpm: Math.round(a.w / a.m), hours: Math.round(a.m / 6) / 10, books: a.books.size }))
+      .sort((x, y) => y.wpm - x.wpm);
+  },
+});
