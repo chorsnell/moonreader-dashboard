@@ -1,0 +1,2675 @@
+{
+ "books": {
+  "11_22_63 - stephen king.mobi": {
+   "title": "11/22/63",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "swan song (robert r. mccammon).epub": {
+   "title": "Swan Song",
+   "author": "Robert McCammon",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "2312 - kim stanley robinson.epub": {
+   "title": "2312",
+   "author": "Kim Stanley Robinson",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "25 betrayer - aaron dembski-bowden.mobi": {
+   "title": "Betrayer",
+   "author": "Aaron Dembski-Bowden",
+   "series": "The Horus Heresy",
+   "series_no": 24.0,
+   "genre": "Science Fiction",
+   "subgenre": "Warhammer 40k"
+  },
+  "[ebookbb.com] artemis.epub": {
+   "title": "Artemis",
+   "author": "Andy Weir",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "[fear saga 2 ] moss, stephen - fear the survivors - libgen.li.azw3": {
+   "title": "Fear the Survivors",
+   "author": "Stephen Moss",
+   "series": "The Fear Saga",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Alien Invasion"
+  },
+  "[fear saga 2 ] moss, stephen - fear the survivors (2014) - libgen.li.epub": {
+   "title": "Fear the Survivors",
+   "author": "Stephen Moss",
+   "series": "The Fear Saga",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Alien Invasion"
+  },
+  "[hamill_pete]_forever(booksee.org).epub": {
+   "title": "Forever",
+   "author": "Pete Hamill",
+   "series": null,
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Historical Fantasy"
+  },
+  "[fear saga 1 ] moss, stephen - fear the sky (2014, stephen moss) - libgen.li.epub": {
+   "title": "Fear the Sky",
+   "author": "Stephen Moss",
+   "series": "The Fear Saga",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Alien Invasion"
+  },
+  "[wayfarers 2 ] chambers, becky - a closed and common orbit (2016, harpercollins) - libgen.li.epub": {
+   "title": "A Closed and Common Orbit",
+   "author": "Becky Chambers",
+   "series": "Wayfarers",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "a parade of horribles - matt dinniman.epub": {
+   "title": "A Parade of Horribles",
+   "author": "Matt Dinniman",
+   "series": "Dungeon Crawler Carl",
+   "series_no": 8.0,
+   "genre": "LitRPG",
+   "subgenre": "LitRPG"
+  },
+  "a river enchanted by rebecca ross.epub": {
+   "title": "A River Enchanted",
+   "author": "Rebecca Ross",
+   "series": "Elements of Cadence",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Romantic Fantasy"
+  },
+  "alex debrie - the dynamodb book.epub": {
+   "title": "The DynamoDB Book",
+   "author": "Alex DeBrie",
+   "series": null,
+   "series_no": null,
+   "genre": "Non-fiction",
+   "subgenre": "Programming"
+  },
+  "alice in wonderland.epub": {
+   "title": "Alice's Adventures in Wonderland",
+   "author": "Lewis Carroll",
+   "series": null,
+   "series_no": null,
+   "genre": "Classics",
+   "subgenre": "Children's Classic"
+  },
+  "martha wells - murderbot diaries 01 - all systems red.epub": {
+   "title": "All Systems Red",
+   "author": "Martha Wells",
+   "series": "The Murderbot Diaries",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "all these worlds (bobiverse book 3) - dennis e. taylor.epub": {
+   "title": "All These Worlds",
+   "author": "Dennis E. Taylor",
+   "series": "Bobiverse",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "all you need is kill (hiroshi sakurazaka).epub": {
+   "title": "All You Need Is Kill",
+   "author": "Hiroshi Sakurazaka",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "neil gaiman - american gods (tenth anniversary edition) (v5.0) (epub).epub": {
+   "title": "American Gods",
+   "author": "Neil Gaiman",
+   "series": null,
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Urban Fantasy"
+  },
+  "anathem, by neal stephenson (v1.0).epub": {
+   "title": "Anathem",
+   "author": "Neal Stephenson",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "angel exterminatus - graham mcneill.epub": {
+   "title": "Angel Exterminatus",
+   "author": "Graham McNeill",
+   "series": "The Horus Heresy",
+   "series_no": 23.0,
+   "genre": "Science Fiction",
+   "subgenre": "Warhammer 40k"
+  },
+  "annihilation - jeff vandermeer.epub": {
+   "title": "Annihilation",
+   "author": "Jeff VanderMeer",
+   "series": "Southern Reach",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "New Weird"
+  },
+  "armada - ernest cline.epub": {
+   "title": "Armada",
+   "author": "Ernest Cline",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Pop-Culture SF"
+  },
+  "martha wells - murderbot diaries 02 - artificial condition (v5).epub": {
+   "title": "Artificial Condition",
+   "author": "Martha Wells",
+   "series": "The Murderbot Diaries",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "aurora - kim stanley robinson.epub": {
+   "title": "Aurora",
+   "author": "Kim Stanley Robinson",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "authority - jeff vandermeer.epub": {
+   "title": "Authority",
+   "author": "Jeff VanderMeer",
+   "series": "Southern Reach",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "New Weird"
+  },
+  "_oceanofpdf.com_awaken_online_catharsis_-_travis_bagwell.epub": {
+   "title": "Awaken Online: Catharsis",
+   "author": "Travis Bagwell",
+   "series": "Awaken Online",
+   "series_no": 1.0,
+   "genre": "LitRPG",
+   "subgenre": "LitRPG"
+  },
+  "axis (spin) -- robert charles wilson -- spin 2, 2008 -- tor science fiction; wilson, robert charles -- isbn13 9780765309396 -- 5353aa0c1f3951889a4f37e7c125e7dd -- anna’s archive.epub": {
+   "title": "Axis",
+   "author": "Robert Charles Wilson",
+   "series": "Spin",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "james s. a. corey - the expanse 06 - babylon's ashes.epub": {
+   "title": "Babylon's Ashes",
+   "author": "James S. A. Corey",
+   "series": "The Expanse",
+   "series_no": 6.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "andrzej_sapkowski_-_baptism_of_fire.epub": {
+   "title": "Baptism of Fire",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 5.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "hugh howey - beacon 23 99 - beacon 23-the complete novel # omnibus 01-05 (v5.0).epub": {
+   "title": "Beacon 23",
+   "author": "Hugh Howey",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "(first law 2) abercrombie, joe - before they are hanged.epub": {
+   "title": "Before They Are Hanged",
+   "author": "Joe Abercrombie",
+   "series": "The First Law",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Grimdark"
+  },
+  "[lauren_oliver]_before_i_fall(booksee.org).mobi": {
+   "title": "Before I Fall",
+   "author": "Lauren Oliver",
+   "series": null,
+   "series_no": null,
+   "genre": "Young Adult",
+   "subgenre": "YA Contemporary"
+  },
+  "best served cold -- joe abercrombie -- 2009 -- gollancz -- 70493d4ae4dc2e7389fe9de5563ecec5 -- anna’s archive.mobi": {
+   "title": "Best Served Cold",
+   "author": "Joe Abercrombie",
+   "series": "The First Law",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Grimdark"
+  },
+  "stephen king - billy summers_ a novel.epub.epub": {
+   "title": "Billy Summers",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Thriller",
+   "subgenre": "Crime"
+  },
+  "03 - blood of elves.epub": {
+   "title": "Blood of Elves",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 3.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "blue hope_.epub": {
+   "title": "Blue Hope",
+   "author": "John Dreese",
+   "series": "Red Hope",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Mars"
+  },
+  "bounce___.epub": {
+   "title": "Bounce",
+   "author": "Matthew Syed",
+   "series": null,
+   "series_no": null,
+   "genre": "Non-fiction",
+   "subgenre": "Psychology"
+  },
+  "brandon sanderson - [stormlight archive 01] - the way of kings [v5.0] [epub].epub": {
+   "title": "The Way of Kings",
+   "author": "Brandon Sanderson",
+   "series": "The Stormlight Archive",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "calamity - brandon sanderson.epub": {
+   "title": "Calamity",
+   "author": "Brandon Sanderson",
+   "series": "The Reckoners",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Superhero"
+  },
+  "calculating god - sawyer_ robert j.epub": {
+   "title": "Calculating God",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "the expanse 02 - caliban's war (v5.0).epub": {
+   "title": "Caliban's War",
+   "author": "James S. A. Corey",
+   "series": "The Expanse",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "carl's doomsday scenario_ dungeon crawler carl book 2 -- dinniman, matt -- dungeon crawler carl #2, 2021 -- dandy house -- ebcd23307b828b46fdc09be85f282bec -- anna’s archive.epub": {
+   "title": "Carl's Doomsday Scenario",
+   "author": "Matt Dinniman",
+   "series": "Dungeon Crawler Carl",
+   "series_no": 2.0,
+   "genre": "LitRPG",
+   "subgenre": "LitRPG"
+  },
+  "suarez, daniel - change agent.epub": {
+   "title": "Change Agent",
+   "author": "Daniel Suarez",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  " adrian tchaikovsky - children of memory (2022) - libgen.li.epub": {
+   "title": "Children of Memory",
+   "author": "Adrian Tchaikovsky",
+   "series": "Children of Time",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  " tchaikovsky, adrian - children of ruin (pan books) - libgen.li.epub": {
+   "title": "Children of Ruin",
+   "author": "Adrian Tchaikovsky",
+   "series": "Children of Time",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "tchaikovsky, adrian - children of time.epub": {
+   "title": "Children of Time",
+   "author": "Adrian Tchaikovsky",
+   "series": "Children of Time",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "the expanse 04 - cibola burn.epub": {
+   "title": "Cibola Burn",
+   "author": "James S. A. Corey",
+   "series": "The Expanse",
+   "series_no": 4.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "cloud atlas - david mitchell.epub": {
+   "title": "Cloud Atlas",
+   "author": "David Mitchell",
+   "series": null,
+   "series_no": null,
+   "genre": "Literary Fiction",
+   "subgenre": "Literary"
+  },
+  "coders at work.pdf": {
+   "title": "Coders at Work",
+   "author": "Peter Seibel",
+   "series": null,
+   "series_no": null,
+   "genre": "Non-fiction",
+   "subgenre": "Programming"
+  },
+  "daniel suarez - 2006 - daemon.mobi": {
+   "title": "Kill Decision",
+   "author": "Daniel Suarez",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "daniel suarez - critical mass_ a novel.epub": {
+   "title": "Critical Mass",
+   "author": "Daniel Suarez",
+   "series": "Delta-V",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "six of crows - book 2 - crooked kingdom.epub": {
+   "title": "Crooked Kingdom",
+   "author": "Leigh Bardugo",
+   "series": "Six of Crows",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Heist Fantasy"
+  },
+  "crown of swords - robert jordan.mobi": {
+   "title": "A Crown of Swords",
+   "author": "Robert Jordan",
+   "series": "The Wheel of Time",
+   "series_no": 7.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "cryptonomicon, by neal stephenson (v1.0).epub": {
+   "title": "Cryptonomicon",
+   "author": "Neal Stephenson",
+   "series": null,
+   "series_no": null,
+   "genre": "Literary Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "(skyward 3) sanderson, brandon - cytonic (9780399555879).epub": {
+   "title": "Cytonic",
+   "author": "Brandon Sanderson",
+   "series": "Skyward",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "suarez, daniel - daemon.epub": {
+   "title": "Daemon",
+   "author": "Daniel Suarez",
+   "series": "Daemon",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "blake crouch - dark matter - 2016.epub": {
+   "title": "Dark Matter",
+   "author": "Blake Crouch",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Multiverse"
+  },
+  "dark tower vi, the - king, stephen.epub": {
+   "title": "The Dark Tower VI: Song of Susannah",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 6.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "wizard_and_glass_the_dark_tower_4 (1).epub": {
+   "title": "Wizard and Glass",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "darktower 4 - wizard and glass - king_ stephen.epub": {
+   "title": "Wizard and Glass",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "dawnshard by brandon sanderson z-lib.org.epub": {
+   "title": "Dawnshard",
+   "author": "Brandon Sanderson",
+   "series": "The Stormlight Archive",
+   "series_no": 3.5,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "(skyward 4) brandon sanderson - defiant.epub": {
+   "title": "Defiant",
+   "author": "Brandon Sanderson",
+   "series": "Skyward",
+   "series_no": 4.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "delos 1 - westworld - michael crichton.epub": {
+   "title": "Westworld",
+   "author": "Michael Crichton",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "suarez, daniel - delta-v.epub": {
+   "title": "Delta-V",
+   "author": "Daniel Suarez",
+   "series": "Delta-V",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "do androids dream of electric sheep.epub": {
+   "title": "Do Androids Dream of Electric Sheep?",
+   "author": "Philip K. Dick",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Classic SF"
+  },
+  "doctor sleep by stephen king.epub": {
+   "title": "Doctor Sleep",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Supernatural"
+  },
+  "don't make me think! a common sense appr - steve krug.epub": {
+   "title": "Don't Make Me Think",
+   "author": "Steve Krug",
+   "series": null,
+   "series_no": null,
+   "genre": "Non-fiction",
+   "subgenre": "Design"
+  },
+  "dungeon crawler carl -- dinniman, matt -- 2020 -- dandy house -- ecc11c5da4e45a320d46a58b28c2b8eb -- anna’s archive.epub": {
+   "title": "Dungeon Crawler Carl",
+   "author": "Matt Dinniman",
+   "series": "Dungeon Crawler Carl",
+   "series_no": 1.0,
+   "genre": "LitRPG",
+   "subgenre": "LitRPG"
+  },
+  "(silo 3) howey, hugh - dust.epub": {
+   "title": "Dust",
+   "author": "Hugh Howey",
+   "series": "Silo",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "dust - hugh howey.mobi": {
+   "title": "Dust",
+   "author": "Hugh Howey",
+   "series": "Silo",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "edda - conor kostick.mobi": {
+   "title": "Edda",
+   "author": "Conor Kostick",
+   "series": "Avatar Chronicles",
+   "series_no": 3.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "brandon sanderson - edgedancer - 2016.epub": {
+   "title": "Edgedancer",
+   "author": "Brandon Sanderson",
+   "series": "The Stormlight Archive",
+   "series_no": 2.5,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "end of an era - sawyer_ robert j.epub": {
+   "title": "End of an Era",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "end of watch (the bill hodges t - stephen king.epub": {
+   "title": "End of Watch",
+   "author": "Stephen King",
+   "series": "Bill Hodges",
+   "series_no": 3.0,
+   "genre": "Thriller",
+   "subgenre": "Crime"
+  },
+  "enders game 1 - ender's game - card_ orson scott.epub": {
+   "title": "Ender's Game",
+   "author": "Orson Scott Card",
+   "series": "Ender's Saga",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "eric ries - the lean startup_how today's entrepreneurs use continuous innovation to create radically successful businesses.mobi": {
+   "title": "The Lean Startup",
+   "author": "Eric Ries",
+   "series": null,
+   "series_no": null,
+   "genre": "Non-fiction",
+   "subgenre": "Business"
+  },
+  "[abraham_daniel,_corey__james_s_a]_leviathan_wakes(booksee.org).epub": {
+   "title": "Leviathan Wakes",
+   "author": "James S. A. Corey",
+   "series": "The Expanse",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "abaddon's gate_ book three of the expans - james s. a. corey.epub": {
+   "title": "Abaddon's Gate",
+   "author": "James S. A. Corey",
+   "series": "The Expanse",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "nemesis_games_-_james_s_a_corey.epub": {
+   "title": "Nemesis Games",
+   "author": "James S. A. Corey",
+   "series": "The Expanse",
+   "series_no": 5.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "factoring humanity - sawyer_ robert j.epub": {
+   "title": "Factoring Humanity",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "First Contact"
+  },
+  "stephen king - fairy tale.epub": {
+   "title": "Fairy Tale",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Portal Fantasy"
+  },
+  "fall, or dodge in hell by neal stephenson.epub": {
+   "title": "Fall; or, Dodge in Hell",
+   "author": "Neal Stephenson",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "far-seer - sawyer_ robert j.epub": {
+   "title": "Far-Seer",
+   "author": "Robert J. Sawyer",
+   "series": "Quintaglio Ascension",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "[fear saga 3 ] moss, stephen - fear the future (2014, red beard books) - libgen.li.epub": {
+   "title": "Fear the Future",
+   "author": "Stephen Moss",
+   "series": "The Fear Saga",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Alien Invasion"
+  },
+  "finders keepers - stephen king.epub": {
+   "title": "Finders Keepers",
+   "author": "Stephen King",
+   "series": "Bill Hodges",
+   "series_no": 2.0,
+   "genre": "Thriller",
+   "subgenre": "Crime"
+  },
+  "brandon_sanderson_-_firefight.epub": {
+   "title": "Firefight",
+   "author": "Brandon Sanderson",
+   "series": "The Reckoners",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Superhero"
+  },
+  "first shift - legacy - hugh howey.epub": {
+   "title": "First Shift: Legacy",
+   "author": "Hugh Howey",
+   "series": "Silo",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "for we are many (bobiverse book - dennis e. taylor.epub": {
+   "title": "For We Are Many",
+   "author": "Dennis E. Taylor",
+   "series": "Bobiverse",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "foreigner - sawyer_ robert j.epub": {
+   "title": "Foreigner",
+   "author": "Robert J. Sawyer",
+   "series": "Quintaglio Ascension",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "forever war, the - joe haldeman.mobi": {
+   "title": "The Forever War",
+   "author": "Joe Haldeman",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "fortune's pawn_ book 1 of paradox - bach, rachel.epub": {
+   "title": "Fortune's Pawn",
+   "author": "Rachel Bach",
+   "series": "Paradox",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "fossil hunter - sawyer_ robert j.epub": {
+   "title": "Fossil Hunter",
+   "author": "Robert J. Sawyer",
+   "series": "Quintaglio Ascension",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "(founders 1) bennett, robert jackson - foundryside.epub": {
+   "title": "Foundryside",
+   "author": "Robert Jackson Bennett",
+   "series": "The Founders",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Heist Fantasy"
+  },
+  "sawyer, robert j.-frameshift.epub": {
+   "title": "Frameshift",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "frank herbert - dune (40th anniversary edition).epub": {
+   "title": "Dune",
+   "author": "Frank Herbert",
+   "series": "Dune",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Classic SF"
+  },
+  "daniel suarez - 2009 - freedom™.mobi": {
+   "title": "Freedom™",
+   "author": "Daniel Suarez",
+   "series": "Daemon",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "suarez, daniel - freedom.epub": {
+   "title": "Freedom™",
+   "author": "Daniel Suarez",
+   "series": "Daemon",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "fuse_pure_trilogy_2__baggott_julianna.epub": {
+   "title": "Fuse",
+   "author": "Julianna Baggott",
+   "series": "Pure",
+   "series_no": 2.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Dystopian"
+  },
+  "golden fleece - robert j. sawyer.epub": {
+   "title": "Golden Fleece",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "pierce brown - golden son.epub": {
+   "title": "Golden Son",
+   "author": "Pierce Brown",
+   "series": "Red Rising",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "gone 1 - gone.epub": {
+   "title": "Gone",
+   "author": "Michael Grant",
+   "series": "Gone",
+   "series_no": 1.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "heaven's river by dennis e. taylor.epub": {
+   "title": "Heaven's River",
+   "author": "Dennis E. Taylor",
+   "series": "Bobiverse",
+   "series_no": 4.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "(bobiverse 4) taylor, dennis e. - heaven's river.epub": {
+   "title": "Heaven's River",
+   "author": "Dennis E. Taylor",
+   "series": "Bobiverse",
+   "series_no": 4.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "hell divers - nicholas sansbury smith.epub": {
+   "title": "Hell Divers",
+   "author": "Nicholas Sansbury Smith",
+   "series": "Hell Divers",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "hell divers ii_ ghosts - nicholas sansbury smith.epub": {
+   "title": "Hell Divers II: Ghosts",
+   "author": "Nicholas Sansbury Smith",
+   "series": "Hell Divers",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "hell divers iii deliverance - nicholas sansbury smith.epub": {
+   "title": "Hell Divers III: Deliverance",
+   "author": "Nicholas Sansbury Smith",
+   "series": "Hell Divers",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "hell divers iv_ wolves - nicholas sansbury smith.epub": {
+   "title": "Hell Divers IV: Wolves",
+   "author": "Nicholas Sansbury Smith",
+   "series": "Hell Divers",
+   "series_no": 4.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "stephen king - holly.epub": {
+   "title": "Holly",
+   "author": "Stephen King",
+   "series": "Holly Gibney",
+   "series_no": 1.0,
+   "genre": "Thriller",
+   "subgenre": "Crime"
+  },
+  "hominids - sawyer_ robert j.epub": {
+   "title": "Hominids",
+   "author": "Robert J. Sawyer",
+   "series": "The Neanderthal Parallax",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Parallel Worlds"
+  },
+  "alastair reynolds - house of suns.epub": {
+   "title": "House of Suns",
+   "author": "Alastair Reynolds",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "humans - sawyer_ robert j.epub": {
+   "title": "Humans",
+   "author": "Robert J. Sawyer",
+   "series": "The Neanderthal Parallax",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Parallel Worlds"
+  },
+  "hybrids - sawyer_ robert j.epub": {
+   "title": "Hybrids",
+   "author": "Robert J. Sawyer",
+   "series": "The Neanderthal Parallax",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Parallel Worlds"
+  },
+  "[lore_pittacus]_i_am_number_four(booksee.org).epub": {
+   "title": "I Am Number Four",
+   "author": "Pittacus Lore",
+   "series": "Lorien Legacies",
+   "series_no": 1.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "(fallen 1) erikson, steven - gardens of the moon.epub": {
+   "title": "Gardens of the Moon",
+   "author": "Steven Erikson",
+   "series": "Malazan Book of the Fallen",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "sawyer, robert j.-illegal alien.epub": {
+   "title": "Illegal Alien",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "First Contact"
+  },
+  "influx by daniel suarez.epub": {
+   "title": "Influx",
+   "author": "Daniel Suarez",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "irongold.epub": {
+   "title": "Iron Gold",
+   "author": "Pierce Brown",
+   "series": "Red Rising",
+   "series_no": 4.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "jeff noon - vurt.epub": {
+   "title": "Vurt",
+   "author": "Jeff Noon",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Cyberpunk"
+  },
+  "joe haldeman - [marsbound 03] - earthbound (v5.0) (mobi).mobi": {
+   "title": "Earthbound",
+   "author": "Joe Haldeman",
+   "series": "Marsbound",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "First Contact"
+  },
+  "joe haldeman - accidental time machine.mobi": {
+   "title": "The Accidental Time Machine",
+   "author": "Joe Haldeman",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "john scalzi - [old man's war 2.5] - the sagan diary (epub).epub": {
+   "title": "The Sagan Diary",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": 2.5,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "john scalzi - old man's war 01 - old man's war (v5.1).mobi": {
+   "title": "Old Man's War",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "john scalzi - old man's war 02 - the ghost brigades (v5.0).mobi": {
+   "title": "The Ghost Brigades",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "claudia gray - journey to star wars_ the force awakens lost stars.epub": {
+   "title": "Lost Stars",
+   "author": "Claudia Gray",
+   "series": "Star Wars",
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Star Wars"
+  },
+  "joyland - stephen king.mobi": {
+   "title": "Joyland",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Thriller",
+   "subgenre": "Crime"
+  },
+  "hamilton, peter - commonwealth 2 - judas unchained.epub": {
+   "title": "Judas Unchained",
+   "author": "Peter F. Hamilton",
+   "series": "Commonwealth Saga",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "jurassic park - michael crichton.mobi": {
+   "title": "Jurassic Park",
+   "author": "Michael Crichton",
+   "series": "Jurassic Park",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "jurassic park - michael crichton.epub": {
+   "title": "Jurassic Park",
+   "author": "Michael Crichton",
+   "series": "Jurassic Park",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "king_stephen-little_sisters_of_eluria_the.epub": {
+   "title": "The Little Sisters of Eluria",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 0.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "king, stephen - salem's lot.mobi": {
+   "title": "'Salem's Lot",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Supernatural"
+  },
+  "king, stephen-revival.epub": {
+   "title": "Revival",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Supernatural"
+  },
+  "ebook series - scifan - patrick ness - chaos walking - 01 of 04 - knife of never letting go.epub": {
+   "title": "The Knife of Never Letting Go",
+   "author": "Patrick Ness",
+   "series": "Chaos Walking",
+   "series_no": 1.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "07 - lady of the lake.epub": {
+   "title": "The Lady of the Lake",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 7.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "last argument of kings -- abercrombie, joe -- the first law 3, 2008 -- gollancz -- 9780575077898 -- 814783846ab84cedf589b2e11945d9ed -- anna’s archive.mobi": {
+   "title": "Last Argument of Kings",
+   "author": "Joe Abercrombie",
+   "series": "The First Law",
+   "series_no": 3.0,
+   "genre": "Fantasy",
+   "subgenre": "Grimdark"
+  },
+  "(the expanse 9) james s. a. corey - leviathan falls.epub": {
+   "title": "Leviathan Falls",
+   "author": "James S. A. Corey",
+   "series": "The Expanse",
+   "series_no": 9.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "lexicon_barry_max.epub": {
+   "title": "Lexicon",
+   "author": "Max Barry",
+   "series": null,
+   "series_no": null,
+   "genre": "Thriller",
+   "subgenre": "Techno-thriller"
+  },
+  "max barry - lexicon.epub": {
+   "title": "Lexicon",
+   "author": "Max Barry",
+   "series": null,
+   "series_no": null,
+   "genre": "Thriller",
+   "subgenre": "Techno-thriller"
+  },
+  "lock in - john scalzi.epub": {
+   "title": "Lock In",
+   "author": "John Scalzi",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Near Future"
+  },
+  "((the founders trilogy #3)) robert jackson bennett - locklands.epub": {
+   "title": "Locklands",
+   "author": "Robert Jackson Bennett",
+   "series": "The Founders",
+   "series_no": 3.0,
+   "genre": "Fantasy",
+   "subgenre": "Heist Fantasy"
+  },
+  "lord of chaos - robert jordan.mobi": {
+   "title": "Lord of Chaos",
+   "author": "Robert Jordan",
+   "series": "The Wheel of Time",
+   "series_no": 6.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "lore, pittacus-the fate of ten.epub": {
+   "title": "The Fate of Ten",
+   "author": "Pittacus Lore",
+   "series": "Lorien Legacies",
+   "series_no": 6.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "(mistborn second era #4) brandon sanderson - lost metal.epub": {
+   "title": "The Lost Metal",
+   "author": "Brandon Sanderson",
+   "series": "Mistborn",
+   "series_no": 7.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "(malazan book 1) erikson, steven - gardens of the moon.epub": {
+   "title": "Gardens of the Moon",
+   "author": "Steven Erikson",
+   "series": "Malazan Book of the Fallen",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "man who folded himself, the - david gerrold.epub": {
+   "title": "The Man Who Folded Himself",
+   "author": "David Gerrold",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "mark of calth.mobi": {
+   "title": "Mark of Calth",
+   "author": "Laurie Goulding (ed.)",
+   "series": "The Horus Heresy",
+   "series_no": 25.0,
+   "genre": "Science Fiction",
+   "subgenre": "Warhammer 40k"
+  },
+  "marsbound - joe haldeman.mobi": {
+   "title": "Marsbound",
+   "author": "Joe Haldeman",
+   "series": "Marsbound",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "First Contact"
+  },
+  "martian the - andy weir.epub": {
+   "title": "The Martian",
+   "author": "Andy Weir",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "mindscan - sawyer_ robert j.epub": {
+   "title": "Mindscan",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "(cosmere mistborn 6,5) sanderson, brandon - mistborn_ secret history.epub": {
+   "title": "Mistborn: Secret History",
+   "author": "Brandon Sanderson",
+   "series": "Mistborn",
+   "series_no": 3.5,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "brandon sanderson - [mistborn 03] - the hero of ages (epub).epub": {
+   "title": "The Hero of Ages",
+   "author": "Brandon Sanderson",
+   "series": "Mistborn",
+   "series_no": 3.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "mitosis(reckoners 1.5) - brandon sanderson.epub": {
+   "title": "Mitosis",
+   "author": "Brandon Sanderson",
+   "series": "The Reckoners",
+   "series_no": 1.5,
+   "genre": "Science Fiction",
+   "subgenre": "Superhero"
+  },
+  "(ebookbb.com) - morning star.epub": {
+   "title": "Morning Star",
+   "author": "Pierce Brown",
+   "series": "Red Rising",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "mr mercedes - stephen king.mobi": {
+   "title": "Mr. Mercedes",
+   "author": "Stephen King",
+   "series": "Bill Hodges",
+   "series_no": 1.0,
+   "genre": "Thriller",
+   "subgenre": "Crime"
+  },
+  "mr_penumbra's_24-hour_bookstore(booksee.org).mobi": {
+   "title": "Mr. Penumbra's 24-Hour Bookstore",
+   "author": "Robin Sloan",
+   "series": null,
+   "series_no": null,
+   "genre": "Literary Fiction",
+   "subgenre": "Contemporary"
+  },
+  "martha wells - murderbot diaries 04 - exit strategy.epub": {
+   "title": "Exit Strategy",
+   "author": "Martha Wells",
+   "series": "The Murderbot Diaries",
+   "series_no": 4.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "needful things - stephen king.mobi": {
+   "title": "Needful Things",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Supernatural"
+  },
+  "never split the difference - negotiating as if your life depended on it.epub": {
+   "title": "Never Split the Difference",
+   "author": "Chris Voss",
+   "series": null,
+   "series_no": null,
+   "genre": "Non-fiction",
+   "subgenre": "Business"
+  },
+  "neverwhere_ a novel - neil gaiman.epub": {
+   "title": "Neverwhere",
+   "author": "Neil Gaiman",
+   "series": null,
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Urban Fantasy"
+  },
+  " craig buckler - node.js_ novice to ninja (2022, sitepoint) - libgen.li.epub": {
+   "title": "Node.js: Novice to Ninja",
+   "author": "Craig Buckler",
+   "series": null,
+   "series_no": null,
+   "genre": "Non-fiction",
+   "subgenre": "Programming"
+  },
+  "derek e taylor - not till we are lost.epub": {
+   "title": "Not Till We Are Lost",
+   "author": "Dennis E. Taylor",
+   "series": "Bobiverse",
+   "series_no": 5.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "dennis e. taylor - not till we are lost (bobiverse book 5).epub": {
+   "title": "Not Till We Are Lost",
+   "author": "Dennis E. Taylor",
+   "series": "Bobiverse",
+   "series_no": 5.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "_oceanofpdf.com_nyxia_-_scott_reintgen.epub": {
+   "title": "Nyxia",
+   "author": "Scott Reintgen",
+   "series": "The Nyxia Triad",
+   "series_no": 1.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "oathbringer - brandon sanderson.mobi": {
+   "title": "Oathbringer",
+   "author": "Brandon Sanderson",
+   "series": "The Stormlight Archive",
+   "series_no": 3.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "john scalzi - [old man's war 01] - old man's war (epub) v5.1.epub": {
+   "title": "Old Man's War",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "john scalzi - [old man's war] - old man's war universe- short stories (epub).epub": {
+   "title": "Old Man's War Universe: Short Stories",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "only_human_-_sylvain_neuvel.epub": {
+   "title": "Only Human",
+   "author": "Sylvain Neuvel",
+   "series": "Themis Files",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "First Contact"
+  },
+  "outland (world-lines book 1) - dennis taylor.epub": {
+   "title": "Outland",
+   "author": "Dennis E. Taylor",
+   "series": "World-Lines",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Parallel Worlds"
+  },
+  "the outsider by stephen king.epub": {
+   "title": "The Outsider",
+   "author": "Stephen King",
+   "series": "Holly Gibney",
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Supernatural"
+  },
+  "hamilton, peter - commonwealth 1 - pandora's star.epub": {
+   "title": "Pandora's Star",
+   "author": "Peter F. Hamilton",
+   "series": "Commonwealth Saga",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "pandora_s star.epub": {
+   "title": "Pandora's Star",
+   "author": "Peter F. Hamilton",
+   "series": "Commonwealth Saga",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "persepolis rising - james s. a. corey.epub": {
+   "title": "Persepolis Rising",
+   "author": "James S. A. Corey",
+   "series": "The Expanse",
+   "series_no": 7.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "blake crouch - [wayward pines 01] - pines - 2012.epub": {
+   "title": "Pines",
+   "author": "Blake Crouch",
+   "series": "Wayward Pines",
+   "series_no": 1.0,
+   "genre": "Thriller",
+   "subgenre": "Sci-Fi Thriller"
+  },
+  "01 promise of blood.mobi": {
+   "title": "Promise of Blood",
+   "author": "Brian McClellan",
+   "series": "Powder Mage",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Flintlock Fantasy"
+  },
+  "powder mage trilogy 02 - the crimson campaign.epub": {
+   "title": "The Crimson Campaign",
+   "author": "Brian McClellan",
+   "series": "Powder Mage",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Flintlock Fantasy"
+  },
+  "project hail mary by andy weir z-lib.org.epub": {
+   "title": "Project Hail Mary",
+   "author": "Andy Weir",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "provenance - ann leckie.epub": {
+   "title": "Provenance",
+   "author": "Ann Leckie",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "-reynolds_alastair-_pushing_ice(booksee.org).epub": {
+   "title": "Pushing Ice",
+   "author": "Alastair Reynolds",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "robert j. sawyer - quantum night.epub": {
+   "title": "Quantum Night",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "bb-ready_player_one.epub": {
+   "title": "Ready Player One",
+   "author": "Ernest Cline",
+   "series": "Ready Player One",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Pop-Culture SF"
+  },
+  "ready player one - ernest cline.epub": {
+   "title": "Ready Player One",
+   "author": "Ernest Cline",
+   "series": "Ready Player One",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Pop-Culture SF"
+  },
+  "ready player two by ernest cline.epub": {
+   "title": "Ready Player Two",
+   "author": "Ernest Cline",
+   "series": "Ready Player One",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Pop-Culture SF"
+  },
+  "reamde, by neal stephenson (v1.0).epub": {
+   "title": "Reamde",
+   "author": "Neal Stephenson",
+   "series": null,
+   "series_no": null,
+   "genre": "Thriller",
+   "subgenre": "Techno-thriller"
+  },
+  "[wayfarers 3] becky chambers - record of a spaceborn few (2018, harpercollins) - libgen.li.epub": {
+   "title": "Record of a Spaceborn Few",
+   "author": "Becky Chambers",
+   "series": "Wayfarers",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "[(corrected toc) ] blake crouch, - recursion (2019, crown_archetype) - libgen.li.epub": {
+   "title": "Recursion",
+   "author": "Blake Crouch",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "red hope.epub": {
+   "title": "Red Hope",
+   "author": "John Dreese",
+   "series": "Red Hope",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Mars"
+  },
+  "[robinson_kim_stanley]_red_mars(booksee.org) (1).epub": {
+   "title": "Red Mars",
+   "author": "Kim Stanley Robinson",
+   "series": "Mars Trilogy",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "red planet blues - sawyer, robert j_.epub": {
+   "title": "Red Planet Blues",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Mars"
+  },
+  "pierce brown  - red rising (red rising trilogy #1).epub": {
+   "title": "Red Rising",
+   "author": "Pierce Brown",
+   "series": "Red Rising",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "red seas under red skies - scott lynch.epub": {
+   "title": "Red Seas Under Red Skies",
+   "author": "Scott Lynch",
+   "series": "Gentleman Bastard",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Heist Fantasy"
+  },
+  "redshirts - john scalzi.epub": {
+   "title": "Redshirts",
+   "author": "John Scalzi",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Comic SF"
+  },
+  "redshirts - john scalzi.mobi": {
+   "title": "Redshirts",
+   "author": "John Scalzi",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Comic SF"
+  },
+  "[arthur c. clarke collection_ rama rama 1 ] clarke, arthur charles - rendezvous with rama (2012, rosettabooks) - libgen.li.epub": {
+   "title": "Rendezvous with Rama",
+   "author": "Arthur C. Clarke",
+   "series": "Rama",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Classic SF"
+  },
+  "ken grimwood - replay.epub": {
+   "title": "Replay",
+   "author": "Ken Grimwood",
+   "series": null,
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Time Loop"
+  },
+  "rework - change the way you work forever.epub": {
+   "title": "Rework",
+   "author": "Jason Fried & David Heinemeier Hansson",
+   "series": null,
+   "series_no": null,
+   "genre": "Non-fiction",
+   "subgenre": "Business"
+  },
+  "rhythm of war by brandon sanderson.epub": {
+   "title": "Rhythm of War",
+   "author": "Brandon Sanderson",
+   "series": "The Stormlight Archive",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "robert j sawyer - flashforward.mobi": {
+   "title": "Flashforward",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "martha wells - murderbot diaries 03 - rogue protocol (v5).epub": {
+   "title": "Rogue Protocol",
+   "author": "Martha Wells",
+   "series": "The Murderbot Diaries",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "rollback - sawyer_ robert j.epub": {
+   "title": "Rollback",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "First Contact"
+  },
+  "blake crouch - run - 2011.epub": {
+   "title": "Run",
+   "author": "Blake Crouch",
+   "series": null,
+   "series_no": null,
+   "genre": "Thriller",
+   "subgenre": "Sci-Fi Thriller"
+  },
+  "saga - connor kostick.mobi": {
+   "title": "Saga",
+   "author": "Conor Kostick",
+   "series": "Avatar Chronicles",
+   "series_no": 2.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "sand_ omnibus edition - hugh howey.epub": {
+   "title": "Sand",
+   "author": "Hugh Howey",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "second shift - order.epub": {
+   "title": "Second Shift: Order",
+   "author": "Hugh Howey",
+   "series": "Silo",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "seveneves, by neal stephenson (v2.0).epub": {
+   "title": "Seveneves",
+   "author": "Neal Stephenson",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "seveneves by neal stephenson.epub": {
+   "title": "Seveneves",
+   "author": "Neal Stephenson",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "brandon sanderson - [mistborn 05] - shadows of self (retail).epub": {
+   "title": "Shadows of Self",
+   "author": "Brandon Sanderson",
+   "series": "Mistborn",
+   "series_no": 5.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "shadows of treachery - edited by christian dunn & nick kyme.epub": {
+   "title": "Shadows of Treachery",
+   "author": "Christian Dunn & Nick Kyme (eds.)",
+   "series": "The Horus Heresy",
+   "series_no": 22.0,
+   "genre": "Science Fiction",
+   "subgenre": "Warhammer 40k"
+  },
+  "(silo 2-shift 99) howey, hugh - shift - omnibus 01-03.epub": {
+   "title": "Shift",
+   "author": "Hugh Howey",
+   "series": "Silo",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "robert jackson bennett - shorefall.epub": {
+   "title": "Shorefall",
+   "author": "Robert Jackson Bennett",
+   "series": "The Founders",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Heist Fantasy"
+  },
+  "six of crows - book 1 - six of crows.epub": {
+   "title": "Six of Crows",
+   "author": "Leigh Bardugo",
+   "series": "Six of Crows",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Heist Fantasy"
+  },
+  "skyward by brandon sanderson.epub": {
+   "title": "Skyward",
+   "author": "Brandon Sanderson",
+   "series": "Skyward",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "slaughterhouse-five_ or, the children's  - kurt vonnegut.mobi": {
+   "title": "Slaughterhouse-Five",
+   "author": "Kurt Vonnegut",
+   "series": null,
+   "series_no": null,
+   "genre": "Classics",
+   "subgenre": "Literary"
+  },
+  "sylvain_neuvel_-_themis_files_01_sleeping_giants.epub": {
+   "title": "Sleeping Giants",
+   "author": "Sylvain Neuvel",
+   "series": "Themis Files",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "First Contact"
+  },
+  "snow crash - neal stephenson (21).epub": {
+   "title": "Snow Crash",
+   "author": "Neal Stephenson",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Cyberpunk"
+  },
+  "snow crash - stephenson neal (20).epub": {
+   "title": "Snow Crash",
+   "author": "Neal Stephenson",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Cyberpunk"
+  },
+  "somewhere in time - richard matheson.mobi": {
+   "title": "Somewhere in Time",
+   "author": "Richard Matheson",
+   "series": null,
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Time Travel"
+  },
+  "spin -- robert charles wilson -- 2010 -- 33ebc65d62696f2561a06dfe9cbab18d -- anna’s archive.epub": {
+   "title": "Spin",
+   "author": "Robert Charles Wilson",
+   "series": "Spin",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "spin 3 - vortex -- robert charles wilson -- 2011 -- macmillan -- fa62d7eeb0e7c4601eafe3aea6b52a27 -- anna’s archive.epub": {
+   "title": "Vortex",
+   "author": "Robert Charles Wilson",
+   "series": "Spin",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "star wars_ thrawn - timothy zahn.epub": {
+   "title": "Thrawn",
+   "author": "Timothy Zahn",
+   "series": "Star Wars",
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Star Wars"
+  },
+  "starbound - joe haldeman.mobi": {
+   "title": "Starbound",
+   "author": "Joe Haldeman",
+   "series": "Marsbound",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "First Contact"
+  },
+  "starplex - sawyer_ robert j.epub": {
+   "title": "Starplex",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "skyward 2 brandon sanderson - starsight.epub.epub": {
+   "title": "Starsight",
+   "author": "Brandon Sanderson",
+   "series": "Skyward",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "station breaker (space ops #1) by andrew mayne.epub": {
+   "title": "Station Breaker",
+   "author": "Andrew Mayne",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "steelheart - brandon sanderson.epub": {
+   "title": "Steelheart",
+   "author": "Brandon Sanderson",
+   "series": "The Reckoners",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Superhero"
+  },
+  "stephen king - dark tower 00, the little sisters of eluria.mobi": {
+   "title": "The Little Sisters of Eluria",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 0.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "stephen king - n.mobi": {
+   "title": "N.",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Short Story"
+  },
+  "stephen king - the shawshank redemption.mobi": {
+   "title": "Rita Hayworth and Shawshank Redemption",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Literary Fiction",
+   "subgenre": "Short Story"
+  },
+  "sword of destiny by andrzej sapkowski.epub": {
+   "title": "Sword of Destiny",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "takeshi kovacs #1 - altered carbon, by richard k. morgan (v1.0).epub": {
+   "title": "Altered Carbon",
+   "author": "Richard K. Morgan",
+   "series": "Takeshi Kovacs",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Cyberpunk"
+  },
+  "sawyer, robert j.-terminal experiment.epub": {
+   "title": "The Terminal Experiment",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "brandon sanderson - [mistborn 04] - the alloy of law (epub).epub": {
+   "title": "The Alloy of Law",
+   "author": "Brandon Sanderson",
+   "series": "Mistborn",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "the autumn republic.epub": {
+   "title": "The Autumn Republic",
+   "author": "Brian McClellan",
+   "series": "Powder Mage",
+   "series_no": 3.0,
+   "genre": "Fantasy",
+   "subgenre": "Flintlock Fantasy"
+  },
+  "brandon sanderson - [mistborn 06] - bands of mourning.epub": {
+   "title": "The Bands of Mourning",
+   "author": "Brandon Sanderson",
+   "series": "Mistborn",
+   "series_no": 6.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "(first law 1) abercrombie, joe - the blade itself.epub": {
+   "title": "The Blade Itself",
+   "author": "Joe Abercrombie",
+   "series": "The First Law",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Grimdark"
+  },
+  "the butcher's masquerade_ dungeon crawler carl (book 5) -- dinniman, matt -- dungeon crawler carl, 5, 2022 -- dandy house -- 36f4843189af9088cb329a37b7171c82 -- anna’s archive.epub": {
+   "title": "The Butcher's Masquerade",
+   "author": "Matt Dinniman",
+   "series": "Dungeon Crawler Carl",
+   "series_no": 5.0,
+   "genre": "LitRPG",
+   "subgenre": "LitRPG"
+  },
+  "the dark tower - stephen king.epub": {
+   "title": "The Dark Tower",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 7.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "the death cure (maze runner trilogy) - dashner, james.epub": {
+   "title": "The Death Cure",
+   "author": "James Dashner",
+   "series": "The Maze Runner",
+   "series_no": 3.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Dystopian"
+  },
+  "the death of grass - john christopher.epub": {
+   "title": "The Death of Grass",
+   "author": "John Christopher",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "[connie_willis]_the_doomsday_book(booksee.org).epub": {
+   "title": "Doomsday Book",
+   "author": "Connie Willis",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "robert j. sawyer - the downloaded (2024) - libgen.li.epub": {
+   "title": "The Downloaded",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Philosophical SF"
+  },
+  "the dragon reborn - robert jordan.mobi": {
+   "title": "The Dragon Reborn",
+   "author": "Robert Jordan",
+   "series": "The Wheel of Time",
+   "series_no": 3.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "the drawing of the three - stephen king.epub": {
+   "title": "The Drawing of the Three",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "the dungeon anarchist's cookbook_ dungeon crawler carl book -- matt dinniman -- 2021 -- dandy house -- 0cbd759918a08522f2694b9de4dabac0 -- anna’s archive.epub": {
+   "title": "The Dungeon Anarchist's Cookbook",
+   "author": "Matt Dinniman",
+   "series": "Dungeon Crawler Carl",
+   "series_no": 3.0,
+   "genre": "LitRPG",
+   "subgenre": "LitRPG"
+  },
+  "john scalzi - [old man's war 06] - the end of all things (retail) (epub).epub": {
+   "title": "The End of All Things",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": 6.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "the end of eternity - isaac asimov.mobi": {
+   "title": "The End of Eternity",
+   "author": "Isaac Asimov",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "the eye of the bedlam bride -- matt dinniman -- 2023 -- 062620c665e891a616b37aa9376680a2 -- anna’s archive.epub": {
+   "title": "The Eye of the Bedlam Bride",
+   "author": "Matt Dinniman",
+   "series": "Dungeon Crawler Carl",
+   "series_no": 6.0,
+   "genre": "LitRPG",
+   "subgenre": "LitRPG"
+  },
+  "the eye of the world - robert jordan.epub": {
+   "title": "The Eye of the World",
+   "author": "Robert Jordan",
+   "series": "The Wheel of Time",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "the fall of five - pittacus lore.epub": {
+   "title": "The Fall of Five",
+   "author": "Pittacus Lore",
+   "series": "Lorien Legacies",
+   "series_no": 4.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "sanderson_brandon_-_the_final_empire.epub": {
+   "title": "The Final Empire",
+   "author": "Brandon Sanderson",
+   "series": "Mistborn",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "the fires of heaven - robert jordan.mobi": {
+   "title": "The Fires of Heaven",
+   "author": "Robert Jordan",
+   "series": "The Wheel of Time",
+   "series_no": 5.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "the first fifteen lives of harry august - claire north.epub": {
+   "title": "The First Fifteen Lives of Harry August",
+   "author": "Claire North",
+   "series": null,
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Time Loop"
+  },
+  "the fold - peter clines.epub": {
+   "title": "The Fold",
+   "author": "Peter Clines",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Multiverse"
+  },
+  "the forever watch - david ramirez.epub": {
+   "title": "The Forever Watch",
+   "author": "David Ramirez",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Generation Ship"
+  },
+  "brandon sanderson - the frugal wizard’s handbook for surviving medieval england (2023, dragonsteel entertainment, llc) - libgen.li.epub": {
+   "title": "The Frugal Wizard's Handbook for Surviving Medieval England",
+   "author": "Brandon Sanderson",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Comic SF"
+  },
+  "[wayfarers 04 ] becky chambers, - the galaxy, and the ground within (2021, hodder & stoughton ltd) - libgen.li.epub": {
+   "title": "The Galaxy, and the Ground Within",
+   "author": "Becky Chambers",
+   "series": "Wayfarers",
+   "series_no": 4.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "the gate of the feral gods_ dungeon crawler carl book 4 -- matt dinniman -- dungeon crawler carl 4, 2021 -- dandy house -- 201c3bd3fae6ce236da1ac4fe4d3cc9a -- anna’s archive.epub": {
+   "title": "The Gate of the Feral Gods",
+   "author": "Matt Dinniman",
+   "series": "Dungeon Crawler Carl",
+   "series_no": 4.0,
+   "genre": "LitRPG",
+   "subgenre": "LitRPG"
+  },
+  "john scalzi - [old man's war 02] - the ghost brigades (epub).epub": {
+   "title": "The Ghost Brigades",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "the girl who loved tom gordon - stephen king.epub": {
+   "title": "The Girl Who Loved Tom Gordon",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Psychological"
+  },
+  "m_r_carey_-_the_girl_with_all_the_gifts_epub.epub": {
+   "title": "The Girl with All the Gifts",
+   "author": "M. R. Carey",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "the great hunt - robert jordan.epub": {
+   "title": "The Great Hunt",
+   "author": "Robert Jordan",
+   "series": "The Wheel of Time",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "the green mile - stephen king.epub": {
+   "title": "The Green Mile",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Literary Fiction",
+   "subgenre": "Magical Realism"
+  },
+  "the gunslinger - stephen king.epub": {
+   "title": "The Gunslinger",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "john scalzi - [old man's war 05] - the human division (retail) (epub).epub": {
+   "title": "The Human Division",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": 5.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "institute, the.epub": {
+   "title": "The Institute",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Supernatural"
+  },
+  "john scalzi - [old man's war 03] - the last colony (v5.0) (epub).epub": {
+   "title": "The Last Colony",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "blake crouch - [wayward pines 03] - the last town - 2014.epub": {
+   "title": "The Last Town",
+   "author": "Blake Crouch",
+   "series": "Wayward Pines",
+   "series_no": 3.0,
+   "genre": "Thriller",
+   "subgenre": "Sci-Fi Thriller"
+  },
+  "01 - the last wish.epub": {
+   "title": "The Last Wish",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "the lean startup_ how today_s entrepreneurs use continuous innovation to create radically successful businesses - ries_ eric.mobi": {
+   "title": "The Lean Startup",
+   "author": "Eric Ries",
+   "series": null,
+   "series_no": null,
+   "genre": "Non-fiction",
+   "subgenre": "Business"
+  },
+  "lies of locke lamora, the - scott lynch.epub": {
+   "title": "The Lies of Locke Lamora",
+   "author": "Scott Lynch",
+   "series": "Gentleman Bastard",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Heist Fantasy"
+  },
+  "the lies of locke lamora - scott lynch.epub": {
+   "title": "The Lies of Locke Lamora",
+   "author": "Scott Lynch",
+   "series": "Gentleman Bastard",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Heist Fantasy"
+  },
+  "stephen king, richard bachman - the long walk (1999, signet) - libgen.li.epub": {
+   "title": "The Long Walk",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Dystopian"
+  },
+  "the long way to a small, angry - becky chambers.epub": {
+   "title": "The Long Way to a Small, Angry Planet",
+   "author": "Becky Chambers",
+   "series": "Wayfarers",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "the lost world - michael crichton.mobi": {
+   "title": "The Lost World",
+   "author": "Michael Crichton",
+   "series": "Jurassic Park",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "the maze runner - james dashner.epub": {
+   "title": "The Maze Runner",
+   "author": "James Dashner",
+   "series": "The Maze Runner",
+   "series_no": 1.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Dystopian"
+  },
+  "the name of the wind.epub": {
+   "title": "The Name of the Wind",
+   "author": "Patrick Rothfuss",
+   "series": "The Kingkiller Chronicle",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "the oppenheimer alternative - sawyer, robert j_.epub": {
+   "title": "The Oppenheimer Alternative",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Alternate History"
+  },
+  "[pittacus_lore]_the_power_of_six_(lorien_legacies)(booksee.org).epub": {
+   "title": "The Power of Six",
+   "author": "Pittacus Lore",
+   "series": "Lorien Legacies",
+   "series_no": 2.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "republic of thieves, the - scott lynch.epub": {
+   "title": "The Republic of Thieves",
+   "author": "Scott Lynch",
+   "series": "Gentleman Bastard",
+   "series_no": 3.0,
+   "genre": "Fantasy",
+   "subgenre": "Heist Fantasy"
+  },
+  "the revelation space collection - alastair reynolds.epub": {
+   "title": "The Revelation Space Collection",
+   "author": "Alastair Reynolds",
+   "series": "Revelation Space",
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "the revenge of seven by pittacus_lore.epub": {
+   "title": "The Revenge of Seven",
+   "author": "Pittacus Lore",
+   "series": "Lorien Legacies",
+   "series_no": 5.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "the_revenge_of_seven_-_pittacus_lore.epub": {
+   "title": "The Revenge of Seven",
+   "author": "Pittacus Lore",
+   "series": "Lorien Legacies",
+   "series_no": 5.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "the_rise_and_fall_of_d_o_d_o_-_neal_stephenson.epub": {
+   "title": "The Rise and Fall of D.O.D.O.",
+   "author": "Neal Stephenson & Nicole Galland",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "the rise of nine - pittacus lore.epub": {
+   "title": "The Rise of Nine",
+   "author": "Pittacus Lore",
+   "series": "Lorien Legacies",
+   "series_no": 3.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "the_road_-_cormac_mccarthy.epub": {
+   "title": "The Road",
+   "author": "Cormac McCarthy",
+   "series": null,
+   "series_no": null,
+   "genre": "Literary Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "stephen king - the running man (1999-08-30, signet_ new american library) - libgen.li.epub": {
+   "title": "The Running Man",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Dystopian"
+  },
+  "the scorch trials - james dashner.epub": {
+   "title": "The Scorch Trials",
+   "author": "James Dashner",
+   "series": "The Maze Runner",
+   "series_no": 2.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Dystopian"
+  },
+  "the shadow rising - robert jordan.mobi": {
+   "title": "The Shadow Rising",
+   "author": "Robert Jordan",
+   "series": "The Wheel of Time",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "the slow regard of silent things by patrick rothfuss.epub": {
+   "title": "The Slow Regard of Silent Things",
+   "author": "Patrick Rothfuss",
+   "series": "The Kingkiller Chronicle",
+   "series_no": 2.5,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "[stephen_king]_the_stand_the_complete_and_uncut_e(booksee.org).epub": {
+   "title": "The Stand",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "king_stephen_-_the_stand_complete__uncut_with_illustrations_2014_doubleday_-_libgen.li.epub": {
+   "title": "The Stand",
+   "author": "Stephen King",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "02 - the sword of destiny.epub": {
+   "title": "Sword of Destiny",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "the three-body problem - cixin liu.epub": {
+   "title": "The Three-Body Problem",
+   "author": "Cixin Liu",
+   "series": "Remembrance of Earth's Past",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Hard SF"
+  },
+  "04 - the time of contempt - andrzej sapkowski.epub": {
+   "title": "The Time of Contempt",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "andrzej_sapkowski_-_the_time_of_contempt.epub": {
+   "title": "The Time of Contempt",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "andrzej_sapkowski_-_the_tower_of_swallows.epub": {
+   "title": "The Tower of Swallows",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 6.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "the waste lands - stephen king.epub": {
+   "title": "The Waste Lands",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 3.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "the way of kings - brandon sanderson.epub": {
+   "title": "The Way of Kings",
+   "author": "Brandon Sanderson",
+   "series": "The Stormlight Archive",
+   "series_no": 1.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "brandon sanderson - [mistborn 02] - the well of ascension (epub).epub": {
+   "title": "The Well of Ascension",
+   "author": "Brandon Sanderson",
+   "series": "Mistborn",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "the wind through the keyhole (dark tower - king, stephen.epub": {
+   "title": "The Wind Through the Keyhole",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 4.5,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "the_wise_man_s_fear.epub": {
+   "title": "The Wise Man's Fear",
+   "author": "Patrick Rothfuss",
+   "series": "The Kingkiller Chronicle",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "achebe chinua - things fall apart.epub.epub": {
+   "title": "Things Fall Apart",
+   "author": "Chinua Achebe",
+   "series": null,
+   "series_no": null,
+   "genre": "Classics",
+   "subgenre": "Literary"
+  },
+  "third_shift_pact_part_8_of_the_silo_howey_hugh.epub": {
+   "title": "Third Shift: Pact",
+   "author": "Hugh Howey",
+   "series": "Silo",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "this inevitable ruin_ dungeon crawler carl book 7 -- matt dinniman -- dungeon crawler carl, 2024 -- dandy house -- 9f03951ed3eca60c23430c21fe317007 -- anna’s archive.epub": {
+   "title": "This Inevitable Ruin",
+   "author": "Matt Dinniman",
+   "series": "Dungeon Crawler Carl",
+   "series_no": 7.0,
+   "genre": "LitRPG",
+   "subgenre": "LitRPG"
+  },
+  "tiamat's wrath (the expanse, n. 8) by james s. a. corey.epub": {
+   "title": "Tiamat's Wrath",
+   "author": "James S. A. Corey",
+   "series": "The Expanse",
+   "series_no": 8.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "[jack_finney]_time_and_again_(fantasy_masterworks_(booksee.org).epub": {
+   "title": "Time and Again",
+   "author": "Jack Finney",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "time travelers never die - jack mcdevitt.mobi": {
+   "title": "Time Travelers Never Die",
+   "author": "Jack McDevitt",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "timeline - michael crichton.epub": {
+   "title": "Timeline",
+   "author": "Michael Crichton",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Time Travel"
+  },
+  "north, claire - touch.mobi": {
+   "title": "Touch",
+   "author": "Claire North",
+   "series": null,
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Supernatural Thriller"
+  },
+  "brandon sanderson - tress of the emerald sea (a cosmere novel) (2023, dragonsteel entertainment, llc) - libgen.li.epub": {
+   "title": "Tress of the Emerald Sea",
+   "author": "Brandon Sanderson",
+   "series": "Cosmere",
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Fairy-tale Fantasy"
+  },
+  "[sawyer_robert_j]_triggers(booksee.org).epub": {
+   "title": "Triggers",
+   "author": "Robert J. Sawyer",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "heinlein_-_tunnel_in_the_sky.epub": {
+   "title": "Tunnel in the Sky",
+   "author": "Robert A. Heinlein",
+   "series": null,
+   "series_no": null,
+   "genre": "Science Fiction",
+   "subgenre": "Classic SF"
+  },
+  "pittacus lore - lorien legacies 07 united as one.epub": {
+   "title": "United as One",
+   "author": "Pittacus Lore",
+   "series": "Lorien Legacies",
+   "series_no": 7.0,
+   "genre": "Young Adult",
+   "subgenre": "YA Sci-Fi"
+  },
+  "blake crouch_ - upgrade.epub": {
+   "title": "Upgrade",
+   "author": "Blake Crouch",
+   "series": null,
+   "series_no": null,
+   "genre": "Thriller",
+   "subgenre": "Sci-Fi Thriller"
+  },
+  "uprooted - naomi novik.epub": {
+   "title": "Uprooted",
+   "author": "Naomi Novik",
+   "series": null,
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Fairy-tale Fantasy"
+  },
+  "waking gods_ book 2 of the them - sylvain neuvel.epub": {
+   "title": "Waking Gods",
+   "author": "Sylvain Neuvel",
+   "series": "Themis Files",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "First Contact"
+  },
+  "blake crouch - [wayward pines 02] - wayward - 2013.epub": {
+   "title": "Wayward",
+   "author": "Blake Crouch",
+   "series": "Wayward Pines",
+   "series_no": 2.0,
+   "genre": "Thriller",
+   "subgenre": "Sci-Fi Thriller"
+  },
+  "we are legion (we are bob) (bob - dennis e. taylor.epub": {
+   "title": "We Are Legion (We Are Bob)",
+   "author": "Dennis E. Taylor",
+   "series": "Bobiverse",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Space Opera"
+  },
+  "wind and truth, stormlight archive by brandon sanderson.epub": {
+   "title": "Wind and Truth",
+   "author": "Brandon Sanderson",
+   "series": "The Stormlight Archive",
+   "series_no": 5.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "wind through the keyhole, the - stephen king.epub": {
+   "title": "The Wind Through the Keyhole",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 4.5,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "wizard and glass - stephen king.epub": {
+   "title": "Wizard and Glass",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "wizard and glass - stephen king.mobi": {
+   "title": "Wizard and Glass",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "4 wizard and glass - stephen king.epub": {
+   "title": "Wizard and Glass",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 4.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "wolves of the calla - stephen king.epub": {
+   "title": "Wolves of the Calla",
+   "author": "Stephen King",
+   "series": "The Dark Tower",
+   "series_no": 5.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  },
+  "hugh howey - wool omnibus edition (wool 1 - 5)-broad reach publishing (2012).mobi": {
+   "title": "Wool",
+   "author": "Hugh Howey",
+   "series": "Silo",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "wool omnibus edition (wool 1 - 5) - howey, hugh (16).epub": {
+   "title": "Wool",
+   "author": "Hugh Howey",
+   "series": "Silo",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Post-Apocalyptic"
+  },
+  "words of radiance - brandon sanderson.epub": {
+   "title": "Words of Radiance",
+   "author": "Brandon Sanderson",
+   "series": "The Stormlight Archive",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "words of radiance (stormlight archive, the) - sanderson, brandon.epub": {
+   "title": "Words of Radiance",
+   "author": "Brandon Sanderson",
+   "series": "The Stormlight Archive",
+   "series_no": 2.0,
+   "genre": "Fantasy",
+   "subgenre": "Epic Fantasy"
+  },
+  "brooks, max - world war z.mobi": {
+   "title": "World War Z",
+   "author": "Max Brooks",
+   "series": null,
+   "series_no": null,
+   "genre": "Horror",
+   "subgenre": "Zombie"
+  },
+  "www 2_ watch - sawyer_ robert j.epub": {
+   "title": "WWW: Watch",
+   "author": "Robert J. Sawyer",
+   "series": "WWW Trilogy",
+   "series_no": 2.0,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "www 3_ wonder - sawyer_ robert j.epub": {
+   "title": "WWW: Wonder",
+   "author": "Robert J. Sawyer",
+   "series": "WWW Trilogy",
+   "series_no": 3.0,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "www 1_ wake - sawyer_ robert j.epub": {
+   "title": "WWW: Wake",
+   "author": "Robert J. Sawyer",
+   "series": "WWW Trilogy",
+   "series_no": 1.0,
+   "genre": "Science Fiction",
+   "subgenre": "Techno-thriller"
+  },
+  "brandon sanderson - yumi and the nightmare painter(1).epub": {
+   "title": "Yumi and the Nightmare Painter",
+   "author": "Brandon Sanderson",
+   "series": "Cosmere",
+   "series_no": null,
+   "genre": "Fantasy",
+   "subgenre": "Fairy-tale Fantasy"
+  },
+  "john scalzi - [old man's war 04] - zoe's tale.epub": {
+   "title": "Zoe's Tale",
+   "author": "John Scalzi",
+   "series": "Old Man's War",
+   "series_no": 4.0,
+   "genre": "Science Fiction",
+   "subgenre": "Military SF"
+  },
+  "andrzej_sapkowski_-_the_lady_of_the_lake.epub": {
+   "title": "The Lady of the Lake",
+   "author": "Andrzej Sapkowski",
+   "series": "The Witcher",
+   "series_no": 7.0,
+   "genre": "Fantasy",
+   "subgenre": "Dark Fantasy"
+  }
+ },
+ "exclude": [
+  "(unknown file)",
+  "3128.zip",
+  "eg-complete-label.pdf",
+  "emberton park prices 2014-2015 season.pdf",
+  "shipping.pdf"
+ ]
+}

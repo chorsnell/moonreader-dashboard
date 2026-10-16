@@ -1,0 +1,7 @@
+library/
+*.mrpro
+**/__pycache__
+.git
+.github
+tests
+examples

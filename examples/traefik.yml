@@ -1,0 +1,29 @@
+# Traefik dynamic config for the file provider: drop this in your conf.d/ folder.
+# Serves the dashboard at https://<your-domain>/reading
+#
+# Change:
+#   - the server URL to wherever the container runs (host IP and published port)
+#   - entryPoints / certResolver to the names in your static traefik.yml
+#   - /reading to whatever path you like (in all three places)
+http:
+  routers:
+    moonreader:
+      rule: "PathPrefix(`/reading`)"
+      entryPoints: [websecure]
+      middlewares: [moonreader-strip]
+      service: moonreader
+      tls:
+        certResolver: letsencrypt
+
+  middlewares:
+    # Strips /reading before forwarding and tells the app its public path in the
+    # X-Forwarded-Prefix header, so links, uploads and WebDAV all work under /reading.
+    moonreader-strip:
+      stripPrefix:
+        prefixes: ["/reading"]
+
+  services:
+    moonreader:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.50:8080"

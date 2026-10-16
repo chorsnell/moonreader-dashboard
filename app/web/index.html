@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading history</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='5' y='4' width='22' height='24' rx='3' fill='%235b6ee1'/%3E%3Crect x='9' y='9' width='14' height='2' rx='1' fill='white'/%3E%3Crect x='9' y='14' width='10' height='2' rx='1' fill='white'/%3E%3C/svg%3E">
+<style>
+:root{
+  --font-anthropic-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-anthropic-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --color-bg:#f7f6f3; --color-panel:#ffffff; --color-fg:#1f1e1c; --color-fg-muted:#6b6862; --color-border-line:#e4e1da;
+  --color-ok:#1f7a4d; --color-bad:#b3261e; --color-warn:#9a6700;
+  --cds-chart-grid:#ece9e2; --cds-chart-axis:#cfcac0; --cds-chart-muted:#d3cfc6;
+  --cds-surface-popover:#ffffff; --cds-border:#e4e1da; --cds-shadow-popover:0 4px 16px rgba(0,0,0,.10); --cds-text-secondary:#6b6862;
+  --series-1:#4e6fd8; --series-2:#e0884a; --series-3:#2f9e8f; --series-4:#c4568b; --series-5:#8a6bd1; --series-6:#b8a033; --series-7:#5c9fd6; --series-8:#9b6b4f;
+  --cds-font-size-caption:12px; --cds-font-size-body:14px; --cds-font-size-heading:15px; --cds-font-size-title:28px; --cds-font-weight-medium:500;
+  --cds-gap-xs:4px; --cds-gap-sm:8px; --cds-gap-md:16px; --cds-gap-lg:24px; --cds-gap-xl:40px;
+  --cds-pad-xs:4px; --cds-pad-sm:8px; --cds-pad-md:12px; --cds-pad-lg:20px; --cds-pad-xl:32px;
+  --cds-radius:10px; --cds-dur-slow:300ms;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark){:root{
+  --color-bg:#171615; --color-panel:#211f1d; --color-fg:#ecebe8; --color-fg-muted:#a29e96; --color-border-line:#34312d;
+  --color-ok:#5fc48e; --color-bad:#f08a80; --color-warn:#e0b44c;
+  --cds-chart-grid:#2d2a27; --cds-chart-axis:#4a4641; --cds-chart-muted:#4a4641;
+  --cds-surface-popover:#2a2825; --cds-border:#3d3a35; --cds-shadow-popover:0 4px 16px rgba(0,0,0,.45); --cds-text-secondary:#a29e96;
+  --series-1:#7b95f0; --series-2:#f0a26b; --series-3:#4cc2b1; --series-4:#e07aab; --series-5:#a98ef0; --series-6:#d8c05a; --series-7:#7fbbec; --series-8:#c2917a;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans);-webkit-font-smoothing:antialiased}
+#dash-root{padding:clamp(16px,4vw,40px)}
+.rh-src{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin:var(--cds-gap-xs) 0 0}
+.dash-skeleton{color:transparent!important;position:relative}
+.dash-skeleton::after{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:min(60%,8rem);height:.8em;border-radius:6px;background:var(--cds-chart-grid);animation:sk 1.4s ease-in-out infinite}
+.chart.dash-skeleton::after,ul.dash-skeleton::after{top:0;transform:none;width:100%;height:100%;min-height:120px}
+@keyframes sk{50%{opacity:.5}}
+.rh-titlebar{display:flex;align-items:center;justify-content:space-between;gap:var(--cds-gap-md)}
+.rh-update,.up-primary{font:inherit;font-size:var(--cds-font-size-body);font-weight:500;padding:7px 14px;border:0;border-radius:8px;background:var(--series-1);color:#fff;cursor:pointer;white-space:nowrap}
+.rh-update:hover,.up-primary:hover{filter:brightness(1.08)}
+.up-primary{width:100%;margin-top:14px;padding:10px}
+.up-primary:disabled{opacity:.5;cursor:default}
+.up-dialog{border:1px solid var(--color-border-line);border-radius:14px;background:var(--color-panel);color:var(--color-fg);padding:0;width:min(30rem,calc(100vw - 32px));box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.up-dialog::backdrop{background:rgba(0,0,0,.35)}
+.up-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px 0}
+.up-head h2{margin:0;font-family:var(--font-anthropic-serif);font-weight:400;font-size:22px}
+.up-close{border:0;background:none;color:var(--color-fg-muted);font-size:24px;line-height:1;cursor:pointer;padding:0 4px}
+.up-dialog section{padding:14px 20px 18px}
+.up-dialog section+section{border-top:1px solid var(--color-border-line)}
+.up-dialog h3{margin:0 0 4px;font-size:var(--cds-font-size-heading);font-weight:500}
+.up-note{margin:0 0 8px;font-size:13px;line-height:1.5;color:var(--color-fg-muted)}
+.up-dialog label{display:block;font-size:12px;color:var(--color-fg-muted);margin:12px 0 4px}
+.up-dialog input{width:100%;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg)}
+.up-dialog progress{width:100%;margin-top:12px}
+.up-msg{margin:10px 0 0;font-size:13px;min-height:1.2em}
+.up-dav{display:flex;gap:8px;align-items:center;margin:4px 0 10px}
+.up-dav code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;padding:7px 9px;border-radius:8px;background:var(--color-bg);border:1px solid var(--color-border-line)}
+.up-copy{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg);cursor:pointer}
+#rh-empty{margin-top:var(--cds-gap-lg)}
+#rh-empty .up-primary{width:auto}
+</style>
+</head>
+<body>
+<div id="dash-root">
+<style>
+.rh{display:flex;flex-direction:column;gap:var(--cds-gap-lg);font-family:var(--font-anthropic-sans);max-width:1280px;margin-inline:auto}
+.rh-head h1{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0}
+.rh-take{color:var(--color-fg-muted);font-size:var(--cds-font-size-body);margin:var(--cds-gap-xs) 0 0;line-height:1.5}
+.rh-take b,.rh .num b{font-weight:600;color:var(--color-fg)}
+.rh-tabs{display:flex;gap:var(--cds-gap-xs);border-bottom:1px solid var(--color-border-line);overflow-x:auto}
+.rh-tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:var(--cds-pad-sm) var(--cds-pad-md);font:inherit;font-size:var(--cds-font-size-body);color:var(--color-fg-muted);cursor:pointer;white-space:nowrap}
+.rh-tabs button[aria-selected=true]{color:var(--color-fg);border-bottom-color:var(--color-fg)}
+.rh-tabs[hidden]{display:none}
+.rh-page{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
+.rh-page[hidden]{display:none}
+.rh-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:var(--cds-gap-md)}
+.rh-kpi{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-md) var(--cds-pad-lg)}
+.rh-kpi .lbl{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.rh-kpi .val{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);line-height:1.2;margin-top:var(--cds-gap-xs);font-variant-numeric:tabular-nums}
+.rh-kpi .sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-top:var(--cds-gap-xs);font-variant-numeric:tabular-nums}
+.rh-kpi .sub b{font-weight:500}
+.up{color:var(--color-ok)}.down{color:var(--color-bad)}
+.rh-grid{align-items:start;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,26rem),1fr));gap:var(--cds-gap-md)}
+.rh-card{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg);min-width:0;display:flex;flex-direction:column}
+.rh-card.wide{grid-column:1/-1}
+.rh-card h2{font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium);margin:0}
+.rh-card .note{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin:var(--cds-gap-xs) 0 var(--cds-gap-md);line-height:1.45}
+.chart{position:relative;min-height:240px;width:100%}
+.chart.tall{min-height:320px}.chart.short{min-height:160px}
+.chart svg{display:block;overflow:visible}
+.chart text{font-family:var(--font-anthropic-sans)}
+.tick text,.axl{fill:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.tick line{stroke:var(--cds-chart-grid)}
+.domain{stroke:var(--cds-chart-axis)}
+.lbl-in{font-size:var(--cds-font-size-caption);fill:var(--color-fg)}
+.tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);white-space:nowrap;z-index:5;display:none;line-height:1.5}
+.tip .t{color:var(--cds-text-secondary)}
+.sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.legend{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs) var(--cds-gap-md);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-bottom:var(--cds-gap-sm)}
+.rh-list{display:flex;flex-direction:column;gap:var(--cds-gap-sm);margin:0;padding:0;list-style:none}
+.rh-list li{display:flex;justify-content:space-between;gap:var(--cds-gap-md);font-size:var(--cds-font-size-body);border-bottom:1px solid var(--color-border-line);padding-bottom:var(--cds-gap-sm)}
+.rh-list li:last-child{border-bottom:0}
+.rh-list .meta{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rh-list .ttl{min-width:0;flex:1}
+.rh-list .ttl small{display:block;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.pbar{height:4px;border-radius:2px;background:var(--cds-chart-grid);margin-top:4px;overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:2px}
+.tbl-tools{display:flex;gap:var(--cds-gap-sm);flex-wrap:wrap;margin-bottom:var(--cds-gap-sm)}
+.tbl-tools input,.tbl-tools select{font:inherit;font-size:var(--cds-font-size-body);padding:var(--cds-pad-xs) var(--cds-pad-sm);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg)}
+.tbl-tools input{flex:1;min-width:10rem}
+.tbl-box{max-height:620px;overflow:auto}
+.rh table{width:100%;border-collapse:collapse;font-size:var(--cds-font-size-body);font-variant-numeric:tabular-nums}
+.rh th{position:sticky;top:0;background:var(--color-panel);text-align:left;font-weight:500;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);border-bottom:1px solid var(--color-border-line);padding:0;z-index:1}
+.rh th button{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;padding:var(--cds-pad-xs) var(--cds-pad-sm)}
+.rh th[aria-sort=ascending] button::after{content:" ↑"}.rh th[aria-sort=descending] button::after{content:" ↓"}
+.rh td{padding:var(--cds-pad-xs) var(--cds-pad-sm);border-bottom:1px solid var(--color-border-line);vertical-align:top}
+.rh td.n,.rh th.n{text-align:right}.rh th.n button{text-align:right}
+.rh td small{color:var(--color-fg-muted)}
+.chip{display:inline-block;font-size:var(--cds-font-size-caption);padding:0 6px;border-radius:999px;border:1px solid var(--color-border-line);color:var(--color-fg-muted);white-space:nowrap}
+@media (max-width:640px){.hide-sm{display:none}}
+[data-dash-source-state=refreshing]{opacity:.5;transition:opacity var(--cds-dur-slow)}
+.fail{display:flex;align-items:center;justify-content:center;gap:6px;min-height:inherit;height:100%;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.fail::before{content:"";width:.375rem;height:.375rem;border-radius:50%;background:var(--color-bad)}
+.hm-legend{display:flex;align-items:center;gap:4px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-top:var(--cds-gap-sm);justify-content:flex-end}
+.hm-legend i{width:11px;height:11px;border-radius:2px;display:inline-block}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--cds-gap-sm) var(--cds-gap-md)}
+.rng{display:flex;flex-wrap:wrap;align-items:center;gap:var(--cds-gap-xs) var(--cds-gap-sm);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.rng select,.rng input{font:inherit;font-size:var(--cds-font-size-caption);padding:3px 6px;border:1px solid var(--color-border-line);border-radius:6px;background:var(--color-bg);color:var(--color-fg)}
+.rng label{display:flex;align-items:center;gap:4px}
+.chart .yr-lbl{font-size:var(--cds-font-size-caption);fill:var(--color-fg);font-weight:500}
+.chart rect.day{cursor:pointer}
+.dy-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:var(--cds-gap-sm);margin-bottom:var(--cds-gap-md)}
+.dy-sum div{background:var(--color-bg);border-radius:var(--cds-radius);padding:var(--cds-pad-sm) var(--cds-pad-md)}
+.dy-sum b{display:block;font-family:var(--font-anthropic-serif);font-weight:400;font-size:22px;font-variant-numeric:tabular-nums}
+.dy-sum span{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.dy-month{display:flex;justify-content:space-between;align-items:baseline;gap:var(--cds-gap-md);margin:var(--cds-gap-lg) 0 var(--cds-gap-xs);padding-bottom:var(--cds-gap-xs);border-bottom:1px solid var(--color-border-line)}
+.dy-month h3{margin:0;font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium)}
+.dy-month span{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.dy-day{display:grid;grid-template-columns:5.5rem 1fr;gap:var(--cds-gap-md);padding:var(--cds-pad-sm) var(--cds-pad-xs);border-bottom:1px solid var(--color-border-line);scroll-margin-top:80px}
+.dy-day.hl{background:var(--hl-bg,rgba(78,111,216,.12));border-radius:var(--cds-radius)}
+.dy-date b{display:block;font-size:var(--cds-font-size-body);font-weight:500}
+.dy-date span{display:block;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.dy-book{display:grid;grid-template-columns:1fr auto;gap:2px var(--cds-gap-md);padding:2px 0 var(--cds-gap-xs)}
+.dy-book .t{font-size:var(--cds-font-size-body);min-width:0}
+.dy-book .t small{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.dy-book .m{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dy-prog{grid-column:1/-1;display:flex;align-items:center;gap:var(--cds-gap-sm);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.dy-prog .bar{position:relative;flex:1;max-width:16rem;height:5px;border-radius:3px;background:var(--cds-chart-grid);overflow:hidden}
+.dy-prog .bar i{position:absolute;top:0;bottom:0;border-radius:3px}
+.dy-gap{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);padding:var(--cds-pad-xs) 0 var(--cds-pad-xs) calc(5.5rem + var(--cds-gap-md));border-bottom:1px solid var(--color-border-line)}
+.ev{display:inline-block;font-size:11px;padding:0 6px;border-radius:999px;margin-left:6px;vertical-align:1px;border:1px solid currentColor}
+.ev.finished{color:var(--color-ok)}.ev.started,.ev.reread{color:var(--color-fg-muted)}
+.dy-more{margin-top:var(--cds-gap-md);font:inherit;font-size:var(--cds-font-size-body);padding:var(--cds-pad-xs) var(--cds-pad-md);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);cursor:pointer}
+.dy-empty{color:var(--color-fg-muted);font-size:var(--cds-font-size-body);padding:var(--cds-pad-lg) 0}
+@media (max-width:520px){.dy-day{grid-template-columns:1fr;gap:var(--cds-gap-xs)}.dy-date b,.dy-date span{display:inline;margin-right:8px}.dy-gap{padding-left:0}}
+</style>
+
+<div class="rh">
+  <header class="rh-head" id="top">
+    <h1>Reading history</h1>
+    <p class="rh-take dash-skeleton" id="takeaway" data-source="kpis" data-field="value" data-where="metric=takeaway">—</p>
+    <p class="rh-src" id="rh-source"></p>
+  </header>
+
+  <nav class="rh-tabs" role="tablist">
+    <button role="tab" data-tab="overview" id="tab-overview" aria-selected="true">Overview</button>
+    <button role="tab" data-tab="genres" id="tab-genres" aria-selected="false">Genres &amp; authors</button>
+    <button role="tab" data-tab="timeline" id="tab-timeline" aria-selected="false">Timeline &amp; habits</button>
+    <button role="tab" data-tab="diary" id="tab-diary" aria-selected="false">Diary</button>
+    <button role="tab" data-tab="library" id="tab-library" aria-selected="false">Library</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="rh-page" id="overview">
+    <div class="rh-kpis">
+      <div class="rh-kpi" id="kpi-ytd"><div class="lbl" id="lbl-ytd">Finished this year</div>
+        <div class="val dash-skeleton" data-source="kpis" data-field="value" data-where="metric=finished_ytd">—</div>
+        <div class="sub"><span data-source="kpis" data-field="value" data-where="metric=finished_prev_ytd">—</span> by this date last year</div></div>
+      <div class="rh-kpi" id="kpi-hours-ytd"><div class="lbl">Hours read this year</div>
+        <div class="val dash-skeleton" data-source="kpis" data-field="value" data-where="metric=hours_ytd">—</div>
+        <div class="sub"><span data-source="kpis" data-field="value" data-where="metric=hours_prev_ytd">—</span> by this date last year</div></div>
+      <div class="rh-kpi" id="kpi-daily"><div class="lbl">Minutes a day, last 365 days</div>
+        <div class="val dash-skeleton" data-source="kpis" data-field="value" data-where="metric=avg_mins_365">—</div>
+        <div class="sub">read on <span data-source="kpis" data-field="value" data-where="metric=days_365">—</span> of 365 days</div></div>
+      <div class="rh-kpi" id="kpi-streak"><div class="lbl">Current streak</div>
+        <div class="val dash-skeleton"><span data-source="kpis" data-field="value" data-where="metric=streak_now">—</span> days</div>
+        <div class="sub">longest <span data-source="kpis" data-field="value" data-where="metric=streak_best">—</span> days</div></div>
+      <div class="rh-kpi" id="kpi-all"><div class="lbl">Books finished, all time</div>
+        <div class="val dash-skeleton" data-source="kpis" data-field="value" data-where="metric=finished_books">—</div>
+        <div class="sub"><span data-source="kpis" data-field="value" data-where="metric=reread_books">—</span> read more than once</div></div>
+      <div class="rh-kpi" id="kpi-speed"><div class="lbl">Reading speed</div>
+        <div class="val dash-skeleton"><span data-source="kpis" data-field="value" data-where="metric=wpm">—</span> wpm</div>
+        <div class="sub"><span data-source="kpis" data-field="value" data-where="metric=hours_all">—</span> hours logged in total</div></div>
+    </div>
+
+    <div class="rh-grid">
+      <div class="rh-card" id="card-current"><h2>On the go</h2>
+        <p class="note">Books opened in the last 30 days of the backup, with progress.</p>
+        <ul class="rh-list" id="current" data-source="current"></ul></div>
+      <div class="rh-card" id="card-recent"><h2>Recently finished</h2>
+        <p class="note">The last ten finished reads. ↻ marks a re-read.</p>
+        <ul class="rh-list" id="recent" data-source="recent"></ul></div>
+    </div>
+
+    <div class="rh-card wide" id="card-years"><h2>Books finished per year</h2>
+      <p class="note">Counted in the year a read ended at 99% or more. Before 2019 the app often didn't record progress, so early years undercount.</p>
+      <div class="legend" id="leg-years"></div>
+      <div class="chart" id="ch-years" data-source="per_year"></div></div>
+
+    <div class="rh-card wide" id="card-months"><h2>Hours read per month</h2>
+      <p class="note">From the app's daily log, which starts in 2019. The line is a 12-month rolling average.</p>
+      <div class="chart" id="ch-months" data-source="per_month"></div></div>
+  </section>
+
+  <!-- GENRES -->
+  <section class="rh-page" id="genres" hidden>
+    <div class="rh-grid">
+      <div class="rh-card" id="card-genre"><h2>Finished books by genre</h2>
+        <p class="note">Genres were tagged by Claude from title and author; Moon+ doesn't store them.</p>
+        <div class="chart" id="ch-genre" data-source="genre_counts"></div></div>
+      <div class="rh-card" id="card-sub"><h2>Top subgenres</h2>
+        <p class="note">Finished books in the 12 most-read subgenres.</p>
+        <div class="chart" id="ch-sub" data-source="subgenres"></div></div>
+    </div>
+    <div class="rh-card wide" id="card-genre-year"><h2>Genre mix by year</h2>
+      <p class="note">Share of each year's finished reads.</p>
+      <div class="legend" id="leg-gy"></div>
+      <div class="chart" id="ch-gy" data-source="genre_year"></div></div>
+    <div class="rh-grid">
+      <div class="rh-card" id="card-authors"><h2>Most-read authors</h2>
+        <p class="note">Books finished per author, top 15. Hover for hours.</p>
+        <div class="chart tall" id="ch-authors" data-source="authors"></div></div>
+      <div class="rh-card" id="card-series"><h2>Series</h2>
+        <p class="note">Series where you've read two or more books.</p>
+        <div class="tbl-box" style="max-height:420px">
+        <table id="tbl-series" data-source="series" data-row-key="series">
+          <thead><tr><th data-field="series"><button>Series</button></th><th data-field="author" class="hide-sm"><button>Author</button></th><th data-field="finished" class="n"><button>Finished</button></th><th data-field="hours" class="n"><button>Hours</button></th></tr></thead>
+          <tbody></tbody></table></div></div>
+    </div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section class="rh-page" id="timeline" hidden>
+    <div class="rh-card wide" id="card-heat"><div class="card-head"><h2>Day by day</h2>
+      <div class="rng" id="rng-heat" data-range="heat">
+        <select aria-label="Period"><option value="30d">Last 30 days</option><option value="90d">Last 3 months</option><option value="12m">Last 12 months</option><option value="ytd">This year</option><option value="ly">Last year</option><option value="24m">Last 2 years</option><option value="all">All time</option><option value="custom">Custom…</option></select>
+        <label>From <input type="date" aria-label="From"></label><label>To <input type="date" aria-label="To"></label>
+      </div></div>
+      <p class="note" id="heat-note">Minutes read each day. Hover a square for the books, click it to open that day in the diary.</p>
+      <div class="chart short" id="ch-heat" data-source="day_totals"></div>
+      <div class="hm-legend" id="hm-leg"></div></div>
+    <div class="rh-card wide" id="card-gantt"><div class="card-head"><h2>What you read when</h2>
+      <div class="rng" id="rng-gantt" data-range="gantt">
+        <select aria-label="Period"><option value="30d">Last 30 days</option><option value="90d">Last 3 months</option><option value="12m">Last 12 months</option><option value="ytd">This year</option><option value="ly">Last year</option><option value="24m">Last 2 years</option><option value="all">All time</option><option value="custom">Custom…</option></select>
+        <label>From <input type="date" aria-label="From"></label><label>To <input type="date" aria-label="To"></label>
+      </div></div>
+      <p class="note" id="gantt-note">Every read in the period, one bar from first to last day. Colour is genre; faded bars weren't finished.</p>
+      <div class="legend" id="leg-gantt"></div>
+      <div class="chart tall" id="ch-gantt" data-source="timeline"></div></div>
+    <div class="rh-grid">
+      <div class="rh-card" id="card-week"><h2>Weekday rhythm</h2>
+        <p class="note">Average minutes read per calendar day since 2019, by weekday.</p>
+        <div class="chart" id="ch-week" data-source="weekday"></div></div>
+      <div class="rh-card" id="card-speed"><h2>Reading speed by year</h2>
+        <p class="note">Words read per minute, from days where the app logged both.</p>
+        <div class="chart" id="ch-speed" data-source="speed_year"></div></div>
+    </div>
+    <div class="rh-grid">
+      <div class="rh-card" id="card-big"><h2>Biggest reads</h2>
+        <p class="note">Finished reads with the most hours logged (2019 onward).</p>
+        <ul class="rh-list" id="big" data-source="big_reads"></ul></div>
+      <div class="rh-card" id="card-stalled"><h2>Left unfinished</h2>
+        <p class="note">Between 5% and 95%, untouched for 60+ days. Pick one back up?</p>
+        <ul class="rh-list" id="stalled" data-source="stalled"></ul></div>
+    </div>
+  </section>
+
+  <!-- DIARY -->
+  <section class="rh-page" id="diary" hidden>
+    <div class="rh-card wide" id="card-diary"><div class="card-head"><h2>Reading diary</h2>
+      <div class="rng" id="rng-diary" data-range="diary">
+        <select aria-label="Period"><option value="30d">Last 30 days</option><option value="90d">Last 3 months</option><option value="12m">Last 12 months</option><option value="ytd">This year</option><option value="ly">Last year</option><option value="24m">Last 2 years</option><option value="all">All time</option><option value="custom">Custom…</option></select>
+        <label>From <input type="date" aria-label="From"></label><label>To <input type="date" aria-label="To"></label>
+      </div></div>
+      <p class="note">What you read each day: minutes, words and how far you got. Moon+ records the day you read, not the time of day; minutes and words are logged from 2019.</p>
+      <div class="dy-sum" id="dy-sum" data-source="diary"></div>
+      <div id="dy-list" data-source="diary"></div>
+      <button class="dy-more" id="dy-more" hidden>Show more days</button>
+    </div>
+  </section>
+
+  <!-- LIBRARY -->
+  <section class="rh-page" id="library" hidden>
+    <div class="rh-card wide" id="card-library"><h2>Every book</h2>
+      <p class="note">Search, filter and sort everything Moon+ remembers. Click a header to sort.</p>
+      <div class="tbl-tools">
+        <input type="search" id="lib-q" placeholder="Search title, author, series…" aria-label="Search books">
+        <select id="lib-genre" aria-label="Genre"><option value="">All genres</option></select>
+        <select id="lib-status" aria-label="Status"><option value="">Any status</option><option value="finished">Finished</option><option value="in_progress">In progress</option><option value="not_started">Not started</option><option value="unknown">Unknown</option></select>
+        <select id="lib-reread" aria-label="Re-reads"><option value="">All books</option><option value="1">Re-reads only</option></select>
+      </div>
+      <div class="tbl-box">
+      <table id="tbl-books" data-source="books" data-row-key="id">
+        <thead><tr>
+          <th data-field="title"><button>Title</button></th>
+          <th data-field="author" class="hide-sm"><button>Author</button></th>
+          <th data-field="genre" class="hide-sm"><button>Genre</button></th>
+          <th data-field="last_read"><button>Last read</button></th>
+          <th data-field="times_read" class="n"><button>Reads</button></th>
+          <th data-field="hours" class="n hide-sm"><button>Hours</button></th>
+          <th data-field="progress" class="n"><button>Progress</button></th>
+        </tr></thead><tbody></tbody></table></div>
+      <p class="note" id="lib-count" style="margin:var(--cds-gap-sm) 0 0"></p></div>
+
+    <div class="rh-card wide" id="card-rereads"><h2>Re-reads</h2>
+      <p class="note">Each read of a book you've read more than once. A new read starts when you return after a year or more.</p>
+      <div class="tbl-box" style="max-height:480px">
+      <table id="tbl-rereads" data-source="rereads" data-row-key="read_id">
+        <thead><tr><th data-field="title"><button>Title</button></th><th data-field="read_no" class="n"><button>Read</button></th><th data-field="start"><button>Started</button></th><th data-field="end"><button>Last day</button></th><th data-field="days_read" class="n hide-sm"><button>Days</button></th><th data-field="hours" class="n hide-sm"><button>Hours</button></th><th data-field="progress" class="n"><button>Reached</button></th></tr></thead>
+        <tbody></tbody></table></div></div>
+  </section>
+</div>
+
+</div>
+<script src="vendor/d3.min.js"></script>
+<script src="runtime.js"></script>
+<script src="calcs.js"></script>
+<script src="charts.js"></script>
+<script src="upload.js"></script>
+</body>
+</html>
