@@ -20,7 +20,8 @@ It's one small container with no dependencies beyond the Python standard library
 ```sh
 git clone https://github.com/chorsnell/moonreader-dashboard.git
 cd moonreader-dashboard
-# set UPLOAD_TOKEN in docker-compose.yml first (openssl rand -hex 16)
+cp .env.example .env
+# set UPLOAD_TOKEN in .env first (openssl rand -hex 16)
 docker compose up -d --build
 ```
 
@@ -102,7 +103,7 @@ Each cover is saved as `library/covers/<book id>.jpg` (or `.png`), and an existi
 
 ## Settings
 
-All of these are optional environment variables in `docker-compose.yml`:
+All of these are optional environment variables in `docker-compose.yml`. `UPLOAD_TOKEN` is read from `.env` (copied from `.env.example`, and ignored by git) so the secret never lands in the compose file:
 
 | Variable | Default | What it does |
 |---|---|---|
