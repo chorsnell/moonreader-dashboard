@@ -262,8 +262,11 @@ class DashboardTests(unittest.TestCase):
         self.assertTrue(s.wait_for(lambda: {b['title']: b for b in self.books(s)}['Beta']['progress'] == 83.5))
         beta = {b['title']: b for b in self.books(s)}['Beta']
         self.assertEqual(beta['last_read'], '2026-04-02')
-        meta = json.load(open(os.path.join(s.lib, 'data', 'meta.json')))
-        self.assertEqual(meta['synced_positions'], 1)
+        # meta.json is written after books.json, so it can briefly still be the previous build's
+        def synced():
+            with open(os.path.join(s.lib, 'data', 'meta.json')) as f:
+                return json.load(f)['synced_positions']
+        self.assertTrue(s.wait_for(lambda: synced() == 1), f'synced_positions is {synced()}')
 
 
 class CoverTests(unittest.TestCase):
