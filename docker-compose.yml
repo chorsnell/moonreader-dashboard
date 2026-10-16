@@ -5,7 +5,7 @@ services:
     container_name: moonreader-dashboard
     restart: unless-stopped
     ports:
-      - "8080:8080"              # change the left number to use another port
+      - "9080:8080"              # change the left number to use another port
     environment:
       TZ: Europe/London
       PUID: 1000                 # owner of the files in ./library on the host
