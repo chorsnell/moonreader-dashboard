@@ -44,7 +44,13 @@ window.dash = (() => {
     notify();
     const m = config.meta || {};
     const el = document.getElementById('rh-source');
-    if (el && m.backup_file) {
+    if (el && config.demo) {
+      el.textContent = 'A demo with a made-up reading history of public-domain classics. ';
+      const a = document.createElement('a');
+      a.href = 'https://github.com/chorsnell/moonreader-dashboard';
+      a.textContent = 'Run it on your own Moon+ Reader data';
+      el.append(a, '.');
+    } else if (el && m.backup_file) {
       const when = new Date(m.generated).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
       el.textContent = `Data from ${m.backup_file}, updated ${when}` + (m.synced_positions ? `, plus ${m.synced_positions} position${m.synced_positions === 1 ? '' : 's'} synced from Moon+.` : '.');
     }

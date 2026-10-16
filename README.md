@@ -1,6 +1,13 @@
 # moonreader-dashboard
 
+[![test](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/test.yml/badge.svg)](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/test.yml)
+[![demo](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/pages.yml/badge.svg)](https://chorsnell.github.io/moonreader-dashboard/)
+
 A self-hosted dashboard for your [Moon+ Reader](https://www.moondownload.com/) reading history.
+
+**[Try the live demo →](https://chorsnell.github.io/moonreader-dashboard/)** It runs on a made-up reading history of public-domain classics, rebuilt every week.
+
+<a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png"><img src="docs/screenshots/overview.png" alt="The Overview tab"></picture></a>
 
 It reads the statistics Moon+ keeps inside its backups (every book, every day you read, minutes, words and progress). It keeps that history even for books whose files are long gone, and turns it into:
 
@@ -14,6 +21,25 @@ It reads the statistics Moon+ keeps inside its backups (every book, every day yo
 Every book shows its cover, taken from the backup or looked up on Open Library (see [Book covers](#book-covers)).
 
 It's one small container with no dependencies beyond the Python standard library.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#genres"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/genres-dark.png"><img src="docs/screenshots/genres.png" alt="Genres & authors"></picture></a><br><b>Genres &amp; authors</b></td>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#speed"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/speed-dark.png"><img src="docs/screenshots/speed.png" alt="Speed"></picture></a><br><b>Speed</b></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#timeline"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/timeline-dark.png"><img src="docs/screenshots/timeline.png" alt="Timeline & habits"></picture></a><br><b>Timeline &amp; habits</b></td>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#diary"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/diary-dark.png"><img src="docs/screenshots/diary.png" alt="Diary"></picture></a><br><b>Diary</b></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#library"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/library-dark.png"><img src="docs/screenshots/library.png" alt="Library"></picture></a><br><b>Library</b></td>
+    <td width="50%" valign="top" align="center"><a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mobile-dark.png"><img src="docs/screenshots/mobile.png" alt="On a phone" width="240"></picture></a><br><b>On a phone</b></td>
+  </tr>
+</table>
+
+All screenshots are from the [demo](https://chorsnell.github.io/moonreader-dashboard/), not anyone's real reading.
 
 ## Run it
 
@@ -132,6 +158,17 @@ python3 -m unittest discover -s tests -v     # builds a fake backup and tests th
 LIBRARY=./library UPLOAD_TOKEN=dev python3 app/server.py   # run without Docker on :8080
 ```
 
+### The demo
+
+`demo/build_demo.py` makes up three years of reading (65 public-domain books, with series, re-reads, abandoned books and one on the go), writes it as a fake Moon+ backup, and runs it through the real `update.py`. The result is a static copy of the page that works on any static host:
+
+```sh
+python3 demo/build_demo.py site              # COVER_LOOKUP=off to skip Open Library
+python3 -m http.server 8000 --directory site
+```
+
+The [`demo` workflow](.github/workflows/pages.yml) does the same on every push to `main`, and weekly, and publishes it to GitHub Pages.
+
 ```
 app/server.py        web server, rebuild watcher, uploads, WebDAV
 app/update.py        turns a .mrpro backup (plus synced positions) into data/*.json, and saves its covers
@@ -139,4 +176,5 @@ app/covers.py        looks up missing covers on Open Library
 app/web/             the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js
 app/seed/            the starting catalogue.json
 examples/traefik.yml reverse-proxy example
+demo/build_demo.py   builds the demo site from made-up data
 ```
