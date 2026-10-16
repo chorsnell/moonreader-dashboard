@@ -105,8 +105,8 @@ The server also has two JSON endpoints: `/healthz`, which Docker uses as its hea
 
 - **New reads:** returning to a book after 365 days or more starts a new read. A single day back in a book only counts as a read if the book has no longer one.
 - **Finished:** a read is finished when it ends at 99% or more. Before about 2019, Moon+ often didn't record progress, so early years undercount.
-- **Minutes and words:** these are only logged per day from 2019 onwards.
-- **Speed:** words divided by minutes, over days where Moon+ logged both. Days above 800 wpm (flicking through) or below 40 wpm (book left open) are skipped, and a book needs 2+ hours of timed reading to get a speed. Per-book totals use the app's lifetime counters.
+- **Minutes and words:** these are only logged per day from 2019 onwards. Per-book totals use the app's lifetime counters.
+- **Speed:** words divided by minutes, over days where Moon+ logged both. Days above 800 wpm (flicking through) or below 40 wpm (book left open) are skipped, and a book needs 2+ hours of timed reading to get a speed.
 - **Time of day:** Moon+ records which days you read, not what time, so the diary is per day.
 - **Changing the rules:** the thresholds are at the top of `app/update.py`, and every chart's calculation is in `app/web/calcs.js`.
 
