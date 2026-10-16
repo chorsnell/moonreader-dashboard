@@ -103,6 +103,23 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .rh-list .meta{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);white-space:nowrap;font-variant-numeric:tabular-nums}
 .rh-list .ttl{min-width:0;flex:1}
 .rh-list .ttl small{display:block;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.cv{flex:none;align-self:flex-start;width:32px;height:48px;border-radius:3px;overflow:hidden;background:color-mix(in srgb,var(--cv,var(--cds-chart-muted)) 22%,var(--color-panel));box-shadow:0 0 0 1px var(--color-border-line);display:flex;align-items:center;justify-content:center}
+.cv img{display:block;width:100%;height:100%;object-fit:cover}
+.cv span{font-family:var(--font-anthropic-serif);font-size:18px;color:color-mix(in srgb,var(--cv,var(--color-fg-muted)) 70%,var(--color-fg))}
+.cv.sm{width:24px;height:36px}.cv.sm span{font-size:14px}
+.cv.xs{width:20px;height:30px;border-radius:2px}.cv.xs span{font-size:12px}
+.cv.lg{width:104px;height:156px;border-radius:4px;box-shadow:0 0 0 1px var(--color-border-line),0 4px 14px rgba(0,0,0,.18)}.cv.lg span{font-size:44px}
+.rh-list li.go-one{justify-content:flex-start;gap:var(--cds-gap-lg);border-bottom:0;padding:var(--cds-gap-xs) 0 0}
+.go-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--cds-gap-xs)}
+.go-title{font-family:var(--font-anthropic-serif);font-size:20px;line-height:1.25}
+.go-sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.go-prog{display:flex;align-items:center;gap:var(--cds-gap-sm);margin:var(--cds-gap-sm) 0}
+.go-prog b{font-family:var(--font-anthropic-serif);font-weight:400;font-size:22px;font-variant-numeric:tabular-nums}
+.go-prog .pbar{flex:1;height:6px;margin:0;border-radius:3px}
+.go-facts{display:grid;grid-template-columns:auto 1fr;gap:2px var(--cds-gap-md);margin:0;font-size:var(--cds-font-size-caption);font-variant-numeric:tabular-nums}
+.go-facts dt{color:var(--color-fg-muted)}.go-facts dd{margin:0}
+.rh-list li .cv{margin-right:calc(var(--cds-gap-sm) - var(--cds-gap-md))}
+.rh td .tt{display:flex;align-items:center;gap:var(--cds-gap-sm)}
 .pbar{height:4px;border-radius:2px;background:var(--cds-chart-grid);margin-top:4px;overflow:hidden}
 .pbar i{display:block;height:100%;border-radius:2px}
 .tbl-tools{display:flex;gap:var(--cds-gap-sm);flex-wrap:wrap;margin-bottom:var(--cds-gap-sm)}
@@ -143,11 +160,12 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .dy-day.hl{background:var(--hl-bg,rgba(78,111,216,.12));border-radius:var(--cds-radius)}
 .dy-date b{display:block;font-size:var(--cds-font-size-body);font-weight:500}
 .dy-date span{display:block;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
-.dy-book{display:grid;grid-template-columns:1fr auto;gap:2px var(--cds-gap-md);padding:2px 0 var(--cds-gap-xs)}
+.dy-book{display:grid;grid-template-columns:auto 1fr auto;gap:2px var(--cds-gap-md);padding:2px 0 var(--cds-gap-xs)}
+.dy-book .cv{grid-row:span 2;margin-right:calc(var(--cds-gap-sm) - var(--cds-gap-md))}
 .dy-book .t{font-size:var(--cds-font-size-body);min-width:0}
 .dy-book .t small{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
 .dy-book .m{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.dy-prog{grid-column:1/-1;display:flex;align-items:center;gap:var(--cds-gap-sm);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.dy-prog{grid-column:2/-1;display:flex;align-items:center;gap:var(--cds-gap-sm);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
 .dy-prog .bar{position:relative;flex:1;max-width:16rem;height:5px;border-radius:3px;background:var(--cds-chart-grid);overflow:hidden}
 .dy-prog .bar i{position:absolute;top:0;bottom:0;border-radius:3px}
 .dy-gap{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);padding:var(--cds-pad-xs) 0 var(--cds-pad-xs) calc(5.5rem + var(--cds-gap-md));border-bottom:1px solid var(--color-border-line)}

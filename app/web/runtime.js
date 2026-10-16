@@ -7,7 +7,7 @@ window.dash = (() => {
   const calcs = [];
   const subs = [];
   const PARAMS_KEY = 'moonreader-dashboard:params';
-  let params = {};
+  let params = {}, covers = {};
   try { params = JSON.parse(localStorage.getItem(PARAMS_KEY) || '{}') || {}; } catch (e) { params = {}; }
   const setAll = (status, extra) => Object.keys(files).concat(calcs.map(([id]) => id)).forEach((k) => (state[k] = { status, data: [], ...extra }));
   Object.keys(files).forEach((k) => (state[k] = { status: 'loading', data: [] }));
@@ -19,6 +19,8 @@ window.dash = (() => {
     try { config = await (await fetch('api/config', { cache: 'no-store' })).json(); } catch (e) { /* static hosting: no API */ }
     window.dispatchEvent(new CustomEvent('dash:config', { detail: config }));
     if (config.has_data === false) { setAll('missing'); notify(); return config; }
+    // covers are optional: without them the page shows placeholders
+    const coverList = fetch('api/covers', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
     try {
       const v = '?v=' + Date.now();
       const entries = await Promise.all(Object.entries(files).map(async ([id, url]) => {
@@ -27,6 +29,7 @@ window.dash = (() => {
         return [id, await r.json()];
       }));
       entries.forEach(([id, rows]) => (state[id] = { status: 'ok', data: rows }));
+      covers = await coverList;
     } catch (e) {
       console.error(e);
       setAll('error', { message: String(e) });
@@ -58,6 +61,7 @@ window.dash = (() => {
     calc: (id, o) => { calcs.push([id, o]); state[id] = { status: 'loading', data: [] }; },
     data: (id) => state[id] || { status: 'missing', data: [] },
     onData: (fn) => { subs.push(fn); try { fn(); } catch (e) { console.error(e); } },
+    cover: (id) => covers[id] || null,
     params: () => ({ ...params }),
     setParams: (p) => {
       params = { ...params, ...p };

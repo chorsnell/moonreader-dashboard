@@ -378,7 +378,7 @@
     fillMetrics('speed_overall');
     drawSpeedBooks();
     const avg = avgWpm();
-    const li = (r) => [r.title, `${r.author || ''} · ${r.hours} h timed`, `${r.wpm} wpm · ${vsAvg(r.vs_avg)}`, null];
+    const li = (r) => [r.title, `${r.author || ''} · ${r.hours} h timed`, `${r.wpm} wpm · ${vsAvg(r.vs_avg)}`, null, r.book_id];
     list('#fast', 'book_speed', li, (rows) => rows.slice(0, 10));
     list('#slow', 'book_speed', li, (rows) => rows.slice(-10).reverse());
     const gs = D('group_speed'), kind = (params().speed_kind) || 'genre';
@@ -435,6 +435,7 @@
       const books = el('div');
       entries.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
         const bk = el('div', 'dy-book'), t = el('div', 't');
+        bk.append(cover(r.book_id, r.title, r.genre, 'xs'));
         t.append(document.createTextNode(r.title));
         if (r.event) t.append(el('span', 'ev ' + r.event, r.event === 'finished' ? 'Finished' : r.event === 'reread' ? 'Started re-read' : 'Started'));
         if (r.author) { t.append(document.createElement('br')); t.append(el('small', null, r.author)); }
@@ -482,14 +483,53 @@
   function drawWeek() { const el = $('#ch-week'), rows = state(el, 'weekday'); if (rows) vbars(el, rows, (r) => r.weekday, (r) => r.avg_minutes, C[0], 'Avg minutes'); }
   function drawSpeed() { const el = $('#ch-speed'), rows = state(el, 'speed_year'); if (rows) vbars(el, rows, (r) => r.year, (r) => r.wpm, C[2], 'Words per minute'); }
 
+  // ---------- covers ----------
+  // the book's cover, or a tile with its first letter in the genre's colour
+  function cover(id, title, genre, size) {
+    const box = el('div', 'cv' + (size ? ' ' + size : '')), url = id && dash.cover ? dash.cover(id) : null;
+    box.style.setProperty('--cv', gColor(genre));
+    const blank = () => { box.replaceChildren(el('span', null, (String(title || '?').replace(/^[^\p{L}\p{N}]+/u, '')[0] || '?').toUpperCase())); box.classList.add('blank'); };
+    if (url) {
+      const img = new Image(); img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+      img.onerror = blank; img.src = url; box.append(img);
+    } else blank();
+    return box;
+  }
+
+  // "On the go": a list, or one book shown large when it's the only one
+  function onGo() {
+    const ul = $('#current'), rows = state(ul, 'current'); if (!rows) return;
+    if (rows.length !== 1) return list('#current', 'current', (r) => [r.title, r.author, 'last ' + d3.utcFormat('%-d %b')(pDate(r.last_read)), r.progress, r.id]);
+    const r = rows[0], li = el('li', 'go-one'), info = el('div', 'go-info'), p = r.progress || 0;
+    info.append(el('div', 'go-title', r.title));
+    info.append(el('div', 'go-sub', [r.author, r.series ? r.series + (r.series_no != null ? ' #' + r.series_no : '') : null].filter(Boolean).join(' · ')));
+    const prog = el('div', 'go-prog'), bar = el('div', 'pbar'), fill = el('i');
+    fill.style.width = Math.min(100, p) + '%'; fill.style.background = C[0]; bar.append(fill);
+    prog.append(el('b', null, (Math.round(p * 10) / 10) + '%'), bar);
+    info.append(prog);
+    const facts = el('dl', 'go-facts'), fact = (k, v) => { if (v) facts.append(el('dt', null, k), el('dd', null, v)); };
+    fact(r.read_no > 1 ? `Started re-read ${r.read_no}` : 'Started', r.start ? fDay(pDate(r.start)) : null);
+    fact('Last read', fDay(pDate(r.last_read)));
+    fact('Reading days', r.days_read ? fmt(r.days_read) : null);
+    fact('Time so far', r.hours ? `${fmt(r.hours)} h` : null);
+    // the rest, at the pace of this read so far
+    if (r.hours && p >= 5 && p < 100) fact('Left at this pace', `about ${fmt(Math.max(1, Math.round(r.hours * (100 - p) / p)))} h`);
+    const wpm = D('book_speed').status === 'ok' ? (D('book_speed').data.find((s) => s.book_id === r.id) || {}).wpm : null;
+    fact('Speed', wpm ? `${wpm} wpm` : null);
+    info.append(facts);
+    li.append(cover(r.id, r.title, r.genre, 'lg'), info);
+    ul.replaceChildren(li);
+  }
+
   // ---------- lists ----------
   function list(sel, id, item, pick) {
     const el = $(sel), all = state(el, id); if (!all) return;
     const rows = pick ? pick(all) : all;
     if (!rows.length) { el.replaceChildren(Object.assign(document.createElement('li'), { className: 'meta', textContent: 'Nothing here right now.' })); return; }
     el.replaceChildren(...rows.map((r) => {
-      const [title, sub, meta, prog] = item(r);
+      const [title, sub, meta, prog, book] = item(r);
       const li = document.createElement('li'), a = document.createElement('div'), b = document.createElement('div');
+      if (book) li.append(cover(book, r.title, r.genre));
       a.className = 'ttl'; a.append(document.createTextNode(title));
       const s = document.createElement('small'); s.textContent = sub; a.append(s);
       if (prog != null) { const p = document.createElement('div'), i = document.createElement('i'); p.className = 'pbar'; i.style.width = Math.min(100, prog) + '%'; i.style.background = C[0]; p.append(i); a.append(p); }
@@ -532,7 +572,8 @@
     const bs = D('book_speed'); speedMap = new Map(bs.status === 'ok' ? bs.data.map((r) => [r.book_id, r.wpm]) : []);
     const q = $('#lib-q').value.trim().toLowerCase(), gsel = $('#lib-genre').value, ssel = $('#lib-status').value, rr = $('#lib-reread').value;
     const n = table('#tbl-books', 'books', [
-      { f: 'title', render: txt('title') }, { f: 'author', render: txt('author'), cls: 'hide-sm' }, { f: 'genre', render: txt('genre'), cls: 'hide-sm' },
+      { f: 'title', render: (td, r) => { const w = el('div', 'tt'); w.append(cover(r.id, r.title, r.genre, 'sm'), el('span', null, r.title)); td.append(w); } },
+      { f: 'author', render: txt('author'), cls: 'hide-sm' }, { f: 'genre', render: txt('genre'), cls: 'hide-sm' },
       { f: 'last_read', render: txt('last_read', date) }, { f: 'times_read', num: true, render: txt('times_read') }, { f: 'hours', num: true, render: txt('hours', (v) => (v ? fmt(v) : '—')), cls: 'hide-sm' },
       { f: 'wpm', num: true, cls: 'hide-sm', get: (r) => speedOf(r.id), render: (td, r) => { const v = speedOf(r.id); td.textContent = v ?? '—'; } },
       { f: 'progress', num: true, render: txt('progress', pct) },
@@ -602,15 +643,15 @@
     syncRanges();
     if (tab === 'overview') {
       drawYears(); drawMonths();
-      list('#current', 'current', (r) => [r.title, r.author, 'last ' + d3.utcFormat('%-d %b')(pDate(r.last_read)), r.progress]);
-      list('#recent', 'recent', (r) => [(r.read_no > 1 ? '↻ ' : '') + r.title, r.author, fDay(pDate(r.end)) + (r.hours ? ` · ${r.hours} h` : ''), null]);
+      onGo();
+      list('#recent', 'recent', (r) => [(r.read_no > 1 ? '↻ ' : '') + r.title, r.author, fDay(pDate(r.end)) + (r.hours ? ` · ${r.hours} h` : ''), null, r.book_id]);
     } else if (tab === 'genres') { drawGenre(); drawSub(); drawGenreYear(); drawAuthors(); drawTables(); }
     else if (tab === 'diary') drawDiary();
     else if (tab === 'speed') drawSpeedTab();
     else if (tab === 'timeline') {
       drawHeat(); drawGantt(); drawWeek();
-      list('#big', 'big_reads', (r) => [r.title, r.author, `${r.hours} h · ${r.days_read} days`, null]);
-      list('#stalled', 'stalled', (r) => [r.title, r.author, 'last ' + fShort(pDate(r.last_read)), r.progress]);
+      list('#big', 'big_reads', (r) => [r.title, r.author, `${r.hours} h · ${r.days_read} days`, null, r.book_id]);
+      list('#stalled', 'stalled', (r) => [r.title, r.author, 'last ' + fShort(pDate(r.last_read)), r.progress, r.id]);
     } else drawTables();
   }
   dash.onData(redraw);

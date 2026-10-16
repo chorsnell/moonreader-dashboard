@@ -13,6 +13,7 @@ Environment:
   UPLOAD_TOKEN  turns on uploads and WebDAV sync; it is the password for both
   POLL_SECONDS  how often to look for new backups (default 30)
   KEEP_BACKUPS  how many backups to keep in inbox/ (default 5)
+  COVER_LOOKUP  set to "off" to stop looking up missing book covers on Open Library
 """
 import base64, email.utils, hmac, html, http.server, json, mimetypes, os, re, shutil, socketserver, subprocess, sys
 import threading, time, urllib.parse
@@ -23,6 +24,7 @@ WEB = os.path.join(APP, 'web')
 SEED = os.path.join(APP, 'seed')
 LIB = os.environ.get('LIBRARY', '/library')
 INBOX, DATA, DAV = os.path.join(LIB, 'inbox'), os.path.join(LIB, 'data'), os.path.join(LIB, 'dav')
+COVERS = os.path.join(LIB, 'covers')
 CATALOGUE = os.path.join(LIB, 'catalogue.json')
 LOG = os.path.join(LIB, 'update.log')
 PORT = int(os.environ.get('PORT', '8080'))
@@ -32,8 +34,10 @@ TOKEN = os.environ.get('UPLOAD_TOKEN', '').strip()
 BASE_PATH = '/' + os.environ.get('BASE_PATH', '').strip().strip('/') if os.environ.get('BASE_PATH', '').strip('/ ') else ''
 MAX_UPLOAD = 1024 * 1024 * 1024  # 1 GB
 SAFE_PREFIX = re.compile(r'^(/[A-Za-z0-9._~-]+)*$')
+COVER_NAME = re.compile(r'^([a-z0-9-]+)\.(jpg|png)$')
 
 wake = threading.Event()
+cover_lock = threading.Lock()
 status = {'last_build': None, 'last_error': None, 'building': False, 'last_sync': None}
 
 
@@ -48,7 +52,7 @@ def log(msg):
 
 
 def seed():
-    for d in (INBOX, DATA, DAV):
+    for d in (INBOX, DATA, DAV, COVERS):
         os.makedirs(d, exist_ok=True)
     if not os.path.exists(CATALOGUE):
         shutil.copy(os.path.join(SEED, 'catalogue.json'), CATALOGUE)
@@ -95,7 +99,7 @@ def fail(path, why):
 def build(path):
     status['building'] = True
     log(f'Rebuilding from {os.path.basename(path)}')
-    env = dict(os.environ, CATALOGUE=CATALOGUE, DATA_DIR=DATA, SYNC_DIR=DAV)
+    env = dict(os.environ, CATALOGUE=CATALOGUE, DATA_DIR=DATA, SYNC_DIR=DAV, COVERS_DIR=COVERS)
     try:
         r = subprocess.run([sys.executable, os.path.join(APP, 'update.py'), path], env=env,
                            capture_output=True, text=True, timeout=600)
@@ -103,6 +107,7 @@ def build(path):
             log('  ' + line)
         if r.returncode == 0:
             status['last_build'], status['last_error'] = time.strftime('%Y-%m-%d %H:%M:%S'), None
+            look_up_covers()
         else:
             lines = (r.stderr or r.stdout).strip().splitlines()
             fail(path, lines[-1] if lines else 'update failed')
@@ -118,6 +123,44 @@ def build(path):
             log(f'Removed old backup {os.path.relpath(old, LIB)}')
         except OSError:
             pass
+
+
+def look_up_covers():
+    """Find covers the backup didn't have, in the background (it takes a few minutes the first time)."""
+    if os.environ.get('COVER_LOOKUP', 'on').strip().lower() in ('off', 'no', 'false', '0'):
+        return
+    if not os.path.exists(os.path.join(DATA, 'books.json')) or not cover_lock.acquire(blocking=False):
+        return
+
+    def run():
+        try:
+            env = dict(os.environ, DATA_DIR=DATA, COVERS_DIR=COVERS)
+            r = subprocess.run([sys.executable, os.path.join(APP, 'covers.py')], env=env,
+                               capture_output=True, text=True, timeout=3600)
+            for line in (r.stdout + r.stderr).strip().splitlines():
+                log('  ' + line)
+        except Exception as e:  # noqa: BLE001
+            log(f'Cover lookup failed: {e}')
+        finally:
+            cover_lock.release()
+    threading.Thread(target=run, daemon=True).start()
+
+
+def cover_list():
+    """{book id: URL} for every saved cover; the mtime in the URL lets browsers cache them for good."""
+    out = {}
+    try:
+        names = os.listdir(COVERS)
+    except OSError:
+        return out
+    for f in names:
+        m = COVER_NAME.match(f)
+        if m and m.group(1) not in out:
+            try:
+                out[m.group(1)] = f'covers/{f}?v={int(os.path.getmtime(os.path.join(COVERS, f)))}'
+            except OSError:
+                pass
+    return out
 
 
 def watcher():
@@ -301,6 +344,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send_json(200, dict(uploads=bool(TOKEN), webdav=bool(TOKEN), has_data=has_data, meta=meta,
                                             building=status['building'], last_build=status['last_build'],
                                             last_error=status['last_error']), {'Cache-Control': 'no-store'})
+        if path == '/api/covers':
+            return self.send_json(200, cover_list(), {'Cache-Control': 'no-cache'})
+        if path.startswith('/covers/'):
+            name = path[len('/covers/'):]
+            if not COVER_NAME.match(name):
+                return self.send(404, 'Not found')
+            return self.file(os.path.join(COVERS, name), {'Cache-Control': 'public, max-age=31536000, immutable'})
         if path == '/upload':
             return self.send(302, '', extra={'Location': self.prefix() + '/#upload'})
         if path.startswith('/data/'):
@@ -563,6 +613,7 @@ def main():
     drop_privileges()
     seed()
     threading.Thread(target=watcher, daemon=True).start()
+    look_up_covers()  # carry on with any lookups an earlier run didn't finish
     log(f"Serving on port {PORT}{' under ' + BASE_PATH if BASE_PATH else ''}; "
         f"uploads and WebDAV {'on' if TOKEN else 'off (set UPLOAD_TOKEN to turn them on)'}")
     Server(('', PORT), Handler).serve_forever()
