@@ -11,8 +11,8 @@ services:
       PUID: 1000                 # owner of the files in ./library on the host
       PGID: 1000
       # Turns on the "Update data" button and WebDAV sync, and is the password for both.
-      # Generate one with:  openssl rand -hex 16
-      UPLOAD_TOKEN: ""
+      # Set it in .env (copy .env.example), so the secret stays out of this file.
+      UPLOAD_TOKEN: ${UPLOAD_TOKEN:-}
       # Only needed if your reverse proxy forwards /reading/... WITHOUT stripping the
       # prefix. With Traefik's stripPrefix (see examples/traefik.yml) leave it empty.
       BASE_PATH: ""
