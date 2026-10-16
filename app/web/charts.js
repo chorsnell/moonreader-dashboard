@@ -148,8 +148,8 @@
       .on('mouseleave', () => hideTip(tip));
   }
 
-  // ---------- date ranges (heatmap, timeline, diary) ----------
-  const RANGE_DEFAULTS = { heat: '12m', gantt: '24m', diary: '30d' };
+  // ---------- date ranges (heatmap, timeline, diary, speed over time) ----------
+  const RANGE_DEFAULTS = { heat: '12m', gantt: '24m', diary: '30d', speedtl: '12m' };
   const iso = (d) => d.toISOString().slice(0, 10);
   const params = () => (dash.params ? dash.params() || {} : {});
   const asOf = () => { const r = D('as_of'); return r.status === 'ok' && r.data[0] ? r.data[0].date : null; };
@@ -173,7 +173,7 @@
   function syncRanges() {
     document.querySelectorAll('.rng').forEach((box) => {
       const R = resolveRange(box.dataset.range); if (!R) return;
-      const sel = box.querySelector('select'), [f, t] = box.querySelectorAll('input');
+      const sel = box.querySelector('select'), [f, t] = box.querySelectorAll('input[type=date]');
       sel.value = R.preset; box.dataset.preset = R.preset;
       const lo = firstDay() || '', hi = asOf() || '';
       [f, t].forEach((inp) => { inp.min = lo; inp.max = hi; });
@@ -182,7 +182,7 @@
     });
   }
   document.querySelectorAll('.rng').forEach((box) => {
-    const key = box.dataset.range, sel = box.querySelector('select'), inputs = box.querySelectorAll('input');
+    const key = box.dataset.range, sel = box.querySelector('select'), inputs = box.querySelectorAll('input[type=date]');
     sel.addEventListener('change', () => {
       const ps = { [key + '_preset']: sel.value };
       if (sel.value === 'custom') { const R = resolveRange(key); if (R) { ps[key + '_start'] = R.start; ps[key + '_end'] = R.end; } }
@@ -346,6 +346,83 @@
     });
   }
 
+  // speed over time: a dot per book per day, a rolling average, and each book as a bar at its speed
+  const tlBooks = $('#speedtl-books');
+  tlBooks.addEventListener('change', () => dash.setParams({ speedtl_books: tlBooks.checked ? null : 0 }));
+  function drawSpeedTimeline() {
+    const el = $('#ch-speedtl'), all = state(el, 'speed_days'); if (!all) return;
+    const R = resolveRange('speedtl'); if (!R) return;
+    const showBooks = params().speedtl_books !== 0; tlBooks.checked = showBooks;
+    const rows = all.filter((r) => r.date >= R.start && r.date <= R.end);
+    const genres = genreOrder.filter((g) => rows.some((r) => r.genre === g));
+    legend($('#leg-speedtl'), genres.map((g) => [gColor(g), g]));
+    if (!rows.length) {
+      $('#speedtl-note').textContent = `${rangeLabel(R)}: no timed reading in this period (Moon+ logs minutes and words from 2019).`;
+      el.style.minHeight = '80px'; el.replaceChildren(Object.assign(document.createElement('div'), { className: 'dy-empty', textContent: 'No timed reading in this period.' })); return;
+    }
+    // rolling average over the last `win` days, weighted by minutes; reaches back before the range so the line starts filled
+    const win = R.days <= 120 ? 7 : R.days <= 800 ? 30 : 90;
+    const perDay = d3.rollup(all, (v) => ({ w: d3.sum(v, (r) => r.words), m: d3.sum(v, (r) => r.minutes) }), (r) => r.date);
+    const trend = d3.utcDay.range(pDate(R.start), d3.utcDay.offset(pDate(R.end), 1)).map((d) => {
+      let w = 0, m = 0;
+      for (let k = 0; k < win; k++) { const p = perDay.get(iso(d3.utcDay.offset(d, -k))); if (p) { w += p.w; m += p.m; } }
+      return { d, wpm: m >= 30 ? w / m : null };
+    });
+    const books = d3.groups(rows, (r) => r.book_id).map(([id, v]) => {
+      const w = d3.sum(v, (r) => r.words), m = d3.sum(v, (r) => r.minutes);
+      return { id, title: v[0].title, author: v[0].author, genre: v[0].genre, start: v[0].date, end: v[v.length - 1].date, days: v.length, m, wpm: w / m };
+    }).filter((b) => b.m >= 30);
+    const W = d3.sum(rows, (r) => r.words), M = d3.sum(rows, (r) => r.minutes), avg = avgWpm();
+    $('#speedtl-note').textContent = `${rangeLabel(R)}: ${fmt(Math.round(W / M))} wpm over ${fmt(Math.round(M / 60))} timed hours. Dots are a book on a day (bigger dots, longer sessions); the line is a ${win}-day rolling average${showBooks ? '; bars show each book from first to last timed day at its speed' : ''}. Hover for details.`;
+
+    const h = 340, { svg, w, tip } = svgIn(el, h), m = { t: 22, r: 10, b: 24, l: 34 };
+    el.style.minHeight = h + 'px';
+    const x = d3.scaleUtc([pDate(R.start), d3.utcDay.offset(pDate(R.end), 1)], [m.l, w - m.r]);
+    const vals = rows.map((r) => r.wpm).sort(d3.ascending);
+    const lo = Math.min(d3.quantile(vals, 0.01), d3.min(trend, (t) => t.wpm) ?? Infinity, avg ?? Infinity);
+    const hi = Math.max(d3.quantile(vals, 0.99), d3.max(trend, (t) => t.wpm) ?? 0, avg ?? 0);
+    const y = d3.scaleLinear([Math.max(0, lo - 20), hi + 20], [h - m.b, m.t]).nice();
+    const [y0, y1] = y.domain(), cy = (v) => y(Math.max(y0, Math.min(y1, v)));
+    axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickSize(-(w - m.l - m.r)));
+    svg.select('.domain').remove();
+    axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).ticks(Math.max(2, Math.floor(w / 90))).tickFormat(d3.utcFormat(R.days <= 120 ? '%-d %b' : '%b %y')).tickSizeOuter(0));
+    svg.append('text').attr('class', 'axl').attr('x', m.l + 4).attr('y', m.t - 8).text('words per minute');
+    if (avg) {
+      svg.append('line').attr('x1', m.l).attr('x2', w - m.r).attr('y1', y(avg)).attr('y2', y(avg)).attr('stroke', 'var(--cds-chart-reference, var(--color-fg-muted))').attr('stroke-dasharray', '4 3');
+      svg.append('text').attr('class', 'axl').attr('x', w - m.r).attr('y', y(avg) - 5).attr('text-anchor', 'end').text(`your average ${avg}`);
+    }
+    const mid = (s) => d3.utcHour.offset(pDate(s), 12);
+    const rad = d3.scaleSqrt([0, d3.max(rows, (r) => r.minutes)], [1.5, w < 500 ? 4 : 5.5]);
+    svg.append('g').selectAll('circle').data(rows).join('circle')
+      .attr('cx', (d) => x(mid(d.date))).attr('cy', (d) => cy(d.wpm)).attr('r', (d) => rad(d.minutes))
+      .attr('fill', (d) => gColor(d.genre)).attr('fill-opacity', showBooks ? 0.3 : 0.6);
+    svg.append('path').datum(trend).attr('fill', 'none').attr('stroke', 'var(--color-fg)').attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+      .attr('d', d3.line((t) => x(d3.utcHour.offset(t.d, 12)), (t) => y(t.wpm)).defined((t) => t.wpm != null).curve(d3.curveMonotoneX));
+    // hover anywhere: that day's reading and the rolling average
+    const byDate = d3.group(rows, (r) => r.date), tAt = new Map(trend.map((t) => [iso(t.d), t.wpm]));
+    svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', w - m.l - m.r).attr('height', h - m.t - m.b).attr('fill', 'transparent')
+      .on('mousemove', (e) => {
+        const day = iso(d3.utcDay.floor(x.invert(d3.pointer(e)[0]))), v = byDate.get(day) || [], t = tAt.get(day);
+        showTip(tip, el, e, (tp) => tipLines(tp, d3.utcFormat('%a %-d %b %Y')(pDate(day)),
+          [[null, `${win}-day average`, t != null ? Math.round(t) + ' wpm' : '—'], ...v.map((r) => [gColor(r.genre), r.title, `${r.wpm} wpm · ${mins(r.minutes)}`])]));
+      })
+      .on('mouseleave', () => hideTip(tip));
+    if (!showBooks) return;
+    const bx0 = (b) => x(pDate(b.start)), bx1 = (b) => x(d3.utcDay.offset(pDate(b.end), 1));
+    const g = svg.append('g').selectAll('g').data(books).join('g');
+    g.append('rect').attr('x', bx0).attr('y', (b) => cy(b.wpm) - 3).attr('height', 6).attr('rx', 3)
+      .attr('width', (b) => Math.max(4, bx1(b) - bx0(b))).attr('fill', (b) => gColor(b.genre))
+      .attr('stroke', 'var(--color-panel)').attr('stroke-width', 1);
+    g.append('text').attr('class', 'lbl-in').attr('x', bx0).attr('y', (b) => cy(b.wpm) - 7).text((b) => b.title)
+      .each(function (b) { if (this.getComputedTextLength() > bx1(b) - bx0(b) + 24) this.remove(); });
+    g.append('rect').attr('x', (b) => bx0(b) - 2).attr('y', (b) => cy(b.wpm) - 8).attr('height', 16)
+      .attr('width', (b) => Math.max(8, bx1(b) - bx0(b) + 4)).attr('fill', 'transparent')
+      .on('mousemove', (e, b) => showTip(tip, el, e, (tp) => tipLines(tp, b.title, [[gColor(b.genre), b.genre, ''], [null, 'Author', b.author || '—'],
+        [null, 'Speed', `${Math.round(b.wpm)} wpm${avg ? ` (${vsAvg(b.wpm / avg - 1)})` : ''}`], [null, 'Timed', `${mins(b.m)} over ${b.days} day${b.days === 1 ? '' : 's'}`],
+        [null, 'Dates', `${fDay(pDate(b.start))} – ${fDay(pDate(b.end))}`]])))
+      .on('mouseleave', () => hideTip(tip));
+  }
+
   // lollipops from your average to each group's speed
   function speedDots(el, rows, avg) {
     if (!rows.length) { el.style.minHeight = '80px'; el.replaceChildren(Object.assign(document.createElement('div'), { className: 'dy-empty', textContent: 'Not enough timed reading yet.' })); return; }
@@ -376,6 +453,7 @@
   kindSel.addEventListener('change', () => dash.setParams({ speed_kind: kindSel.value }));
   function drawSpeedTab() {
     fillMetrics('speed_overall');
+    drawSpeedTimeline();
     drawSpeedBooks();
     const avg = avgWpm();
     const li = (r) => [r.title, `${r.author || ''} · ${r.hours} h timed`, `${r.wpm} wpm · ${vsAvg(r.vs_avg)}`, null, r.book_id];

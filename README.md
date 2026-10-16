@@ -6,7 +6,7 @@ It reads the statistics Moon+ keeps inside its backups (every book, every day yo
 
 - **Overview:** this year against last year, streaks, minutes per day, what's on the go (shown large, with time left at your current pace, when it's a single book), recently finished, books per year and hours per month.
 - **Genres & authors:** genre and subgenre mix, how it shifts over the years, top authors and series progress.
-- **Speed:** your words-per-minute for every book, showing your page turners and your slow reads, plus speed by genre, subgenre and author against your average, and by year.
+- **Speed:** your words-per-minute over time, with the books you were reading laid over it (any date range), plus your words-per-minute for every book, showing your page turners and your slow reads, plus speed by genre, subgenre and author against your average, and by year.
 - **Timeline & habits:** a day-by-day heatmap and a "what you read when" timeline, each with its own date range (presets or custom dates), plus weekday rhythm, biggest reads and books left unfinished.
 - **Diary:** a day-by-day log for any period showing which books you read, minutes, words, and progress from one day to the next, with started and finished markers. Click any heatmap square to jump to that day.
 - **Library:** every book and every re-read, searchable and sortable.

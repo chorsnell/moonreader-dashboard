@@ -275,6 +275,16 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
         <div class="sub"><span data-source="speed_overall" data-field="value" data-where="metric=slowest_wpm">—</span> wpm</div></div>
     </div>
 
+    <div class="rh-card wide" id="card-speed-time"><div class="card-head"><h2>Speed over time</h2>
+      <div class="rng" id="rng-speedtl" data-range="speedtl">
+        <select aria-label="Period"><option value="30d">Last 30 days</option><option value="90d">Last 3 months</option><option value="12m">Last 12 months</option><option value="ytd">This year</option><option value="ly">Last year</option><option value="24m">Last 2 years</option><option value="all">All time</option><option value="custom">Custom…</option></select>
+        <label>From <input type="date" aria-label="From"></label><label>To <input type="date" aria-label="To"></label>
+        <label class="tgl"><input type="checkbox" id="speedtl-books" checked> Books</label>
+      </div></div>
+      <p class="note" id="speedtl-note">Words per minute on each day you read. Dots are a book on a day (bigger dots, longer sessions), the line is your rolling average and the bars show each book at its speed.</p>
+      <div class="legend" id="leg-speedtl"></div>
+      <div class="chart tall" id="ch-speedtl" data-source="speed_days"></div></div>
+
     <div class="rh-card wide" id="card-speed-books"><h2>Every book by speed</h2>
       <p class="note">Words per minute for each book with 2+ hours of timed reading (Moon+ logs this from 2019). Right of the line is faster than your average. Bigger dots took longer. Hover for details.</p>
       <div class="legend" id="leg-speed"></div>

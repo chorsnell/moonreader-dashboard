@@ -306,3 +306,14 @@ dash.calc('group_speed', {
       .sort((x, y) => y.wpm - x.wpm);
   },
 });
+
+dash.calc('speed_days', {
+  inputs: ['daily'], title: 'Speed per day',
+  description: 'Words per minute for each book on each timed day, for the speed-over-time chart.',
+  fn: (daily) => {
+    const ok = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
+    return daily.filter(ok).map((d) => ({ date: d.date, book_id: d.book_id, title: d.title, author: d.author, genre: d.genre,
+      minutes: d.minutes, words: d.words, wpm: Math.round(d.words / d.minutes) }))
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+  },
+});
