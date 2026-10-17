@@ -13,7 +13,7 @@ import { servedPrices } from '../prices/prices';
 import { writeDemoBackup } from './demo-backup';
 import { BOOKS, fileName, ISBN } from './demo-books';
 import { simulateHighlights } from './demo-highlights';
-import { demoMediaCatalogue, simulateNetflix } from './demo-media';
+import { demoMediaCatalogue, simulateAudiobookshelf, simulateNetflix } from './demo-media';
 import { demoMetadata } from './demo-metadata';
 import { demoPrices } from './demo-prices';
 import { DemoModule } from './demo.module';
@@ -69,7 +69,8 @@ export async function buildDemoLibrary(
 
 /**
  * TV and film, as a Netflix export of two profiles (the demo's own is "You"), with a media
- * catalogue for genres and episode counts, and a Netflix plan with a price rise halfway.
+ * catalogue for genres and episode counts, and a Netflix plan with a price rise halfway; and a
+ * few audiobooks, as the sessions an Audiobookshelf pull would have cached.
  */
 async function writeDemoMedia(
   lib: string,
@@ -90,6 +91,11 @@ async function writeDemoMedia(
     simulateNetflix(seed, firstDay, days, readingMinutes),
   );
   await writeFile(join(media, 'catalogue.json'), JSON.stringify(demoMediaCatalogue(), null, 1));
+  await mkdir(join(media, 'cache'), { recursive: true });
+  await writeFile(
+    join(media, 'cache', 'audiobookshelf.json'),
+    JSON.stringify(simulateAudiobookshelf(seed, firstDay, days)),
+  );
   const month = (d: number) => new Date(d * DAY_MS).toISOString().slice(0, 7);
   const half = firstDay + Math.floor(days / 2);
   const settings = {

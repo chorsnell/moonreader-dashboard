@@ -21,6 +21,8 @@ export interface ExternalIds {
   imdb_id?: string | null;
   tvdb_id?: number | null;
   plex_rating_key?: string | null;
+  isbn?: string | null;
+  asin?: string | null;
 }
 
 /** One sitting (or one dated event) from any source. The builder never knows where it came from. */
@@ -76,7 +78,7 @@ export interface ItemMeta {
   seasons?: Record<string, SeasonMeta>;
   /** A poster path the build can fetch, from TMDB (the default) or through Tautulli. */
   poster?: string | null;
-  poster_from?: 'tmdb' | 'tautulli';
+  poster_from?: 'tmdb' | 'tautulli' | 'audiobookshelf';
   ext?: ExternalIds;
 }
 

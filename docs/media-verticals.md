@@ -646,3 +646,48 @@ is the whole string. `NetflixViewingHistory.csv` (`Title, Date`) maps the same w
 
 Not doing: scraping Netflix or Audible web pages, unofficial APIs that need the owner's
 password, and OPML-only podcast "history".
+
+## 7. Status and how to add a source
+
+What shipped (EP-8), and where it differs from the plan above:
+
+- **BOO-49 Netflix**: `src/media/` core, the five files plus `media_meta.json`, upload of the CSV
+  or the export's zip, profile opt-in, optional TMDB. Differences: media settings live in
+  `library/media/settings.json`, not `settings.json` (the access settings rewrite that file with
+  only their own keys); a one-profile export imports without asking; the media catalogue also
+  takes `episodes`, `runtime` and `book` as manual metadata.
+- **BOO-48 Plex via Tautulli**: `get_history` (paged, then incremental with `after=`), cached
+  `get_metadata` / `get_children_metadata`, posters through the image proxy. Plex-direct is not
+  built: it has no time watched.
+- **BOO-50 TV & film views**: `web/features/tv.js` (tab, `#show/` and `#film/` pages),
+  `dash.reuse` in `runtime.js` (and in the server's page sandbox), `show` / `film` link kinds.
+  Streaming subscriptions are a media setting served as `media_money.json`, which the privacy
+  settings treat as money. No `creator` link kind yet.
+- **BOO-51 Cross-media**: `web/features/watching-and-reading.js`: hours by medium, TV weeks vs
+  reading weeks, book to screen (title match, or `book` in the media catalogue), a year-page
+  card. The combined year in review is a year-page card rather than Wrapped slides.
+- **BOO-52 Audiobooks**: Audiobookshelf listening sessions (books only), counted as listening in
+  the cross-media views. Podcast sessions are skipped for now, and there is no audiobook tab yet.
+
+Adding the next source (Spotify extended history, Last.fm, Trakt, Letterboxd, Libby, Steam)
+takes the same four steps Audiobookshelf did:
+
+1. **`src/media/sources/<source>.ts`**: turn the source's rows into `MediaEvent`s (mapping
+   tables in section 5) and, if it knows more than titles, into `ItemMeta` keyed by
+   `metaKey(event)` (`<media>:<source_key>`). Unit-test it with a few real-shaped rows.
+2. **Getting the rows**: an upload goes through `PUT /upload?source=<source>` into
+   `library/media/inbox/<source>/` (see `media-inbox.service.ts`); an API source gets a client
+   that caches what it pulled in `library/media/cache/<source>.json`, written only when something
+   changed (see `sources/tautulli.client.ts`, `sources/audiobookshelf.ts`). Pulls run from
+   `MediaService` on the `MEDIA_POLL_MINUTES` timer.
+3. **`MediaBuildService.build`**: read the inbox or cache, push the events, merge the metadata,
+   and add the file to `inputsChanged()` so a change triggers a rebuild. Settings go in
+   `MediaSettings` (env defaults in `app.config.ts`) and the admin's "Other media" section.
+4. **Views**: new media land in `media_*.json` with their `media` value; `x_all_daily` takes them
+   into the cross-media views (map the medium in `kindOf`). A dedicated tab is one more feature
+   script, built like `tv.js` with adapter calcs and `dash.reuse`.
+
+For music the model needs nothing new: an album is the item, a track the part, the album artist
+the creator. Podcasts: the show is the item and an episode the part, exactly like a TV season
+(generalise the `tv` grouping path in `media-history.ts` to any medium with parts). Games
+(Steam) need a daily snapshot job before they produce events.
