@@ -1,0 +1,6 @@
+/* series pull & gateway books */
+.rh-list li.sp-item{justify-content:flex-start;align-items:center}
+.sp-item .ttl{display:flex;flex-direction:column;gap:2px}
+.sp-item .sp-sub,.sp-item small{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.sp-item .meta{white-space:normal;text-align:right;max-width:45%}
+.sp-chart{min-height:90px}

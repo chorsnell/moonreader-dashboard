@@ -217,25 +217,61 @@
     hbars(el, rows, { field: 'author', value: (r) => r.finished, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.author, [[null, 'Books finished', d.finished], [null, 'Hours', fmt(d.hours)]]) });
   }
 
-  function drawGenreYear() {
-    const el = $('#ch-gy'), rows = state(el, 'genre_year'); if (!rows) return;
-    const years = [...new Set(rows.map((r) => r.year))].sort();
-    const genres = genreOrder.filter((g) => rows.some((r) => r.genre === g));
+  // a streamgraph of hours per genre per month, lightly smoothed
+  function drawGenreStream() {
+    const el = $('#ch-gy'), rows = state(el, 'genre_month'); if (!rows) return;
+    if (!rows.length) { el.replaceChildren(Object.assign(document.createElement('div'), { className: 'fail', textContent: 'No reading yet' })); return; }
+    const mDate = (m) => pDate(m + '-01'), mid = (d) => d3.utcDay.offset(d, 14);
+    const months = d3.utcMonths(d3.utcMonth.offset(mDate(rows[0].month), -1), d3.utcMonth.offset(mDate(rows[rows.length - 1].month), 2));
+    const genres = [...genreOrder.filter((g) => rows.some((r) => r.genre === g)), ...new Set(rows.map((r) => r.genre).filter((g) => !genreOrder.includes(g)))];
     genreLegend($('#leg-gy'), genres);
-    const tbl = years.map((year) => { const o = { year, total: 0 }; genres.forEach((g) => { o[g] = (rows.find((r) => r.year === year && r.genre === g) || {}).reads || 0; o.total += o[g]; }); return o; }).filter((o) => o.total > 0);
-    const series = d3.stack().keys(genres).offset(d3.stackOffsetExpand)(tbl);
-    const h = 260, { svg, w, tip } = svgIn(el, h), m = { t: 6, r: 4, b: 24, l: 38 };
-    const x = d3.scaleBand(tbl.map((r) => r.year), [m.l, w - m.r]).padding(0.2);
-    const y = d3.scaleLinear([0, 1], [h - m.b, m.t]);
-    axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(4, '.0%').tickSize(-(w - m.l - m.r)));
-    svg.select('.domain').remove();
-    const every = Math.ceil(tbl.length / Math.max(1, Math.floor((w - m.l) / 44)));
-    axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).tickValues(tbl.filter((r, i) => i % every === 0).map((r) => r.year)).tickFormat(String).tickSize(0).tickPadding(8));
-    svg.append('g').selectAll('g').data(series).join('g').attr('fill', (s) => gColor(s.key))
-      .selectAll('rect').data((s) => s).join('rect').attr('x', (d) => x(d.data.year)).attr('width', x.bandwidth()).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1]) - (d[0] > 0 ? MARK.gap : 0)));
-    svg.append('g').selectAll('rect').data(tbl).join('rect').attr('class', 'hit').attr('x', (d) => x(d.year)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent').call(links, 'year', (d) => d.year)
-      .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, `${d.year} · ${d.total} finished`, genres.filter((g) => d[g]).map((g) => [gColor(g), g, d[g]]))))
-      .on('mouseleave', () => hideTip(tip));
+    const at = new Map(rows.map((r) => [r.month + '|' + r.genre, r.hours]));
+    // the first and last months are empty padding, so streams taper to a point
+    const raw = months.map((d, i) => { const m = iso(d).slice(0, 7), o = { date: mid(d), month: m }; genres.forEach((g) => (o[g] = i === 0 || i === months.length - 1 ? 0 : at.get(m + '|' + g) || 0)); return o; });
+    const tbl = raw.map((o, i) => { const s = { ...o }; genres.forEach((g) => { const a = raw[i - 1], b = raw[i + 1]; s[g] = i === 0 || i === raw.length - 1 ? 0 : ((a ? a[g] : 0) + 2 * o[g] + (b ? b[g] : 0)) / 4; }); return s; });
+    const series = d3.stack().keys(genres).offset(d3.stackOffsetWiggle).order(d3.stackOrderInsideOut)(tbl);
+    const phone = el.clientWidth < 520, h = phone ? 240 : 320, { svg, w, tip } = svgIn(el, h), m = { t: 26, r: 18, b: 26, l: 6 };
+    svg.attr('class', 'gs');
+    const x = d3.scaleUtc([raw[0].date, raw[raw.length - 1].date], [m.l, w - m.r]);
+    const y = d3.scaleLinear([d3.min(series, (s) => d3.min(s, (d) => d[0])), d3.max(series, (s) => d3.max(s, (d) => d[1]))], [h - m.b, m.t]);
+    const years = d3.utcYears(d3.utcYear.ceil(raw[0].date), raw[raw.length - 1].date);
+    svg.append('g').selectAll('line').data(years).join('line').attr('class', 'gs-yr').attr('x1', x).attr('x2', x).attr('y1', m.t).attr('y2', h - m.b);
+    const every = Math.ceil(years.length / Math.max(1, Math.floor(w / 60)));
+    const ax = svg.append('g').attr('transform', `translate(0,${h - m.b})`);
+    axis(ax, d3.axisBottom(x).tickValues(years.filter((d, i) => i % every === 0)).tickFormat(d3.utcFormat('%Y')).tickSize(0).tickPadding(8));
+    ax.select('.domain').remove();
+    ax.selectAll('.tick text').attr('text-anchor', 'start').attr('dx', 4).each(function (d) { link(this, 'year', d.getUTCFullYear()); });
+    const area = d3.area().x((d) => x(d.data.date)).y0((d) => y(d[0])).y1((d) => y(d[1])).curve(d3.curveBasis);
+    const flat = d3.area().x((d) => x(d.data.date)).y0((d) => y((d[0] + d[1]) / 2)).y1((d) => y((d[0] + d[1]) / 2)).curve(d3.curveBasis);
+    svg.append('g').selectAll('path').data(series).join('path').attr('class', 'gs-stream').call(grow, 'd', flat, area).attr('fill', (s) => gColor(s.key)).call(links, 'genre', (s) => s.key);
+    // names inside the streams, where there's room, in white or near-black, whichever reads better
+    const cs = getComputedStyle(document.documentElement);
+    const inkOn = (c) => { const v = d3.color(c.startsWith('var(') ? cs.getPropertyValue(c.slice(4, -1)).trim() : c); if (!v) return '#fff'; const { r, g, b } = v.rgb(); return 0.299 * r + 0.587 * g + 0.114 * b > 135 ? '#1a1816' : '#fff'; };
+    const lbl = svg.append('g').attr('class', 'gs-lbls');
+    series.forEach((s) => {
+      const th = s.map((d) => y(d[0]) - y(d[1])), i = d3.maxIndex(th);
+      if (th[i] < 15) return;
+      let a = i, b = i; while (a > 0 && th[a - 1] >= 13) a--; while (b < th.length - 1 && th[b + 1] >= 13) b++;
+      const t = lbl.append('text').attr('class', 'gs-lbl').attr('x', x(s[i].data.date)).attr('y', (y(s[i][0]) + y(s[i][1])) / 2).attr('dy', '0.35em').attr('fill', inkOn(gColor(s.key))).text(s.key);
+      const tw = t.node().getComputedTextLength(), room = x(s[b].data.date) - x(s[a].data.date);
+      if (tw + 10 > room) { t.remove(); return; }
+      const cx = Math.min(Math.max(x(s[i].data.date), x(s[a].data.date) + tw / 2 + 5, m.l + tw / 2 + 2), x(s[b].data.date) - tw / 2 - 5, w - m.r - tw / 2 - 2);
+      t.attr('x', cx);
+    });
+    // scale: a bar for a round number of hours
+    const per = d3.tickStep(0, (y.domain()[1] - y.domain()[0]) / 4, 1), bh = y(0) - y(per);
+    const sc = svg.append('g').attr('class', 'gs-scale').attr('transform', `translate(${w - 5},${m.t})`);
+    sc.append('line').attr('y2', bh); sc.append('line').attr('x1', -3).attr('x2', 3); sc.append('line').attr('x1', -3).attr('x2', 3).attr('y1', bh).attr('y2', bh);
+    sc.append('text').attr('class', 'axl').attr('x', 4).attr('y', -9).attr('text-anchor', 'end').text(`${fmt(per)} h a month`);
+    // hover: a guide and that month's hours by genre
+    const guide = svg.append('line').attr('class', 'gs-guide').attr('y1', m.t).attr('y2', h - m.b).style('display', 'none');
+    svg.on('mousemove', (e) => {
+      const [px] = d3.pointer(e, svg.node()), i = Math.max(1, Math.min(raw.length - 2, d3.leastIndex(raw, (d) => Math.abs(x(d.date) - px))));
+      const o = raw[i], tot = d3.sum(genres, (g) => o[g]);
+      guide.style('display', null).attr('x1', x(o.date)).attr('x2', x(o.date));
+      const hov = e.target.__data__ && e.target.__data__.key;
+      showTip(tip, el, e, (t) => tipLines(t, `${d3.utcFormat('%B %Y')(mDate(o.month))} · ${fmt(Math.round(tot * 10) / 10)} h`, genres.filter((g) => o[g] > 0).sort((a, b) => o[b] - o[a]).map((g) => [gColor(g), g === hov ? '▸ ' + g : g, fmt(o[g]) + ' h'])));
+    }).on('mouseleave', () => { guide.style('display', 'none'); hideTip(tip); });
   }
 
   // ---------- date ranges (heatmap, timeline, diary, speed over time) ----------
@@ -1294,7 +1330,7 @@
       drawYears(); drawMonths();
       onGo();
       list('#recent', 'recent', (r) => ({ title: (r.read_no > 1 ? '↻ ' : '') + r.title, meta: fDay(pDate(r.end)) + (r.hours ? ` · ${r.hours} h` : '') }));
-    } else if (tab === 'genres') { drawGenre(); drawSub(); drawGenreYear(); drawAuthors(); drawTables(); }
+    } else if (tab === 'genres') { drawGenre(); drawSub(); drawGenreStream(); drawAuthors(); drawTables(); }
     else if (tab === 'diary') drawDiary();
     else if (tab === 'speed') drawSpeedTab();
     else if (tab === 'checks') drawChecks();

@@ -12,6 +12,7 @@
 
   function item(h) {
     const li = el('li', 'hl-item hl-k-' + h.kind);
+    li.id = 'hl-' + h.id;
     if (h.colour) li.style.setProperty('--hl', h.colour);
     if (h.kind === 'bookmark') li.append(el('div', 'hl-mark', h.text));
     else li.append(el('blockquote', 'hl-text', h.text));

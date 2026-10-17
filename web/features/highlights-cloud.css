@@ -1,0 +1,3 @@
+/* highlight word clouds (book and author pages) */
+.wc-word{cursor:default;transition:fill-opacity .15s}
+.wc-word:hover{fill-opacity:1;text-decoration:underline;text-decoration-thickness:1px}
