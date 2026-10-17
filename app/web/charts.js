@@ -293,7 +293,7 @@
         const xe = x1(d) + 5, len = this.getComputedTextLength();
         if (xe + len < w) t.attr('x', xe); else if (x0(d) - 5 - len > 0) t.attr('x', x0(d) - 5).attr('text-anchor', 'end'); else t.attr('x', x0(d) + 4).style('fill', 'var(--color-fg)');
       });
-    g.append('rect').attr('width', w).attr('height', rh).attr('fill', 'transparent')
+    g.append('rect').attr('width', w).attr('height', rh).attr('fill', 'transparent').attr('data-book', (d) => d.book_id)
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.title, [[gColor(d.genre), d.genre, ''], [null, 'From', fDay(pDate(d.start))], [null, 'To', fDay(pDate(d.end))], [null, 'Reached', d.progress != null ? d.progress + '%' : '—']])))
       .on('mouseleave', () => hideTip(tip));
   }
@@ -340,7 +340,7 @@
       svg.append('text').attr('class', 'axl').attr('x', m.l - 10).attr('y', l.top + l.h / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text(l.g);
       svg.append('g').selectAll('circle').data(l.dots).join('circle')
         .attr('cx', (d) => d.x).attr('cy', (d) => l.mid + d.y).attr('r', (d) => d.r)
-        .attr('fill', gColor(l.g)).attr('fill-opacity', 0.75).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1)
+        .attr('fill', gColor(l.g)).attr('fill-opacity', 0.75).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1).attr('data-book', (d) => d.book_id)
         .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.title, [[gColor(d.genre), d.subgenre || d.genre, ''], [null, 'Author', d.author || '—'], [null, 'Speed', `${d.wpm} wpm (${vsAvg(d.vs_avg)})`], [null, 'Timed', `${d.hours} h over ${d.days} days`]])))
         .on('mouseleave', () => hideTip(tip));
     });
@@ -416,7 +416,7 @@
     g.append('text').attr('class', 'lbl-in').attr('x', bx0).attr('y', (b) => cy(b.wpm) - 7).text((b) => b.title)
       .each(function (b) { if (this.getComputedTextLength() > bx1(b) - bx0(b) + 24) this.remove(); });
     g.append('rect').attr('x', (b) => bx0(b) - 2).attr('y', (b) => cy(b.wpm) - 8).attr('height', 16)
-      .attr('width', (b) => Math.max(8, bx1(b) - bx0(b) + 4)).attr('fill', 'transparent')
+      .attr('width', (b) => Math.max(8, bx1(b) - bx0(b) + 4)).attr('fill', 'transparent').attr('data-book', (b) => b.id)
       .on('mousemove', (e, b) => showTip(tip, el, e, (tp) => tipLines(tp, b.title, [[gColor(b.genre), b.genre, ''], [null, 'Author', b.author || '—'],
         [null, 'Speed', `${Math.round(b.wpm)} wpm${avg ? ` (${vsAvg(b.wpm / avg - 1)})` : ''}`], [null, 'Timed', `${mins(b.m)} over ${b.days} day${b.days === 1 ? '' : 's'}`],
         [null, 'Dates', `${fDay(pDate(b.start))} – ${fDay(pDate(b.end))}`]])))
@@ -453,6 +453,8 @@
   kindSel.addEventListener('change', () => dash.setParams({ speed_kind: kindSel.value }));
   function drawSpeedTab() {
     fillMetrics('speed_overall');
+    const bsp = D('book_speed').status === 'ok' ? D('book_speed').data : [];
+    linkTo($('#kpi-fastest'), bsp.length ? bsp[0].book_id : null); linkTo($('#kpi-slowest'), bsp.length ? bsp[bsp.length - 1].book_id : null);
     drawSpeedTimeline();
     drawSpeedBooks();
     const avg = avgWpm();
@@ -512,7 +514,7 @@
       dc.append(el('b', null, d3.utcFormat('%a %-d')(d)), el('span', null, total ? mins(total) : '—'));
       const books = el('div');
       entries.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
-        const bk = el('div', 'dy-book'), t = el('div', 't');
+        const bk = linkTo(el('div', 'dy-book'), r.book_id), t = el('div', 't');
         bk.append(cover(r.book_id, r.title, r.genre, 'xs'));
         t.append(document.createTextNode(r.title));
         if (r.event) t.append(el('span', 'ev ' + r.event, r.event === 'finished' ? 'Finished' : r.event === 'reread' ? 'Started re-read' : 'Started'));
@@ -578,7 +580,7 @@
   function onGo() {
     const ul = $('#current'), rows = state(ul, 'current'); if (!rows) return;
     if (rows.length !== 1) return list('#current', 'current', (r) => [r.title, r.author, 'last ' + d3.utcFormat('%-d %b')(pDate(r.last_read)), r.progress, r.id]);
-    const r = rows[0], li = el('li', 'go-one'), info = el('div', 'go-info'), p = r.progress || 0;
+    const r = rows[0], li = linkTo(el('li', 'go-one'), r.id), info = el('div', 'go-info'), p = r.progress || 0;
     info.append(el('div', 'go-title', r.title));
     info.append(el('div', 'go-sub', [r.author, r.series ? r.series + (r.series_no != null ? ' #' + r.series_no : '') : null].filter(Boolean).join(' · ')));
     const prog = el('div', 'go-prog'), bar = el('div', 'pbar'), fill = el('i');
@@ -607,7 +609,7 @@
     el.replaceChildren(...rows.map((r) => {
       const [title, sub, meta, prog, book] = item(r);
       const li = document.createElement('li'), a = document.createElement('div'), b = document.createElement('div');
-      if (book) li.append(cover(book, r.title, r.genre));
+      if (book) { li.append(cover(book, r.title, r.genre)); linkTo(li, book); }
       a.className = 'ttl'; a.append(document.createTextNode(title));
       const s = document.createElement('small'); s.textContent = sub; a.append(s);
       if (prog != null) { const p = document.createElement('div'), i = document.createElement('i'); p.className = 'pbar'; i.style.width = Math.min(100, prog) + '%'; i.style.background = C[0]; p.append(i); a.append(p); }
@@ -627,6 +629,7 @@
     const key = tblEl.dataset.rowKey;
     body.replaceChildren(...rows.map((row) => {
       const tr = document.createElement('tr'); tr.dataset.key = row[key];
+      if (opts.book) linkTo(tr, opts.book(row));
       cols.forEach((c) => { const td = document.createElement('td'); if (c.num) td.className = 'n'; if (c.cls) td.className += ' ' + c.cls; c.render(td, row); tr.append(td); });
       return tr;
     }));
@@ -655,7 +658,7 @@
       { f: 'last_read', render: txt('last_read', date) }, { f: 'times_read', num: true, render: txt('times_read') }, { f: 'hours', num: true, render: txt('hours', (v) => (v ? fmt(v) : '—')), cls: 'hide-sm' },
       { f: 'wpm', num: true, cls: 'hide-sm', get: (r) => speedOf(r.id), render: (td, r) => { const v = speedOf(r.id); td.textContent = v ?? '—'; } },
       { f: 'progress', num: true, render: txt('progress', pct) },
-    ], { filter: (b) => (!q || [b.title, b.author, b.series].join(' ').toLowerCase().includes(q)) && (!gsel || b.genre === gsel) && (!ssel || b.status === ssel) && (!rr || b.times_read > 1) });
+    ], { book: (r) => r.id, filter: (b) => (!q || [b.title, b.author, b.series].join(' ').toLowerCase().includes(q)) && (!gsel || b.genre === gsel) && (!ssel || b.status === ssel) && (!rr || b.times_read > 1) });
     const total = D('books').status === 'ok' ? D('books').data.length : 0;
     $('#lib-count').textContent = n == null ? '' : `Showing ${fmt(n)} of ${fmt(total)} books.`;
     if (D('books').status === 'ok' && $('#lib-genre').options.length === 1) {
@@ -664,7 +667,7 @@
     table('#tbl-rereads', 'rereads', [
       { f: 'title', render: txt('title') }, { f: 'read_no', num: true, render: txt('read_no') }, { f: 'start', render: txt('start', date) }, { f: 'end', render: txt('end', date) },
       { f: 'days_read', num: true, render: txt('days_read'), cls: 'hide-sm' }, { f: 'hours', num: true, render: txt('hours', (v) => (v ? v : '—')), cls: 'hide-sm' }, { f: 'progress', num: true, render: txt('progress', pct) },
-    ]);
+    ], { book: (r) => r.book_id });
     table('#tbl-series', 'series', [
       { f: 'series', render: txt('series') }, { f: 'author', render: txt('author'), cls: 'hide-sm' }, { f: 'finished', num: true, render: (td, r) => { td.textContent = `${r.finished} of ${r.books}`; } }, { f: 'hours', num: true, render: txt('hours', fmt) },
     ]);
@@ -702,14 +705,209 @@
     }
   }
 
+  // ---------- one book ----------
+  // any element with data-book opens that book's page
+  function linkTo(node, id) {
+    if (!node) return node;
+    if (id) {
+      node.setAttribute('data-book', id);
+      if (!(node instanceof SVGElement)) { node.tabIndex = 0; node.setAttribute('role', 'link'); }
+    } else ['data-book', 'role', 'tabindex'].forEach((a) => node.removeAttribute(a));
+    return node;
+  }
+  let bookId = null, bookRead = null, prevTab = 'overview';
+  function openBook(id) {
+    if (!id) return;
+    if (tab !== 'book') prevTab = tab;
+    if (id !== bookId) bookRead = null;
+    bookId = id;
+    try { history.pushState({ book: id, from: prevTab }, '', '#book/' + encodeURIComponent(id)); } catch (e) { /* sandboxed */ }
+    show('book', false);
+    window.scrollTo(0, 0);
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-book],[data-day],[data-read]');
+    if (!t || e.target.closest('button,input,select,a')) return;
+    if (t.hasAttribute('data-book')) openBook(t.getAttribute('data-book'));
+    else if (t.hasAttribute('data-day')) openDiary(t.getAttribute('data-day'));
+    else { bookRead = +t.getAttribute('data-read'); drawBook(); $('#card-bk-days').scrollIntoView({ block: 'nearest' }); }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !e.target.hasAttribute || !e.target.hasAttribute('data-book')) return;
+    openBook(e.target.getAttribute('data-book'));
+  });
+  $('#bk-back').addEventListener('click', () => { if (history.state && history.state.book) history.back(); else show(prevTab); });
+  $('#bk-read').addEventListener('change', (e) => { bookRead = +e.target.value; drawBook(); });
+
+  const okDay = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
+  const speedFrom = (rows) => { const v = rows.filter(okDay), m = d3.sum(v, (d) => d.minutes); return m >= 30 ? { wpm: d3.sum(v, (d) => d.words) / m, m } : null; };
+  const span = (a, b) => d3.utcDay.count(pDate(a), pDate(b)) + 1;
+  const plural = (n, w) => `${fmt(n)} ${w}${n === 1 ? '' : 's'}`;
+  const progStep = (d) => (d.progress == null ? '—' : d.prev_progress != null && d.prev_progress !== d.progress ? `${pct(d.prev_progress)} → ${pct(d.progress)}` : pct(d.progress));
+  const STATUS = { finished: 'Finished', in_progress: 'In progress', not_started: 'Not started', unknown: 'Progress unknown' };
+
+  function drawBook() {
+    const head = $('#bk-head'), books = state(head, 'books'); if (!books) return;
+    const b = books.find((x) => x.id === bookId);
+    ['#bk-kpis', '#card-bk-days', '#card-bk-reads', '#card-bk-related', '#card-bk-log'].forEach((s) => ($(s).hidden = !b));
+    if (!b) { document.title = 'Reading history'; head.replaceChildren(el('div', 'dy-empty', 'That book isn’t in your library.')); return; }
+    document.title = `${b.title} · Reading history`;
+    const reads = (D('reads').data || []).filter((r) => r.book_id === b.id).sort((x, y) => x.read_no - y.read_no);
+    const days = (D('diary').status === 'ok' ? D('diary').data : []).filter((d) => d.book_id === b.id);
+    const latest = reads[reads.length - 1];
+
+    // header: cover, title, author, series, genre, status and progress
+    const info = el('div', 'go-info');
+    info.append(el('div', 'bk-title', b.title));
+    info.append(el('div', 'go-sub', [b.author, b.series ? b.series + (b.series_no != null ? ' #' + b.series_no : '') : null].filter(Boolean).join(' · ')));
+    const chips = el('div', 'bk-chips');
+    chips.append(el('span', 'chip' + (b.status === 'finished' ? ' ok' : ''), STATUS[b.status] || b.status));
+    if (b.times_read > 1) chips.append(el('span', 'chip', `Read ${b.times_read} times`));
+    [b.genre, b.subgenre].filter(Boolean).forEach((g) => { const c = el('span', 'chip', g); c.style.color = gColor(b.genre); chips.append(c); });
+    info.append(chips);
+    if (b.progress != null) {
+      const prog = el('div', 'go-prog'), bar = el('div', 'pbar'), fill = el('i');
+      fill.style.width = Math.min(100, b.progress) + '%'; fill.style.background = gColor(b.genre); bar.append(fill);
+      prog.append(el('b', null, pct(b.progress)), bar); info.append(prog);
+    }
+    const facts = el('dl', 'go-facts'), fact = (k, v) => { if (v) facts.append(el('dt', null, k), el('dd', null, v)); };
+    fact('First opened', b.first_read ? fDay(pDate(b.first_read)) : null);
+    fact('Last opened', b.last_read ? fDay(pDate(b.last_read)) : null);
+    const p = b.progress || 0;
+    if (b.status !== 'finished' && latest && latest.hours && p >= 5 && p < 99) fact('Left at this pace', `about ${fmt(Math.max(1, Math.round(latest.hours * (100 - p) / p)))} h`);
+    info.append(facts);
+    head.replaceChildren(cover(b.id, b.title, b.genre, 'lg'), info);
+
+    // headline figures
+    const timed = days.filter((d) => d.minutes > 0), totalMin = d3.sum(timed, (d) => d.minutes);
+    const fin = reads.filter((r) => r.finished === true), spd = speedFrom(days), avg = avgWpm();
+    const bs = D('book_speed').status === 'ok' ? D('book_speed').data : [], rank = bs.findIndex((r) => r.book_id === b.id);
+    const kpi = (lbl, val, sub) => {
+      const k = el('div', 'rh-kpi'); k.append(el('div', 'lbl', lbl), el('div', 'val' + (val.length > 12 ? ' val-sm' : ''), val));
+      if (sub) k.append(el('div', 'sub', sub)); return k;
+    };
+    const k = [];
+    k.push(kpi('Times read', fmt(Math.max(reads.length, b.times_read || 0)), fin.length ? `finished ${plural(fin.length, 'time')}` : 'not finished yet'));
+    if (latest) k.push(kpi(reads.length > 1 ? `Read ${latest.read_no} started` : 'Started', fDay(pDate(latest.start)), reads.length > 1 ? `first read ${fShort(pDate(reads[0].start))}` : null));
+    if (fin.length) {
+      const f = fin[fin.length - 1];
+      k.push(kpi('Finished', fDay(pDate(f.end)), fin.length > 1 ? `also ${fin.slice(0, -1).map((r) => fShort(pDate(r.end))).join(', ')}` : null));
+      k.push(kpi('Start to finish', plural(span(f.start, f.end), 'day'), `read on ${plural(f.days_read, 'day')}`));
+    } else if (latest) k.push(kpi('Reading for', plural(span(latest.start, latest.end), 'day'), `read on ${plural(latest.days_read, 'day')}`));
+    if (totalMin) k.push(kpi('Time spent', mins(totalMin), reads.length > 1 ? 'across every read' : `${fmt(Math.round(totalMin / timed.length))} min per reading day`));
+    if (spd) k.push(kpi('Speed', `${fmt(Math.round(spd.wpm))} wpm`, (avg ? vsAvg(spd.wpm / avg - 1) : '') + (rank >= 0 ? ` · #${rank + 1} fastest of ${fmt(bs.length)}` : '')));
+    if (b.words) k.push(kpi('Words read', fmt(b.words), reads.length > 1 ? 'across every read' : null));
+    if (timed.length) { const top = timed.reduce((a, d) => (d.minutes > a.minutes ? d : a)); k.push(kpi('Longest day', mins(top.minutes), fDay(pDate(top.date)))); }
+    $('#bk-kpis').replaceChildren(...k);
+
+    // day by day, for one read
+    if (!reads.some((r) => r.read_no === bookRead)) bookRead = latest ? latest.read_no : null;
+    const read = reads.find((r) => r.read_no === bookRead), sel = $('#bk-read');
+    sel.hidden = reads.length < 2;
+    sel.replaceChildren(...reads.map((r) => new Option(`Read ${r.read_no} · ${fShort(pDate(r.start))}`, r.read_no)));
+    sel.value = bookRead;
+    drawBookDays(b, read, days);
+
+    // every read
+    $('#tbl-bk-reads tbody').replaceChildren(...reads.slice().reverse().map((r) => {
+      const tr = el('tr', r.read_no === bookRead ? 'sel' : null), s = speedFrom(days.filter((d) => d.date >= r.start && d.date <= r.end));
+      tr.setAttribute('data-read', r.read_no);
+      tr.append(el('td', 'n', String(r.read_no)), el('td', null, date(r.start)), el('td', null, date(r.end)),
+        el('td', 'n hide-sm', plural(span(r.start, r.end), 'day')), el('td', 'n hide-sm', r.hours ? fmt(r.hours) : '—'),
+        el('td', 'n hide-sm', s ? fmt(Math.round(s.wpm)) : '—'), el('td', 'n', pct(r.progress)));
+      return tr;
+    }));
+
+    // the rest of the series, or more by the author
+    const ser = b.series ? books.filter((x) => x.series === b.series) : [];
+    const rel = ser.length > 1 ? ser.sort((x, y) => (x.series_no ?? 1e9) - (y.series_no ?? 1e9) || x.title.localeCompare(y.title))
+      : books.filter((x) => x.author && x.author === b.author && x.id !== b.id).sort((x, y) => ((x.last_read || '') < (y.last_read || '') ? 1 : -1));
+    $('#card-bk-related').hidden = !rel.length;
+    $('#bk-rel-h').textContent = ser.length > 1 ? b.series : `More by ${b.author}`;
+    $('#bk-rel-note').textContent = ser.length > 1 ? `${fmt(ser.filter((x) => x.status === 'finished').length)} of ${fmt(ser.length)} in the series finished.` : `${plural(rel.length, 'other book')} in your library.`;
+    $('#bk-related').replaceChildren(...rel.map((x) => {
+      const li = el('li', x.id === b.id ? 'cur' : null), a = el('div', 'ttl');
+      li.append(cover(x.id, x.title, x.genre));
+      if (x.id !== b.id) linkTo(li, x.id);
+      a.append(document.createTextNode((ser.length > 1 && x.series_no != null ? `#${x.series_no} ` : '') + x.title), el('small', null, STATUS[x.status] || ''));
+      if (x.progress != null) { const pb = el('div', 'pbar'), i = el('i'); i.style.width = Math.min(100, x.progress) + '%'; i.style.background = C[0]; pb.append(i); a.append(pb); }
+      li.append(a, el('div', 'meta', x.last_read ? fShort(pDate(x.last_read)) : ''));
+      return li;
+    }));
+
+    // every day, newest first
+    $('#tbl-bk-log tbody').replaceChildren(...days.slice().reverse().map((d) => {
+      const tr = el('tr'), c0 = el('td');
+      tr.setAttribute('data-day', d.date);
+      c0.append(document.createTextNode(d3.utcFormat('%a %-d %b %Y')(pDate(d.date))));
+      if (d.event) c0.append(el('span', 'ev ' + d.event, d.event === 'finished' ? 'Finished' : d.event === 'reread' ? 'Started re-read' : 'Started'));
+      tr.append(c0, el('td', 'n', d.minutes ? mins(d.minutes) : '—'), el('td', 'n hide-sm', d.words ? fmt(d.words) : '—'),
+        el('td', 'n hide-sm', okDay(d) ? fmt(Math.round(d.words / d.minutes)) : '—'), el('td', 'n', progStep(d)));
+      return tr;
+    }));
+  }
+
+  // minutes per day as bars and progress as a line, across one read
+  function drawBookDays(b, read, days) {
+    const box = $('#ch-bk-days'), note = $('#bk-days-note');
+    if (!state(box, 'diary')) return;
+    const rows = read ? days.filter((d) => d.date >= read.start && d.date <= read.end) : [];
+    if (!rows.length) { note.textContent = ''; box.style.minHeight = '80px'; box.replaceChildren(el('div', 'dy-empty', 'No days recorded for this read.')); return; }
+    const n = span(read.start, read.end), tm = d3.sum(rows, (d) => d.minutes || 0), s = speedFrom(rows);
+    note.textContent = `${rangeLabel(read)}: read on ${fmt(rows.length)} of ${plural(n, 'day')}` + (tm ? `, ${mins(tm)} in all` : '') +
+      (s ? `, ${fmt(Math.round(s.wpm))} wpm` : '') + '. Bars are minutes read, the line is how far you got. Click a day to open it in the diary.';
+    const h = 260, m = { t: 22, r: 42, b: 24, l: 34 };
+    box.style.minHeight = h + 'px';
+    const { svg, w, tip } = svgIn(box, h);
+    const lo = pDate(read.start), x = d3.scaleUtc([lo, d3.utcDay.offset(pDate(read.end), 1)], [m.l, w - m.r]);
+    const hasMin = rows.some((d) => d.minutes > 0);
+    const y = d3.scaleLinear([0, d3.max(rows, (d) => d.minutes || 0) || 1], [h - m.b, m.t]).nice();
+    const yp = d3.scaleLinear([0, 100], [h - m.b, m.t]);
+    if (hasMin) {
+      axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickSize(-(w - m.l - m.r)));
+      svg.append('text').attr('class', 'axl').attr('x', 0).attr('y', m.t - 10).text('minutes');
+    }
+    axis(svg.append('g').attr('transform', `translate(${w - m.r},0)`), d3.axisRight(yp).ticks(5).tickFormat((v) => v + '%').tickSize(hasMin ? 0 : -(w - m.l - m.r)).tickPadding(6));
+    svg.selectAll('.domain').remove();
+    svg.append('text').attr('class', 'axl').attr('x', w).attr('y', m.t - 10).attr('text-anchor', 'end').text('progress');
+    axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).ticks(Math.max(2, Math.min(n, Math.floor(w / 90)))).tickFormat(d3.utcFormat(n <= 120 ? '%-d %b' : '%b %y')).tickSizeOuter(0));
+    const dw = x(d3.utcDay.offset(lo, 1)) - x(lo), gap = dw > 6 ? Math.min(4, dw * 0.2) : 0;
+    svg.append('g').selectAll('rect').data(rows.filter((d) => d.minutes > 0)).join('rect')
+      .attr('x', (d) => x(pDate(d.date)) + gap / 2).attr('width', Math.max(1, dw - gap)).attr('y', (d) => y(d.minutes)).attr('height', (d) => y(0) - y(d.minutes))
+      .attr('rx', Math.min(3, dw / 4)).attr('fill', gColor(b.genre)).attr('fill-opacity', 0.5);
+    // progress at the end of each day, from where the read began
+    const pts = rows.filter((d) => d.progress != null).map((d) => ({ t: d3.utcDay.offset(pDate(d.date), 1), p: d.progress }));
+    if (pts.length) {
+      const first = rows.find((d) => d.progress != null);
+      pts.unshift({ t: pDate(first.date), p: first.prev_progress ?? first.progress });
+      svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', 'var(--color-fg)').attr('stroke-width', 2).attr('stroke-linejoin', 'round')
+        .attr('d', d3.line((d) => x(d.t), (d) => yp(d.p)));
+      if (pts.length <= 120) svg.append('g').selectAll('circle').data(pts.slice(1)).join('circle').attr('cx', (d) => x(d.t)).attr('cy', (d) => yp(d.p)).attr('r', 2.5).attr('fill', 'var(--color-fg)');
+    }
+    const byDate = new Map(rows.map((d) => [d.date, d]));
+    const at = (e) => iso(d3.utcDay.floor(x.invert(d3.pointer(e, svg.node())[0])));
+    svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', w - m.l - m.r).attr('height', h - m.t - m.b).attr('fill', 'transparent')
+      .on('mousemove', (e) => {
+        const day = at(e), d = byDate.get(day);
+        e.target.style.cursor = d ? 'pointer' : 'default';
+        showTip(tip, box, e, (tp) => tipLines(tp, d3.utcFormat('%a %-d %b %Y')(pDate(day)), d
+          ? [[null, 'Time', d.minutes ? mins(d.minutes) : '—'], [null, 'Words', d.words ? fmt(d.words) : '—'], [null, 'Speed', okDay(d) ? Math.round(d.words / d.minutes) + ' wpm' : '—'], [null, 'Progress', progStep(d)]]
+          : [[null, '', 'Not opened']]));
+      })
+      .on('mouseleave', () => hideTip(tip))
+      .on('click', (e) => { const day = at(e); if (byDate.has(day)) { hideTip(tip); openDiary(day); } });
+  }
+
   // ---------- tabs ----------
   const tabs = document.querySelectorAll('.rh-tabs button');
-  function show(name) {
+  function show(name, link = true) {
     if (!document.getElementById(name)) return;
     tab = name;
     tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     document.querySelectorAll('.rh-page').forEach((p) => (p.hidden = p.id !== name));
-    dash.setLink(name);
+    if (name !== 'book') document.title = 'Reading history';
+    $('#bk-back').textContent = '← Back to ' + ($('#tab-' + prevTab)?.textContent || 'Overview');
+    if (link) dash.setLink(name);
     redraw();
   }
   tabs.forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
@@ -730,9 +928,19 @@
       drawHeat(); drawGantt(); drawWeek();
       list('#big', 'big_reads', (r) => [r.title, r.author, `${r.hours} h · ${r.days_read} days`, null, r.book_id]);
       list('#stalled', 'stalled', (r) => [r.title, r.author, 'last ' + fShort(pDate(r.last_read)), r.progress, r.id]);
-    } else drawTables();
+    } else if (tab === 'book') drawBook();
+    else drawTables();
   }
   dash.onData(redraw);
-  const named = location.hash.slice(1);
-  if (named && document.getElementById(named)?.classList.contains('rh-page')) show(named);
+  // #speed, #diary… open a tab; #book/<id> opens a book
+  function route() {
+    const named = decodeURIComponent(location.hash.slice(1));
+    if (named.startsWith('book/')) {
+      if (history.state && history.state.from) prevTab = history.state.from;
+      if (named.slice(5) !== bookId) bookRead = null;
+      bookId = named.slice(5); show('book', false);
+    } else show(named && named !== 'book' && document.getElementById(named)?.classList.contains('rh-page') ? named : 'overview', false);
+  }
+  window.addEventListener('popstate', route);
+  route();
 })();

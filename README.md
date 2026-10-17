@@ -10,6 +10,7 @@ It reads the statistics Moon+ keeps inside its backups (every book, every day yo
 - **Timeline & habits:** a day-by-day heatmap and a "what you read when" timeline, each with its own date range (presets or custom dates), plus weekday rhythm, biggest reads and books left unfinished.
 - **Diary:** a day-by-day log for any period showing which books you read, minutes, words, and progress from one day to the next, with started and finished markers. Click any heatmap square to jump to that day.
 - **Library:** every book and every re-read, searchable and sortable.
+- **Book pages:** click any book, anywhere (lists, tables, the diary, chart bars and dots), for everything about it: times read, when each read started and finished, how long it took, time spent, words, speed against your average, its longest day, a day-by-day chart of minutes and progress for each read, the rest of its series (or more by the author) and every day you opened it. Each book has its own link (`#book/<id>`).
 
 Every book shows its cover, taken from the backup or looked up on Open Library (see [Book covers](#book-covers)).
 

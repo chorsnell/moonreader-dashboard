@@ -175,7 +175,7 @@ dash.calc('timeline', {
   inputs: ['reads'], title: 'Every read',
   description: 'Every read with its first and last day; single-day dips into a book are left out.',
   fn: (reads) => reads.filter((r) => r.days_read !== 1)
-    .map((r) => ({ read_id: r.read_id, title: r.title, genre: r.genre, start: r.start, end: r.end, progress: r.progress, read_no: r.read_no }))
+    .map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, genre: r.genre, start: r.start, end: r.end, progress: r.progress, read_no: r.read_no }))
     .sort((a, b) => (a.start < b.start ? -1 : 1)),
 });
 
@@ -241,7 +241,7 @@ dash.calc('stalled', {
 dash.calc('rereads', {
   inputs: ['reads'], title: 'Re-reads',
   description: 'Every read of a book read more than once.',
-  fn: (reads) => reads.filter((r) => r.times_read > 1).map((r) => ({ read_id: r.read_id, title: r.title, author: r.author, read_no: r.read_no, start: r.start, end: r.end, days_read: r.days_read, hours: r.hours, progress: r.progress }))
+  fn: (reads) => reads.filter((r) => r.times_read > 1).map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, author: r.author, read_no: r.read_no, start: r.start, end: r.end, days_read: r.days_read, hours: r.hours, progress: r.progress }))
     .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : a.read_no - b.read_no)),
 });
 

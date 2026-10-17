@@ -174,6 +174,21 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .dy-more{margin-top:var(--cds-gap-md);font:inherit;font-size:var(--cds-font-size-body);padding:var(--cds-pad-xs) var(--cds-pad-md);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);cursor:pointer}
 .dy-empty{color:var(--color-fg-muted);font-size:var(--cds-font-size-body);padding:var(--cds-pad-lg) 0}
 @media (max-width:520px){.dy-day{grid-template-columns:1fr;gap:var(--cds-gap-xs)}.dy-date b,.dy-date span{display:inline;margin-right:8px}.dy-gap{padding-left:0}}
+[data-book],[data-day],[data-read]{cursor:pointer}
+[data-book]:focus-visible{outline:2px solid var(--series-1);outline-offset:2px;border-radius:4px}
+.rh-list li[data-book]:hover .ttl,.dy-book[data-book]:hover .t,.go-one[data-book]:hover .go-title,.rh-kpi[data-book]:hover .val{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+.rh tr[data-book]:hover td,.rh tr[data-day]:hover td,.rh tr[data-read]:hover td{background:var(--color-bg)}
+.rh .bk-tbl th{padding:var(--cds-pad-xs) var(--cds-pad-sm)}
+.rh .bk-tbl td{white-space:nowrap}
+.rh tr.sel td{background:color-mix(in srgb,var(--series-1) 10%,transparent)}
+.bk-back{align-self:flex-start;font:inherit;font-size:var(--cds-font-size-body);border:0;background:none;color:var(--color-fg-muted);cursor:pointer;padding:0}
+.bk-back:hover{color:var(--color-fg)}
+.rh-card.bk-head{flex-direction:row;align-items:flex-start;gap:var(--cds-gap-lg)}
+.bk-title{font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-title);line-height:1.2}
+.bk-chips{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs);margin-top:var(--cds-gap-xs)}
+.chip.ok{color:var(--color-ok);border-color:currentColor}
+.rh-list li.cur{background:color-mix(in srgb,var(--series-1) 8%,transparent);border-radius:6px}
+@media (max-width:520px){.rh-card.bk-head{flex-direction:column}#bk-kpis{grid-template-columns:1fr 1fr;gap:var(--cds-gap-sm)}#bk-kpis .rh-kpi{padding:var(--cds-pad-sm) var(--cds-pad-md)}#bk-kpis .val{font-size:20px}}
 </style>
 
 <div class="rh">
@@ -390,6 +405,34 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
       <div class="tbl-box" style="max-height:480px">
       <table id="tbl-rereads" data-source="rereads" data-row-key="read_id">
         <thead><tr><th data-field="title"><button>Title</button></th><th data-field="read_no" class="n"><button>Read</button></th><th data-field="start"><button>Started</button></th><th data-field="end"><button>Last day</button></th><th data-field="days_read" class="n hide-sm"><button>Days</button></th><th data-field="hours" class="n hide-sm"><button>Hours</button></th><th data-field="progress" class="n"><button>Reached</button></th></tr></thead>
+        <tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ONE BOOK (opened by clicking a book anywhere) -->
+  <section class="rh-page" id="book" hidden>
+    <button class="bk-back" id="bk-back">← Back</button>
+    <div class="rh-card wide bk-head" id="bk-head" data-source="books"></div>
+    <div class="rh-kpis" id="bk-kpis"></div>
+    <div class="rh-card wide" id="card-bk-days"><div class="card-head"><h2>Day by day</h2>
+      <select id="bk-read" class="rng-sel" aria-label="Read"></select></div>
+      <p class="note" id="bk-days-note"></p>
+      <div class="chart" id="ch-bk-days" data-source="diary"></div></div>
+    <div class="rh-grid">
+      <div class="rh-card" id="card-bk-reads"><h2>Every read</h2>
+        <p class="note">A new read starts when you come back after a year or more. Click one to chart it.</p>
+        <div class="tbl-box" style="max-height:420px">
+        <table id="tbl-bk-reads" class="bk-tbl">
+          <thead><tr><th class="n">Read</th><th>Started</th><th>Last day</th><th class="n hide-sm">Took</th><th class="n hide-sm">Hours</th><th class="n hide-sm">WPM</th><th class="n">Reached</th></tr></thead>
+          <tbody></tbody></table></div></div>
+      <div class="rh-card" id="card-bk-related"><h2 id="bk-rel-h">More</h2>
+        <p class="note" id="bk-rel-note"></p>
+        <ul class="rh-list" id="bk-related"></ul></div>
+    </div>
+    <div class="rh-card wide" id="card-bk-log"><h2>Reading log</h2>
+      <p class="note">Every day you opened this book, newest first. Click a day to open it in the diary.</p>
+      <div class="tbl-box" style="max-height:480px">
+      <table id="tbl-bk-log" class="bk-tbl">
+        <thead><tr><th>Day</th><th class="n">Time</th><th class="n hide-sm">Words</th><th class="n hide-sm">WPM</th><th class="n">Progress</th></tr></thead>
         <tbody></tbody></table></div></div>
   </section>
 </div>
