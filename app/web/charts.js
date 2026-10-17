@@ -1033,7 +1033,7 @@
   const rh = $('.rh');
   rh.addEventListener('touchstart', (e) => {
     sw = null;
-    if (e.touches.length !== 1 || nav.hidden || tab === 'book' || top.contains(e.target) || scrollsX(e.target)) return;
+    if (e.touches.length !== 1 || nav.hidden || onPage() || top.contains(e.target) || scrollsX(e.target)) return;
     const t = e.touches[0];
     sw = { x: t.clientX, y: t.clientY, dx: 0, mode: null, page: document.getElementById(tab) };
   }, { passive: true });
