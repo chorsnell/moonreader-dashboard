@@ -39,11 +39,12 @@ npm run screenshots -- --no-build    # reuses the demo already in ./site
 ```
 
 It shoots every tab (tabs added by feature scripts are found on the page), a book, author and
-year page and Wrapped, in light and dark at 1280px, and the overview and a book page at phone
+year page and Wrapped, in light and dark at 1280px (a tab that needs a shorter or taller crop goes in `HEIGHTS` in the script), and the overview and a book page at phone
 width. Motion is turned off and the browser clock is fixed to the demo's day, so the pictures
 only change when the page does. Any console error fails the run.
 
 - `DEMO_TODAY=YYYY-MM-DD` builds the demo as if on that day (default: today).
+- `DEMO_SEED=<number>` makes up a different history (default: 7); `npm run demo` reads both too.
 - `COVER_LOOKUP=off` skips the Open Library cover lookup when you're offline; the shots then
   show letter placeholders instead of covers.
 - `PLAYWRIGHT_CHROMIUM_PATH=/path/to/chrome` uses that Chromium instead of Playwright's own

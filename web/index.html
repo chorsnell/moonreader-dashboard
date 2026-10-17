@@ -315,8 +315,8 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
         <div class="val dash-skeleton" data-source="kpis" data-field="value" data-where="metric=avg_mins_365">—</div>
         <div class="sub">read on <span data-source="kpis" data-field="value" data-where="metric=days_365">—</span> of 365 days</div></div>
       <div class="rh-kpi" id="kpi-streak"><div class="lbl">Current streak</div>
-        <div class="val dash-skeleton"><span data-source="kpis" data-field="value" data-where="metric=streak_now">—</span> days</div>
-        <div class="sub">longest <span data-source="kpis" data-field="value" data-where="metric=streak_best">—</span> days</div></div>
+        <div class="val dash-skeleton"><span data-source="kpis" data-field="value" data-where="metric=streak_now">—</span> <span id="unit-streak-now">days</span></div>
+        <div class="sub">longest <span data-source="kpis" data-field="value" data-where="metric=streak_best">—</span> <span id="unit-streak-best">days</span></div></div>
       <div class="rh-kpi" id="kpi-all"><div class="lbl">Books finished, all time</div>
         <div class="val dash-skeleton" data-source="kpis" data-field="value" data-where="metric=finished_books">—</div>
         <div class="sub"><span data-source="kpis" data-field="value" data-where="metric=reread_books">—</span> read more than once</div></div>
