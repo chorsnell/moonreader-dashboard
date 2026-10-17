@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AdminModule } from './admin/admin.module';
 import { appConfig } from './config/app.config';
 import { DavModule } from './dav/dav.module';
 import { MediaModule } from './media/media.module';
@@ -18,6 +19,7 @@ import { WebModule } from './web/web.module';
     RebuildModule,
     StatusModule,
     UploadModule,
+    AdminModule,
     MediaModule,
     DavModule,
     // last: its catch-all route for the page's files must come after every other route

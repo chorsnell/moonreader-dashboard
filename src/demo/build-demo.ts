@@ -25,8 +25,12 @@ import { MediaFiles } from '../media/media-files.service';
 import { writeDemoBackup } from './demo-backup';
 import { simulateHighlights } from './demo-highlights';
 import { DemoModule } from './demo.module';
+<<<<<<< HEAD
 import { BOOKS, fileName } from './demo-books';
 import { demoMediaCatalogue, simulateNetflix } from './demo-media';
+=======
+import { BOOKS, fileName, ISBN } from './demo-books';
+>>>>>>> origin/main
 import { Random } from './random';
 import { simulate } from './simulate';
 
@@ -54,7 +58,7 @@ async function main(): Promise<void> {
       books: Object.fromEntries(
         BOOKS.map(([title, author, genre, subgenre, series, seriesNo]) => [
           fileName(title, author).toLowerCase(),
-          { title, author, series, series_no: seriesNo, genre, subgenre },
+          { title, author, series, series_no: seriesNo, genre, subgenre, isbn: ISBN[title] },
         ]),
       ),
     };

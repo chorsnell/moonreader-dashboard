@@ -38,11 +38,11 @@ export class UploadController {
     private readonly media: MediaInboxService,
   ) {}
 
-  /** An old bookmark: open the dashboard with the upload dialog. */
+  /** An old bookmark: open the admin page. */
   @Get()
   @Redirect()
   open(@Headers() headers: IncomingHttpHeaders) {
-    return { url: `${publicPrefix(headers, this.config.basePath)}/#upload`, statusCode: 302 };
+    return { url: `${publicPrefix(headers, this.config.basePath)}/#admin`, statusCode: 302 };
   }
 
   @Put()
@@ -80,11 +80,24 @@ export class UploadController {
     } catch (e) {
       if (!(e instanceof RequestBodyError)) throw e;
       const error = e.problem === 'bad-content' ? "That file isn't a Moon+ backup." : e.message;
+      this.activity.record({
+        type: 'upload',
+        message: `Refused upload ${file}`,
+        outcome: 'failed',
+        trigger: 'upload',
+        error,
+        details: { file },
+      });
       throw new BadRequestException({ error });
     }
     const { size } = await stat(dest);
-    this.activity.log(`Received upload ${file} (${Math.floor(size / (1024 * 1024))} MB)`);
-    this.library.changed();
+    this.activity.record({
+      type: 'upload',
+      message: `Received upload ${file} (${Math.floor(size / (1024 * 1024))} MB)`,
+      trigger: 'upload',
+      details: { file, size },
+    });
+    this.library.changed('upload');
     return { ok: true };
   }
 }

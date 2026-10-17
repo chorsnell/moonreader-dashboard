@@ -38,19 +38,31 @@ export class CoverLookupService implements OnApplicationShutdown {
   ) {}
 
   /** Starts a lookup unless one is already running or lookups are off. Doesn't wait for it. */
-  start(): void {
-    void this.run();
+  start(trigger = 'rebuild'): void {
+    void this.run(trigger);
   }
 
   /** Looks up the missing covers and resolves when done (or joins a lookup already running). */
-  run(): Promise<void> {
+  run(trigger = 'rebuild'): Promise<void> {
     if (!this.config.coverLookup || this.stop.signal.aborted) return Promise.resolve();
-    this.running ??= this.lookUpMissing()
+    this.running ??= this.lookUpMissing(trigger)
       .catch((e: unknown) => {
-        if (!this.stop.signal.aborted) this.activity.log(`Cover lookup failed: ${String(e)}`);
+        if (this.stop.signal.aborted) return;
+        this.activity.record({
+          type: 'cover',
+          message: 'Cover lookup failed',
+          outcome: 'failed',
+          trigger,
+          error: String(e),
+        });
       })
       .finally(() => (this.running = null));
     return this.running;
+  }
+
+  /** Whether a lookup is running now. */
+  get busy(): boolean {
+    return this.running !== null;
   }
 
   async onApplicationShutdown(): Promise<void> {
@@ -58,7 +70,8 @@ export class CoverLookupService implements OnApplicationShutdown {
     await this.running;
   }
 
-  private async lookUpMissing(): Promise<void> {
+  private async lookUpMissing(trigger: string): Promise<void> {
+    const started = Date.now();
     let books: BookRow[];
     try {
       books = JSON.parse(
@@ -78,6 +91,7 @@ export class CoverLookupService implements OnApplicationShutdown {
     this.activity.log(`  Looking up ${todo.length} cover(s) on Open Library`);
     let found = 0;
     let failures = 0;
+    let unreachable = '';
     for (const [n, book] of todo.entries()) {
       if (n) await sleep(this.config.coverPauseMs, undefined, { signal });
       let image: Buffer | null;
@@ -87,10 +101,7 @@ export class CoverLookupService implements OnApplicationShutdown {
       } catch (e) {
         if (signal.aborted) break;
         if (++failures >= MAX_FAILURES) {
-          this.activity.log(
-            `  Stopped: Open Library could not be reached (${(e as Error).message}). ` +
-              'The rest will be tried after the next rebuild.',
-          );
+          unreachable = (e as Error).message;
           break;
         }
         continue;
@@ -107,9 +118,17 @@ export class CoverLookupService implements OnApplicationShutdown {
     await this.store.writeMisses(misses);
     if (signal.aborted) return;
     const left = todo.filter((b) => b.id in misses).length;
-    this.activity.log(
-      `  Found ${found} cover(s) on Open Library` +
-        (left ? `; ${left} book(s) not found, retried after ${RETRY_DAYS} days` : ''),
-    );
+    this.activity.record({
+      type: 'cover',
+      message: unreachable
+        ? `Stopped looking up covers: Open Library could not be reached. Found ${found} first; the rest will be tried after the next rebuild`
+        : `Found ${found} cover(s) on Open Library` +
+          (left ? `; ${left} book(s) not found, retried after ${RETRY_DAYS} days` : ''),
+      outcome: unreachable ? 'failed' : 'ok',
+      error: unreachable || undefined,
+      trigger,
+      duration_ms: Date.now() - started,
+      details: { tried: todo.length, found, not_found: left },
+    });
   }
 }

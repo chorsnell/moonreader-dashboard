@@ -57,7 +57,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Open `http://SERVER_IP:8080/`, click **Admin**, sign in with your `UPLOAD_TOKEN`, then click **Update data** and upload a Moon+ backup. To make one in Moon+, go to **Options → Backup & Restore → Backup**; it produces a `.mrpro` file. The dashboard builds itself in a few seconds.
+Open `http://SERVER_IP:8080/`, click **Admin**, sign in with your `UPLOAD_TOKEN`, and upload a Moon+ backup on the admin page's **Data** section. To make one in Moon+, go to **Options → Backup & Restore → Backup**; it produces a `.mrpro` file. The dashboard builds itself in a few seconds.
 
 To update to a newer version later:
 
@@ -76,22 +76,23 @@ library/
   covers/          book covers, one <book id>.jpg or .png each
   catalogue.json   titles, authors, series and genres for your books
   update.log       what happened on each rebuild, upload and sync
+  activity.jsonl   the same as JSON lines, for the admin page's Sync & logs
 ```
 
 ## Getting new data in
 
 There are four ways, and all of them trigger a rebuild automatically:
 
-1. **The Update data button** on the dashboard. It's only shown to the admin: click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`.
+1. **The admin page** (`#admin`). It's only for the admin: click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. Its **Data** section uploads a backup, rebuilds on demand and lists the backups kept.
 2. **WebDAV from Moon+** (below). This keeps progress current without making backups.
 3. **Drop a backup into `library/inbox/`**, by hand, with `scp`, or with Syncthing.
-4. **Edit `library/catalogue.json`.** Saving it rebuilds the data with your changes.
+4. **Edit titles, authors, series and genres** in the admin page's **Catalogue** section, or edit `library/catalogue.json` by hand. Saving either rebuilds the data with your changes.
 
 ## Who can see it
 
 `UPLOAD_TOKEN` is the admin password. Only the admin can upload, sync, or change settings. Visitors see a small **Admin** link and nothing else they can use.
 
-To choose who can *read* the dashboard, sign in as the admin, open **Update data**, and use **Who can see this dashboard**:
+To choose who can *read* the dashboard, sign in as the admin, open the admin page's **Access & privacy** section, and use **Who can see this dashboard**:
 
 - **Anyone with the link** (the default).
 - **Only people with the read password.** Visitors get a password box instead of your stats, and the data, covers and API all refuse them until they enter it. Give the password to your friends; their browser remembers it for a year.
@@ -100,13 +101,15 @@ Setting a new read password signs out everyone who used the old one. Changing `U
 
 ## Sync straight from Moon+ (WebDAV)
 
-When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-domain/reading/dav/`. The **Update data** dialog shows the exact address. Log in with any username, and use your `UPLOAD_TOKEN` as the password.
+When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-domain/reading/dav/`. The admin page's **Data** section shows the exact address. Log in with any username, and use your `UPLOAD_TOKEN` as the password.
 
 **Reading positions.** Moon+ can sync reading positions over WebDAV. Open a book, then go to **Miscellaneous → Sync reading positions via Dropbox/WebDAV**, choose WebDAV and enter the address and login above. Moon+ then uploads your position whenever you pause reading. The dashboard picks up those position files, so progress, "On the go" and finished status stay current between backups. Minutes and words per day still only come from backups, because that's the only place Moon+ records them.
 
 **Backups.** If your version of Moon+ offers WebDAV as a backup destination, use the same details. Any `.mrpro` file written to the WebDAV folder is treated exactly like an upload.
 
 > This WebDAV support is built from Moon+'s documented behaviour and tested with standard WebDAV clients, but not yet against the app itself. Every file Moon+ writes is listed in `library/update.log`. If something isn't picked up, that log shows what arrived. Position files the server can't read are listed there too.
+
+The admin page's **Sync & logs** section shows the same activity without opening the box: every sync (with the app that sent it), rebuild (what triggered it, how long it took, any error and the untagged files), upload, cover lookup and removed backup. You can filter it by type, date and outcome, search it, and download it. At the top it says when Moon+ last synced, and warns when syncing seems to have stopped or a login used the wrong password. The structured log is `library/activity.jsonl`, one JSON object per line, next to `update.log`.
 
 ## Behind a reverse proxy (Traefik, Nginx Proxy Manager, Caddy…)
 
@@ -122,7 +125,7 @@ Use HTTPS when sharing it, because passwords travel with every sign-in, upload a
 
 ## New books and genres
 
-Moon+ doesn't store genres, so they come from `catalogue.json`, keyed by the lower-case book file name. New books show as **Untagged**, and `update.log` lists them. To tag one, add an entry under `"books"`:
+Moon+ doesn't store genres, so they come from `catalogue.json`, keyed by the lower-case book file name. New books show as **Untagged**, and `update.log` lists them. The admin page's **Catalogue** section lists them and edits them for you; its **Covers** section lists books without a cover, looks them up again or takes an image you choose. To tag one by hand, add an entry under `"books"`:
 
 ```json
 "some new book - author.epub": {
@@ -133,6 +136,12 @@ Moon+ doesn't store genres, so they come from `catalogue.json`, keyed by the low
 ```
 
 You can also paste the untagged list into Claude and ask for the entries. To hide something that isn't a book, add its lower-case file name to `"exclude"`.
+
+### ISBNs and editions
+
+Give a book an ISBN with `"isbn": "978-0-14-143951-8"` (ISBN-13 or ISBN-10, with or without hyphens; the other form is worked out, and invalid ones are ignored). It shows on the book's page, and **Data checks** lists books without one. Moon+ backups don't usually hold ISBNs, though one is read from Moon+'s books table if a version of the app keeps it there.
+
+Copies of a book count as one book when they share a title and author, an ISBN, or a `"work_id"`: any id you give every edition of the same work (paperback, ebook, a translation), such as its Open Library work id (`"OL66562W"`).
 
 ## Book covers
 
@@ -243,12 +252,13 @@ src/covers/                 saves covers from the backup and looks up missing on
 src/media/                  other media (TV and film): Netflix and Tautulli imports, the media build and its watcher
   media-history.ts          the rules: seasons, re-watches, what counts as watched
 src/rebuild/                watches for new backups, catalogue edits and syncs, and rebuilds
-src/upload/                 the Update data button's upload
+src/upload/                 the admin page's backup upload
+src/admin/                  the admin page's API: data and backups, rebuild now, catalogue edits, covers
 src/dav/                    the WebDAV server Moon+ syncs to
 src/status/                 /healthz, /api/config and /api/covers
 src/web/                    serves the page, its data and the covers
 src/demo/                   builds the demo site from made-up data
-web/                        the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js, pages/
+web/                        the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js (sign-in), pages/, features/ (admin.js is the admin page)
 seed/                       the starting catalogue.json
 test/                       end-to-end tests, and checks on the page's code
 examples/traefik.yml        reverse-proxy example

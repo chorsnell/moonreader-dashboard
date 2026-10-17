@@ -50,9 +50,9 @@ export class LibraryService implements OnModuleInit {
     }
   }
 
-  /** Tells the rebuild watcher to look now rather than at its next poll. */
-  changed(): void {
-    this.events.emit(LIBRARY_CHANGED);
+  /** Tells the rebuild watcher to look now rather than at its next poll, and why. */
+  changed(reason?: string): void {
+    this.events.emit(LIBRARY_CHANGED, reason);
   }
 
   /** The backups in inbox/, newest first. */
@@ -103,7 +103,7 @@ export class LibraryService implements OnModuleInit {
   }
 
   /** A backup arrived over WebDAV: put it in the inbox and rebuild. Returns its inbox name. */
-  async receiveBackup(src: string, name: string): Promise<string> {
+  async receiveBackup(src: string, name: string, reason = 'webdav'): Promise<string> {
     const safe = safeFileName(name);
     const dest = join(this.inbox, safe);
     if (src !== dest) {
@@ -116,7 +116,7 @@ export class LibraryService implements OnModuleInit {
       }
       await rename(part, dest);
     }
-    this.changed();
+    this.changed(reason);
     return safe;
   }
 

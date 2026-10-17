@@ -6,6 +6,26 @@ export interface CatalogueEntry {
   series_no?: number | null;
   genre?: string;
   subgenre?: string;
+  /** ISBN-13 or ISBN-10, written any usual way; the other form is worked out. */
+  isbn13?: string | null;
+  isbn10?: string | null;
+  /** Shorthand for isbn13 or isbn10. */
+  isbn?: string | null;
+  /** Any id shared by every edition of the book (e.g. an Open Library work id): files with the same one count as one book. */
+  work_id?: string | null;
+}
+
+/** What the reading history knows about a book's identity. */
+export interface BookInfo {
+  title: string;
+  author: string;
+  series: string | null;
+  series_no: number | null;
+  genre: string;
+  subgenre: string;
+  isbn13: string | null;
+  isbn10: string | null;
+  work_id: string | null;
 }
 
 export interface Catalogue {
@@ -59,6 +79,9 @@ export interface BookHistory {
   series_no: number | null;
   genre: string;
   subgenre: string;
+  isbn13: string | null;
+  isbn10: string | null;
+  work_id: string | null;
   status: BookStatus;
   progress: number | null;
   total_minutes: number;
@@ -76,6 +99,8 @@ export interface HistoryInput {
   catalogue: Catalogue;
   /** Lower-case file path -> [title, author], from Moon+'s books tables. */
   bookMeta: Map<string, [string, string]>;
+  /** Lower-case file path -> ISBN, if Moon+'s books table has one (it usually doesn't). */
+  isbns?: Map<string, string>;
   statistics: StatisticsRow[];
   /** Lower-case file path -> last position (%), from positions10.xml. */
   positions: Map<string, number>;

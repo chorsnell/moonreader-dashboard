@@ -68,6 +68,7 @@ describe('rebuilding', () => {
     const books = await booksByTitle(dash);
     expect(books.Alpha.status).toBe('finished');
     expect(books.Beta.progress).toBe(50);
+    expect(books.Alpha).toMatchObject({ isbn13: null, isbn10: null, work_id: null });
     const daily = await dash.json<{ minutes: number; progress: number }[]>('data', 'daily.json');
     expect(daily).toHaveLength(5);
     expect(daily[0].minutes).toBe(30);
@@ -194,7 +195,7 @@ describe('serving', () => {
     expect(page.headers['x-content-type-options']).toBe('nosniff');
     await request(dash.server).get('/runtime.js').expect(200);
     await request(dash.server).get('/vendor/d3.min.js').expect(200);
-    await request(dash.server).get('/upload').expect(302).expect('Location', '/#upload');
+    await request(dash.server).get('/upload').expect(302).expect('Location', '/#admin');
   });
 
   it('follows the proxy prefix in the <base> tag', async () => {
