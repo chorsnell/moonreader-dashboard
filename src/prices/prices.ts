@@ -68,6 +68,8 @@ export interface BookRef {
   words?: number | null;
   isbn?: string | null;
   isbns?: string[] | null;
+  /** From ISBN tracking (BOO-55). */
+  isbn13?: string | null;
 }
 
 /** A problem with what was sent, worded for the admin. */
@@ -560,7 +562,8 @@ export function previewImport(csv: string, books: BookRef[], file: PricesFile): 
 
   const byIsbn = new Map<string, BookRef>();
   for (const b of books) {
-    for (const i of [b.isbn, ...(b.isbns ?? [])]) if (normIsbn(i)) byIsbn.set(normIsbn(i), b);
+    for (const i of [b.isbn13, b.isbn, ...(b.isbns ?? [])])
+      if (normIsbn(i)) byIsbn.set(normIsbn(i), b);
   }
   // books not in the reading data that already have a price entry (never opened)
   const known = new Set(books.map((b) => b.id));

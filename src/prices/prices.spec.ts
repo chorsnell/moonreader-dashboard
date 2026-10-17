@@ -17,7 +17,7 @@ import {
 const books = [
   { id: 'dracula', title: 'Dracula', author: 'Bram Stoker', words: 160000 },
   { id: 'the-time-machine', title: 'The Time Machine', author: 'H. G. Wells', words: 32000 },
-  { id: 'emma', title: 'Emma', author: 'Jane Austen', words: 160000, isbn: '978-0-14-143958-7' },
+  { id: 'emma', title: 'Emma', author: 'Jane Austen', words: 160000, isbn13: '9780141439587' },
   { id: 'persuasion', title: 'Persuasion', author: 'Jane Austen', words: 80000 },
 ];
 
