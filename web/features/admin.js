@@ -316,6 +316,7 @@
         field('series_no', 'Number in series', b.series_no, { type: 'number', step: 'any', min: '0', inputmode: 'decimal' }),
         field('genre', 'Genre', keepGenre(b.genre), { list: 'ad-genres' }),
         field('subgenre', 'Subgenre', keepGenre(b.subgenre), { list: 'ad-subgenres' }),
+        field('isbn', 'ISBN', b.isbn13, { inputmode: 'numeric', placeholder: 'ISBN-13 or ISBN-10' }),
         h('p', { class: 'up-note ad-wide ad-files' }, `File${b.files.length === 1 ? '' : 's'}: ${b.files.join(', ')}`),
         h('div', { class: 'ad-actions ad-wide' }, save, notBook), msg);
       async function send(body, done) {
