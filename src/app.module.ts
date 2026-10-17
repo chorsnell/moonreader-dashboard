@@ -10,6 +10,7 @@ import { DavModule } from './dav/dav.module';
 import { FederationModule } from './federation/federation.module';
 import { FriendsModule } from './friends/friends.module';
 import { MediaModule } from './media/media.module';
+import { OutboundModule } from './outbound/outbound.module';
 import { PricesModule } from './prices/prices.module';
 import { RebuildModule } from './rebuild/rebuild.module';
 import { StatsModule } from './stats/stats.module';
@@ -34,6 +35,7 @@ import { WebModule } from './web/web.module';
     FriendsModule,
     FederationModule,
     ClubsModule,
+    OutboundModule,
     // last: its catch-all route for the page's files must come after every other route
     WebModule,
   ],
