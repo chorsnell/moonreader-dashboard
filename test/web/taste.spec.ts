@@ -44,7 +44,7 @@ const day = (book_id: string, date: string, minutes: number, words: number) => (
 
 const mine = {
   books: [
-    book('emma', 'Emma', 'Jane Austen', 'Classics', '9780141439587'),
+    { ...book('emma', 'Emma', 'Jane Austen', 'Classics', '9780141439587'), rating: 5 },
     book('dracula', 'Dracula', 'Bram Stoker', 'Horror'),
     book('walden', 'Walden', 'Henry David Thoreau', 'Non-fiction'),
   ],
@@ -84,6 +84,10 @@ describe('taste match', () => {
     const d = m.books.find((b) => b.book_id === 'dracula')!;
     expect(d.mine).toMatchObject({ days: 3, wpm: 250 });
     expect(d.theirs).toMatchObject({ days: 1, wpm: 400 });
+    expect(m.books.find((b) => b.book_id === 'emma')).toMatchObject({
+      my_rating: 5,
+      their_rating: null,
+    });
     expect(m.authors.both.map((a) => a.author)).toEqual(['Bram Stoker']);
     expect(m.authors.theirs.map((a) => a.author).sort()).toEqual(['J. Austen', 'Sheridan Le Fanu']);
     expect(m.score).toBeGreaterThan(0);
