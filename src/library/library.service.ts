@@ -9,6 +9,9 @@ import { SEED_CATALOGUE } from '../paths';
 import { ActivityLogService } from './activity-log.service';
 import { LIBRARY_CHANGED } from './library.events';
 
+/** What needsBuild returns when there's no Moon+ backup but there are imports to build from. */
+export const IMPORTS_ONLY = ':imports:';
+
 /** Makes an uploaded file name safe to use in the inbox. */
 export function safeFileName(name: string): string {
   return name.replace(/[^A-Za-z0-9._-]+/g, '_');
@@ -70,11 +73,19 @@ export class LibraryService implements OnModuleInit {
     );
   }
 
-  /** The newest backup, if it, catalogue.json, metadata.json, an import or a synced position is newer than the data. */
+  /**
+   * The newest backup, if it, catalogue.json, metadata.json, an import or a synced position
+   * is newer than the data. With no backup but imports (Kobo, Kindle…), IMPORTS_ONLY.
+   */
   async needsBuild(): Promise<string | null> {
     const [newest] = await this.backups();
-    if (!newest) return null;
     const built = await mtimeMs(join(this.data, 'meta.json'));
+    if (!newest) {
+      const imports = await this.imports.newest();
+      if (!imports) return null;
+      const changed = Math.max(imports, await mtimeMs(this.catalogue), await mtimeMs(this.metadata));
+      return changed > built ? IMPORTS_ONLY : null;
+    }
     const syncs = await Promise.all((await findFiles(this.dav, '.po')).map(mtimeMs));
     const changed = Math.max(
       await mtimeMs(newest),

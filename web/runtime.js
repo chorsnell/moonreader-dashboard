@@ -53,10 +53,12 @@ window.dash = (() => {
       a.href = 'https://github.com/chorsnell/moonreader-dashboard';
       a.textContent = 'Run it on your own Moon+ Reader data';
       el.append(a, '.');
-    } else if (el && m.backup_file) {
+    } else if (el && (m.backup_file || (m.imports && m.imports.length))) {
+      // with no Moon+ backup, the data is from the imports (a Kobo, a Kindle…)
+      const from = m.backup_file || m.imports.map((i) => i.file).join(', ');
       // without a time when the owner shows visitors rounded dates only
       const when = new Date(m.generated).toLocaleString('en-GB', String(m.generated).includes('T') ? { dateStyle: 'medium', timeStyle: 'short' } : api.dates === 'month' ? { month: 'long', year: 'numeric' } : { dateStyle: 'medium' });
-      el.textContent = `Data from ${m.backup_file}, updated ${when}` + (m.synced_positions ? `, plus ${m.synced_positions} position${m.synced_positions === 1 ? '' : 's'} synced from Moon+.` : '.');
+      el.textContent = `Data from ${from}, updated ${when}` + (m.synced_positions ? `, plus ${m.synced_positions} position${m.synced_positions === 1 ? '' : 's'} synced from Moon+.` : '.');
     }
     return config;
   }

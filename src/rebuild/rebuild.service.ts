@@ -9,7 +9,8 @@ import { BackupImportService } from '../backup-import/backup-import.service';
 import { CoverLookupService } from '../covers/cover-lookup.service';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LIBRARY_CHANGED } from '../library/library.events';
-import { LibraryService } from '../library/library.service';
+import { IMPORTS_ONLY, LibraryService } from '../library/library.service';
+import { ImportsStore } from '../imports/imports.store';
 import { StatusService } from '../library/status.service';
 import { MetadataLookupService } from '../metadata/metadata-lookup.service';
 
@@ -41,6 +42,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     private readonly status: StatusService,
     private readonly activity: ActivityLogService,
     private readonly scheduler: SchedulerRegistry,
+    private readonly imports: ImportsStore,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -81,9 +83,12 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     void this.covers.run(trigger).then(() => this.metadata.run(trigger));
   }
 
-  /** Rebuilds from the newest backup now, even if nothing changed. False when there's none. */
+  /**
+   * Rebuilds from the newest backup (or the imports alone) now, even if nothing changed.
+   * False when there's nothing to build from.
+   */
   async rebuildNow(): Promise<boolean> {
-    if (!(await this.library.backups()).length) return false;
+    if (!(await this.library.backups()).length && !(await this.imports.newest())) return false;
     this.force = true;
     void this.check('admin');
     return true;
@@ -97,12 +102,13 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     const forced = this.force;
     this.force = false;
     const backup =
-      (forced && (await this.library.backups())[0]) || (await this.library.needsBuild());
+      (forced && ((await this.library.backups())[0] ?? IMPORTS_ONLY)) ||
+      (await this.library.needsBuild());
     if (!backup) {
       this.reasons.clear();
       return;
     }
-    await this.waitUntilCopied(backup);
+    if (backup !== IMPORTS_ONLY) await this.waitUntilCopied(backup);
     // a new file in the inbox that nobody announced was copied there by hand
     const trigger = [...this.reasons].join(', ') || 'inbox';
     this.reasons.clear();
@@ -121,12 +127,13 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
   }
 
   private async build(backup: string, trigger: string): Promise<void> {
-    const name = basename(backup);
+    const importsOnly = backup === IMPORTS_ONLY;
+    const name = importsOnly ? 'imports only' : basename(backup);
     const started = Date.now();
     this.status.buildStarted();
     this.activity.log(`Rebuilding from ${name} (${trigger})`);
     try {
-      const summary = await this.importer.importBackup(backup);
+      const summary = await this.importer.importBackup(importsOnly ? null : backup);
       for (const line of summary.lines) this.activity.log(`  ${line}`);
       this.status.buildSucceeded();
       this.activity.record({
@@ -152,7 +159,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
       // keep the last good data, and set the bad backup aside so it isn't retried
       const why = e instanceof Error ? e.message : String(e);
       this.status.buildFailed(why);
-      const setAside = await this.library.setAside(backup);
+      const setAside = !importsOnly && (await this.library.setAside(backup));
       this.activity.record({
         type: 'rebuild',
         message: `Rebuild from ${name} failed, kept the previous data`,

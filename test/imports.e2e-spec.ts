@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
 import { makeBackup } from './support/fake-backup';
+import { KINDLE_SESSIONS, KINDLE_TITLES, MY_CLIPPINGS, makeKoboDb } from './support/fake-kobo';
 import { TOKEN, TestDashboard, fileExists, waitFor } from './support/test-dashboard';
 
 interface BookRow {
@@ -167,5 +168,87 @@ describe('imports', () => {
       .send('a,b\n1,2\n')
       .expect(400);
     expect(res.body.error).toMatch(/Goodreads or StoryGraph/);
+  });
+
+  it('build from a Kobo alone, then merge it with Moon+ and Kindle files', async () => {
+    dash = await TestDashboard.start();
+    const d = dash;
+    makeKoboDb(join(tmp, 'KoboReader.sqlite'));
+    const put = (name: string, body: Buffer | string) =>
+      request(d.server)
+        .put(`/api/admin/imports?name=${name}`)
+        .set('X-Upload-Token', TOKEN)
+        .type('application/octet-stream')
+        .send(typeof body === 'string' ? Buffer.from(body) : body);
+
+    const kobo = await put('KoboReader.sqlite', await readFile(join(tmp, 'KoboReader.sqlite')));
+    expect(kobo.status).toBe(200);
+    expect(kobo.body).toMatchObject({ source: 'kobo', books: 2, days: 2, highlights: 3 });
+    expect(kobo.body.rebuilding).toBe(true);
+    expect(await waitFor(fileExists(d.path('data', 'meta.json')))).toBe(true);
+    let books = await d.json<BookRow[]>('data', 'books.json');
+    expect(books.map((b) => b.id).sort()).toEqual(['alpha', 'kobo-only-book']);
+    expect(books.find((b) => b.id === 'kobo-only-book')).toMatchObject({
+      status: 'in_progress',
+      source: 'kobo',
+      hours: 1,
+    });
+    expect(await d.json('data', 'meta.json')).toMatchObject({ backup_file: null });
+    const daily = await d.json<{ book_id: string; date: string }[]>('data', 'daily.json');
+    expect(daily.filter((r) => r.book_id === 'kobo-only-book').map((r) => r.date)).toEqual([
+      '2026-03-01',
+      '2026-03-03',
+    ]);
+
+    // a Moon+ backup arrives: Alpha is one book, with Moon+'s days and the Kobo's read
+    const before = await metaTime(d);
+    await new Promise((r) => setTimeout(r, 1100));
+    await request(d.server)
+      .put('/upload?name=test.mrpro')
+      .set('X-Upload-Token', TOKEN)
+      .type('application/octet-stream')
+      .send(backup)
+      .expect(200);
+    expect(await waitFor(async () => (await metaTime(d)) !== before)).toBe(true);
+    books = await d.json<BookRow[]>('data', 'books.json');
+    expect(books.filter((b) => b.title === 'Alpha')).toHaveLength(1);
+    expect(books.find((b) => b.id === 'alpha')?.source).toBeUndefined();
+
+    const mid = await metaTime(d);
+    await new Promise((r) => setTimeout(r, 1100));
+    expect((await put('My Clippings.txt', MY_CLIPPINGS)).body).toMatchObject({
+      source: 'kindle_clippings',
+      books: 2,
+      highlights: 3,
+    });
+    expect(await waitFor(async () => (await metaTime(d)) !== mid)).toBe(true);
+    const highlights = await d.json<{ book_id: string; text: string }[]>('data', 'highlights.json');
+    expect(highlights.find((h) => h.text === 'Beta has a line.')?.book_id).toBe('beta');
+    expect(highlights.filter((h) => h.book_id === 'kobo-only-book')).toHaveLength(2);
+
+    // reading sessions name books by ASIN until a title list arrives
+    expect((await put('Kindle.Devices.ReadingSession.csv', KINDLE_SESSIONS)).body).toMatchObject({
+      source: 'kindle',
+      books: 1,
+      days: 2,
+    });
+    const named = await put('orders.csv', KINDLE_TITLES);
+    expect(named.body).toMatchObject({ source: 'kindle_titles', titles: 1, renamed: 1 });
+    expect(
+      await waitFor(async () =>
+        (await d.json<BookRow[]>('data', 'books.json')).some((b) => b.title === 'The Kindle Book'),
+      ),
+    ).toBe(true);
+
+    const list = await request(d.server)
+      .get('/api/admin/imports')
+      .set('X-Upload-Token', TOKEN)
+      .expect(200);
+    expect(list.body.imports.map((i: { source: string }) => i.source)).toEqual([
+      'kobo',
+      'kindle',
+      'kindle_clippings',
+    ]);
+    expect(list.body.kindle_titles).toBe(1);
   });
 });

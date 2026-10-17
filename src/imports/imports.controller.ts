@@ -1,5 +1,5 @@
-import { readFile } from 'node:fs/promises';
-import type { IncomingMessage } from 'node:http';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import {
   BadRequestException,
@@ -17,31 +17,18 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AdminOnly } from '../access/admin.guard';
+import { RequestBodyError, saveRequestBody } from '../common/http/request-body';
 import { localDateTime } from '../common/time';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LibraryService } from '../library/library.service';
 import { RebuildService } from '../rebuild/rebuild.service';
-import { type FinishedBook, goodreadsCsv, parseReadingExport } from './goodreads';
+import { detectUpload } from './detect';
+import { type FinishedBook, goodreadsCsv } from './goodreads';
 import { ImportsStore } from './imports.store';
-import { IMPORT_SOURCES, type ImportSource } from './imports.types';
+import { IMPORT_SOURCES, type ImportSource, SOURCE_NAMES } from './imports.types';
 
-/** A Goodreads export of a few thousand books is a megabyte or two. */
-const MAX_EXPORT_BYTES = 20 * 1024 * 1024;
-
-const NAMES: Record<ImportSource, string> = { goodreads: 'Goodreads', storygraph: 'StoryGraph' };
-
-async function readText(req: IncomingMessage): Promise<string> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for await (const chunk of req as AsyncIterable<Buffer>) {
-    total += chunk.length;
-    if (total > MAX_EXPORT_BYTES) {
-      throw new BadRequestException({ error: 'That file is too large (20 MB at most).' });
-    }
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString('utf8');
-}
+/** A Kobo database with years of books can run to a few hundred MB. */
+const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 
 interface BookRow {
   id: string;
@@ -61,7 +48,10 @@ interface ReadRow {
   finished: boolean | null;
 }
 
-/** Imports from other reading apps and sites (Goodreads, StoryGraph), for the admin's Imports section. */
+/**
+ * Imports from other reading apps, sites and e-readers (Goodreads, StoryGraph, Kobo,
+ * Kindle), for the admin's Imports section.
+ */
 @Controller('api/admin/imports')
 @AdminOnly({ denied: 'Only the admin can do this.' })
 export class ImportsController {
@@ -79,28 +69,31 @@ export class ImportsController {
     return {
       imports: files.map((f) => ({
         source: f.source,
-        name: NAMES[f.source],
+        name: SOURCE_NAMES[f.source],
         file: f.file,
         imported: f.imported,
         books: f.books.length,
         read: f.books.filter((b) => b.shelf === 'read').length,
         rated: f.books.filter((b) => b.rating).length,
+        days: f.books.reduce((s, b) => s + (b.daily?.length ?? 0), 0),
+        highlights: f.books.reduce((s, b) => s + (b.highlights?.length ?? 0), 0),
       })),
+      kindle_titles: (await this.store.titles()).size,
       has_backup: (await this.library.backups()).length > 0,
     };
   }
 
-  /** PUT the export file as the body: a Goodreads library export or a StoryGraph export. */
+  /**
+   * PUT the file as the body: a Goodreads or StoryGraph export, a Kobo's KoboReader.sqlite,
+   * a Kindle's My Clippings.txt, Amazon's Kindle reading sessions, or a list of Kindle titles.
+   * What it is comes from its contents.
+   */
   @Put()
   @HttpCode(200)
   async upload(@Req() req: Request, @Query('name') name = 'export.csv') {
     const file = basename(String(name)).slice(0, 200);
-    const text = await readText(req);
-    let parsed;
-    try {
-      parsed = parseReadingExport(text);
-    } catch (e) {
-      const error = e instanceof Error ? e.message : String(e);
+    const tmp = await mkdtemp(join(tmpdir(), 'import-'));
+    const refuse = (error: string) => {
       this.activity.record({
         type: 'import',
         message: `Refused import ${file}`,
@@ -109,25 +102,85 @@ export class ImportsController {
         error,
         details: { file },
       });
-      throw new BadRequestException({ error });
+      return new BadRequestException({ error });
+    };
+    try {
+      const path = join(tmp, 'upload');
+      try {
+        await saveRequestBody(req, path, { maxBytes: MAX_UPLOAD_BYTES });
+      } catch (e) {
+        if (e instanceof RequestBodyError) throw refuse(e.message);
+        throw e;
+      }
+      let found;
+      try {
+        found = await detectUpload(path, await this.store.titles());
+      } catch (e) {
+        throw refuse(e instanceof Error ? e.message : String(e));
+      }
+      if (found.kind === 'titles') {
+        if (!found.titles.size) throw refuse('That list has no Kindle titles.');
+        await this.store.saveTitles(found.titles);
+        const renamed = await this.renameKindleBooks();
+        this.activity.record({
+          type: 'import',
+          message: `Imported ${found.titles.size} Kindle titles from ${file}`,
+          trigger: 'admin',
+          details: { source: 'kindle_titles', file, titles: found.titles.size, renamed },
+        });
+        const rebuilding = renamed ? await this.rebuild.rebuildNow() : false;
+        return {
+          ok: true,
+          source: 'kindle_titles',
+          titles: found.titles.size,
+          renamed,
+          rebuilding,
+        };
+      }
+      const { source, books } = found;
+      if (!books.length) throw refuse('That file has no books in it.');
+      await this.store.save({
+        schema_version: 1,
+        source,
+        file,
+        imported: localDateTime(),
+        books,
+      });
+      const rated = books.filter((b) => b.rating).length;
+      const days = books.reduce((s, b) => s + (b.daily?.length ?? 0), 0);
+      const highlights = books.reduce((s, b) => s + (b.highlights?.length ?? 0), 0);
+      this.activity.record({
+        type: 'import',
+        message:
+          `Imported ${SOURCE_NAMES[source]} from ${file}: ${books.length} books` +
+          (rated ? `, ${rated} rated` : '') +
+          (days ? `, ${days} reading days` : '') +
+          (highlights ? `, ${highlights} highlights` : ''),
+        trigger: 'admin',
+        details: { source, file, books: books.length, rated, days, highlights },
+      });
+      const rebuilding = await this.rebuild.rebuildNow();
+      return { ok: true, source, books: books.length, rated, days, highlights, rebuilding };
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
     }
-    if (!parsed.books.length) throw new BadRequestException({ error: 'That export has no books.' });
-    await this.store.save({
-      schema_version: 1,
-      source: parsed.source,
-      file,
-      imported: localDateTime(),
-      books: parsed.books,
-    });
-    const rated = parsed.books.filter((b) => b.rating).length;
-    this.activity.record({
-      type: 'import',
-      message: `Imported ${NAMES[parsed.source]} export ${file}: ${parsed.books.length} books, ${rated} rated`,
-      trigger: 'admin',
-      details: { source: parsed.source, file, books: parsed.books.length, rated },
-    });
-    const rebuilding = await this.rebuild.rebuildNow();
-    return { ok: true, source: parsed.source, books: parsed.books.length, rated, rebuilding };
+  }
+
+  /** Gives Kindle reading-session books named only by ASIN their titles. Returns how many. */
+  private async renameKindleBooks(): Promise<number> {
+    const kindle = await this.store.get('kindle');
+    if (!kindle) return 0;
+    const titles = await this.store.titles();
+    let renamed = 0;
+    for (const b of kindle.books) {
+      const t = titles.get(b.id);
+      if (t && (b.title !== t.title || b.author !== t.author)) {
+        Object.assign(b, { title: t.title, author: t.author });
+        renamed++;
+      }
+    }
+    if (renamed) await this.store.save(kindle);
+    return renamed;
   }
 
   @Delete(':source')
@@ -140,7 +193,7 @@ export class ImportsController {
     if (!(await this.store.remove(s))) throw new NotFoundException({ error: 'No such import.' });
     this.activity.record({
       type: 'import',
-      message: `Removed the ${NAMES[s]} import`,
+      message: `Removed the ${SOURCE_NAMES[s]} import`,
       trigger: 'admin',
       details: { source: s },
     });

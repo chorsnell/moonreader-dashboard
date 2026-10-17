@@ -5,7 +5,7 @@
 (() => {
   const { D, el, fmt, svgIn, showTip, hideTip, tipLines, axis, gColor, link, links, refLine, grow, chip, fDay, pDate, MARK } = rh;
   const ok = (id) => { const r = D(id); return r.status === 'ok' ? r.data : []; };
-  const SOURCES = { goodreads: 'Goodreads', storygraph: 'StoryGraph' };
+  const SOURCES = { goodreads: 'Goodreads', storygraph: 'StoryGraph', kobo: 'Kobo', kindle: 'Kindle', kindle_clippings: 'Kindle' };
   const SHAPES = {
     devoured: ['Devoured', 'var(--series-2)'], slow_burn: ['Slow burn', 'var(--series-3)'],
     stop_start: ['Stop-start', 'var(--series-5)'], rescued: ['Rescued', 'var(--series-1)'],
@@ -165,6 +165,7 @@
       if (!b.rating && !(b.shelves || []).length && !reads.length && !b.source) return false;
       box.replaceChildren();
       box.style.minHeight = '0';
+      parts.h.textContent = b.rating || (b.shelves || []).length ? 'Your rating' : 'Read elsewhere';
       if (b.rating) {
         const s = el('div', 'rt-stars', stars(b.rating));
         s.setAttribute('aria-label', `Rated ${b.rating} out of 5`);
@@ -176,8 +177,10 @@
         box.append(sh);
       }
       const src = SOURCES[b.source] || SOURCES[reads[0]?.source] || 'an import';
-      if (b.source) box.append(el('p', 'rt-note', `Only in your ${src} export, so there are dates but no minutes, words or speed for it. It counts towards books per year and genres, not towards time or speed.`));
-      else if (reads.length) box.append(el('p', 'rt-note', `Also read outside Moon+ (from ${src}): finished ${reads.map((r) => fDay(pDate(r.end))).join(', ')}.`));
+      const fin = reads.filter((r) => r.finished);
+      if (b.source && b.hours == null) box.append(el('p', 'rt-note', `Only in your ${src} data, so there are dates but no minutes, words or speed for it. It counts towards books per year and genres, not towards time or speed.`));
+      else if (b.source) box.append(el('p', 'rt-note', `Read on your ${src}, not in Moon+.`));
+      else if (reads.length) box.append(el('p', 'rt-note', `Also read outside Moon+ (${[...new Set(reads.map((r) => SOURCES[r.source]))].join(', ')})` + (fin.length ? `: finished ${fin.map((r) => fDay(pDate(r.end))).join(', ')}.` : '.')));
       if (b.rating || (b.shelves || []).length) parts.note.hidden = true;
     },
   });
