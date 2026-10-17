@@ -7,51 +7,13 @@
 // rh.friends is what the other friends-*.js views build with: the list, each friend's data,
 // the friend picked in "Compare with", their colour, a book matcher, and calcs worked out
 // from a friend's data (dash.calcWith).
+
+// Matching books across libraries, kept apart from the page so calcs (and tests) can use it:
+// dash.sameBook.{keys, matcher, shared, authorKey}.
 (() => {
-  const { el, fmt, plural, fShort, pDate } = rh;
-  const st = { status: 'loading', me: { name: 'You', leaderboards: [] }, list: [], data: {} };
-  const memo = new Map();
-  const PARTS = ['books', 'reads', 'daily', 'highlights'];
-
-  async function load() {
-    let index;
-    try {
-      const r = await fetch('data/friends.json?v=' + Date.now(), { cache: 'no-store' });
-      if (!r.ok) throw new Error('none');
-      index = await r.json();
-    } catch (e) {
-      Object.assign(st, { status: 'none', list: [], data: {} });
-      sync();
-      return;
-    }
-    const list = (index.friends || []).filter((f) => f && f.slug);
-    const data = {};
-    await Promise.all(list.map(async (f) => {
-      const d = { ...f };
-      await Promise.all(PARTS.map(async (p) => {
-        d[p] = [];
-        if (f.parts && !f.parts.includes(p)) return;
-        try { const r = await fetch(`friends/${encodeURIComponent(f.slug)}/${p}.json`); if (r.ok) d[p] = await r.json(); } catch (e) { /* left empty */ }
-      }));
-      data[f.slug] = d;
-    }));
-    memo.clear();
-    Object.assign(st, { status: 'ok', me: { name: 'You', leaderboards: [], ...index.me }, list: list.map((f) => data[f.slug]), data });
-    sync();
-  }
-  // the tab shows only when there are friends to show
-  function sync() {
-    const t = document.getElementById('tab-friends');
-    if (t) t.hidden = st.status === 'ok' ? !st.list.length : st.status !== 'loading';
-    if (t && t.hidden && rh.current() === 'friends') rh.show('overview');
-    else rh.redraw();
-  }
-  window.addEventListener('dash:config', (e) => { if (e.detail && e.detail.can_read !== false) load(); });
-
-  // ---------- matching books across libraries ----------
   // the same book has the same ISBN or work id; failing that, the same title and author once
   // case, accents, punctuation and a leading article are ignored
-  const norm = (s) => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const norm = (s) => String(s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const titleKey = (t) => norm(t).replace(/^(the|a|an)\s+/, '').replace(/[^a-z0-9]+/g, ' ').trim();
   const authorKey = (a) => norm(a).replace(/[^a-z]+/g, '');
   function keys(b) {
@@ -73,7 +35,52 @@
     (theirs || []).forEach((t) => { const m = find(t); if (m && !seen.has(m.id)) { seen.add(m.id); out.push({ mine: m, theirs: t }); } });
     return out;
   }
-  const authorName = (a) => authorKey(a);
+
+  dash.sameBook = { keys, matcher, shared, authorKey };
+})();
+
+(() => {
+  const { el, fmt, plural, fShort, pDate } = rh;
+  const st = { status: 'loading', me: { name: 'You', leaderboards: [] }, list: [], data: {} };
+  const memo = new Map();
+  const PARTS = ['books', 'reads', 'daily', 'highlights', 'clubs'];
+
+  async function load() {
+    let index;
+    try {
+      const r = await fetch('data/friends.json?v=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) throw new Error('none');
+      index = await r.json();
+    } catch (e) {
+      Object.assign(st, { status: 'none', list: [], data: {} });
+      sync();
+      return;
+    }
+    const list = (index.friends || []).filter((f) => f && f.slug);
+    const data = {};
+    await Promise.all(list.map(async (f) => {
+      const d = { ...f };
+      await Promise.all(PARTS.map(async (p) => {
+        d[p] = [];
+        if (p === 'clubs' ? !f.clubs : f.parts && !f.parts.includes(p)) return;
+        try { const r = await fetch(`friends/${encodeURIComponent(f.slug)}/${p}.json`); if (r.ok) d[p] = await r.json(); } catch (e) { /* left empty */ }
+      }));
+      data[f.slug] = d;
+    }));
+    memo.clear();
+    Object.assign(st, { status: 'ok', me: { name: 'You', leaderboards: [], ...index.me }, list: list.map((f) => data[f.slug]), data });
+    sync();
+  }
+  // the tab shows only when there are friends to show
+  function sync() {
+    const t = document.getElementById('tab-friends');
+    if (t) t.hidden = st.status === 'ok' ? !st.list.length : st.status !== 'loading';
+    if (t && t.hidden && rh.current() === 'friends') rh.show('overview');
+    else rh.redraw();
+  }
+  window.addEventListener('dash:config', (e) => { if (e.detail && e.detail.can_read !== false) load(); });
+
+  const { keys, matcher, shared, authorKey } = dash.sameBook;
 
   // ---------- colours: you first, then each friend in order ----------
   const color = (slug) => (slug === 'me' || !slug ? rh.C[0] : rh.C[(st.list.findIndex((f) => f.slug === slug) + 1) % rh.C.length]);
@@ -112,13 +119,14 @@
     me: () => st.me,
     list: () => st.list.slice(),
     get: (slug) => st.data[slug] || null,
-    selected, select, color, calc, matcher, shared, keys, authorKey: authorName, freshness,
+    selected, select, color, calc, matcher, shared, keys, authorKey, freshness,
     reload: load,
   };
 
   // ---------- the Friends tab ----------
   rh.tab('friends', 'Friends', { after: 'library' });
-  document.getElementById('tab-friends').hidden = true;
+  const tabButton = document.getElementById('tab-friends');
+  if (tabButton) tabButton.hidden = true;
 
   // "Compare with": the friend the one-to-one views compare you with
   rh.card({

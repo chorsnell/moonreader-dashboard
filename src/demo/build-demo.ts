@@ -20,7 +20,7 @@ import { WEB_DIR } from '../paths';
 import { loadPageCalcs } from '../stats/page-sandbox';
 import { bundleJson, computeStats, readInputs } from '../stats/stats';
 import { withFeatures } from '../web/features';
-import { writeStaticFriends } from './demo-friends-site';
+import { writeStaticClubs, writeStaticFriends } from './demo-friends-site';
 import { buildDemoLibrary } from './demo-library';
 
 const DAY_MS = 86_400_000;
@@ -95,6 +95,7 @@ async function main(): Promise<void> {
       await writeFile(join(out, 'api', 'stats', id), JSON.stringify(value));
     }
     const friends = await writeStaticFriends(lib, out);
+    await writeStaticClubs(lib, out);
     await writeFile(join(out, '.nojekyll'), '');
     const iso = (d: number) => new Date(d * DAY_MS).toISOString().slice(0, 10);
     console.log(

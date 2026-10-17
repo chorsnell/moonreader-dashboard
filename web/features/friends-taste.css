@@ -1,0 +1,28 @@
+/* taste match */
+.tm-head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--cds-gap-md) 24px;margin-bottom:var(--cds-gap-sm)}
+.tm-score{display:flex;flex-direction:column}
+.tm-score b{font-family:var(--font-anthropic-serif);font-weight:400;font-size:48px;line-height:1;font-variant-numeric:tabular-nums}
+.tm-score b::after{content:"/100";font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-left:4px;font-family:var(--font-anthropic-sans)}
+.tm-score span{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-top:4px}
+.tm-parts{flex:1;min-width:14rem;max-width:28rem;display:flex;flex-direction:column;gap:6px}
+.tm-part{display:grid;grid-template-columns:8.5rem 1fr 2.6rem;align-items:center;gap:8px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.tm-part .pbar{margin:0;height:6px;border-radius:3px}
+.tm-part b{color:var(--color-fg);font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+.tm-h{font-size:var(--cds-font-size-body);font-weight:500;margin:var(--cds-gap-md) 0 var(--cds-gap-xs)}
+.tm-genres,.tm-venn{position:relative}
+.tm-genres .legend{margin-bottom:6px}
+.tm-vn{font-family:var(--font-anthropic-serif);font-size:20px;fill:var(--color-fg)}
+.tm-vn .axl{font-family:var(--font-anthropic-sans)}
+.tm-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--cds-gap-md);margin-top:var(--cds-gap-xs)}
+.tm-col h4{margin:0 0 4px;font-size:var(--cds-font-size-caption);font-weight:500;color:var(--color-fg-muted)}
+.tm-col ul{list-style:none;margin:0;padding:0;font-size:var(--cds-font-size-body)}
+.tm-col li{display:flex;justify-content:space-between;gap:8px;padding:2px 0;min-width:0}
+.tm-col li .lk{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm-n,.tm-more{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);white-space:nowrap}
+.tm-tbl{overflow-x:auto}
+.tm-tbl tr[data-link]{cursor:pointer}
+.tm-title{font-weight:500}
+.tm-tbl td .lk{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.tm-win{font-weight:600}
+@media (max-width:520px){.tm-cols{grid-template-columns:1fr}.tm-part{grid-template-columns:7rem 1fr 2.4rem}}
+.tm-stars{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);white-space:nowrap}

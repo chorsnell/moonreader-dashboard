@@ -52,6 +52,16 @@ so is one whose rows hold a `Date`, a `Map` or `NaN` (JSON can't carry them). Ca
 the order the scripts register them, in Node as in the page. `test/web/server-stats.spec.ts`
 checks that both give identical rows.
 
+## Friends' data
+
+`rh.friends` (from `friend-profiles.js`) has each friend's books, reads and daily rows, the
+friend picked under "Compare with" (`selected()`), a colour per person (`color(slug)`, `'me'`
+for you) and `calc(slug, id)`: any calc worked out again from that friend's data. A calc that
+compares you with a friend takes their files as inputs named `friend_books`, `friend_reads`…
+and is run with `dash.calcWith(id, { books, …, friend_books, … })`; the server leaves those
+to the page. `dash.sameBook.matcher(books)` finds the same book in another library (ISBN,
+work id, then title and author).
+
 ## Privacy
 
 The owner chooses what visitors (public, or with the read password) may see; the admin
