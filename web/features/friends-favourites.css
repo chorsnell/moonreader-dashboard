@@ -1,0 +1,14 @@
+/* their favourites you haven't read */
+.chart#ch-friends-favourites{min-height:0}
+#ch-friends-favourites .fr-pick{margin-bottom:var(--cds-gap-sm)}
+#ch-friends-favourites .fr-pill[aria-pressed=true]{border-color:var(--color-fg);box-shadow:inset 0 0 0 1px var(--color-fg)}
+.ff-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr));gap:var(--cds-gap-sm)}
+.ff-item{display:flex;justify-content:space-between;gap:var(--cds-gap-sm);padding:var(--cds-pad-md);border-radius:8px;background:var(--color-bg);min-width:0}
+.ff-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ff-title{font-family:var(--font-anthropic-serif);font-weight:500;font-size:16px}
+.ff-text>.lk{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.ff-tags{margin-top:2px}
+.ff-why{margin:4px 0 0;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);line-height:1.4}
+.ff-side{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.ff-spark{display:block}
+.ff-n{font-size:11px;color:var(--color-fg-muted);white-space:nowrap}
