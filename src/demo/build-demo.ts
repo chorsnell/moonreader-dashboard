@@ -21,6 +21,7 @@ import { CoverLookupService } from '../covers/cover-lookup.service';
 import { WEB_DIR } from '../paths';
 import { withFeatures } from '../web/features';
 import { writeDemoBackup } from './demo-backup';
+import { simulateHighlights } from './demo-highlights';
 import { DemoModule } from './demo.module';
 import { BOOKS, fileName } from './demo-books';
 import { Random } from './random';
@@ -30,7 +31,9 @@ const DAY_MS = 86_400_000;
 
 async function main(): Promise<void> {
   const out = resolve(process.argv[2] ?? 'site');
-  const { log, days } = simulate(new Random(Number(process.env.DEMO_SEED ?? 7)));
+  const seed = Number(process.env.DEMO_SEED ?? 7);
+  const { log, days } = simulate(new Random(seed));
+  const highlights = simulateHighlights(log, seed);
   const yesterday = Date.parse(localDate()) / DAY_MS - 1;
   let firstDay = yesterday - days + 1;
   firstDay -= firstDay % 7; // keep simulated weekends on real weekends (day 0 is a Thursday)
@@ -54,7 +57,7 @@ async function main(): Promise<void> {
     };
     await writeFile(join(lib, 'catalogue.json'), JSON.stringify(catalogue), 'utf8');
     const backup = join(lib, 'demo-library.mrpro');
-    await writeDemoBackup(backup, log, firstDay);
+    await writeDemoBackup(backup, log, firstDay, highlights);
 
     process.env.LIBRARY = lib; // read when the app context starts
     const app = await NestFactory.createApplicationContext(DemoModule, {

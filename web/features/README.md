@@ -42,3 +42,27 @@ Conventions: show books, authors, series, genres and years with `rh.ref`, `rh.by
 this file too); colour genres with `rh.gColor`; series colours with `rh.C`; keep CSS
 in the feature's own `.css`, using the page's CSS custom properties so it works in light
 and dark.
+
+## Chart style
+
+Every chart shares one visual system, so new charts should use it rather than pick their own:
+
+- **Colour.** Categories take `rh.gColor(genre)` or `rh.C[i]` (the `--series-1..8` slots, in
+  fixed order, checked for colour-blind separation in light and dark). One series: `rh.C[0]`.
+  De-emphasised marks: `var(--cds-chart-muted)`. Text never wears a series colour; put a
+  swatch (`.sw`) or a dot beside it instead. A chip given `style.color` shows the colour as a dot.
+- **Marks.** Sizes are in `rh.MARK` (`bar` 24px max thickness, `radius` 4, `gap` 2, `line` 2,
+  `dot` 4). Draw bars with `rh.barPath(x, y, w, h, dir = 'up' | 'right', r?)`: a rounded data end
+  and a square baseline. Leave `rh.MARK.gap` of surface between stacked segments. Give dots and
+  end markers `class="ring"` (a surface-coloured ring so they stay legible where they overlap).
+- **Reference lines** (an average, a target): `rh.refLine(svg, x1, y1, x2, y2)`, or `class="ref"`.
+- **Axes and grid.** `rh.axis(g, d3axis)` styles ticks; use `tickSize(-width)` for hairline
+  gridlines and remove the y-axis `.domain`.
+- **Hover.** Tooltips go through `rh.showTip` / `rh.tipLines`. Give a row's or column's
+  transparent hit rect `class="hit"` and it gets a faint wash on hover.
+- **Motion.** Charts made with `rh.svgIn` fade in when they first appear on a view, or when
+  their data or a setting in their card changes. They don't animate on a resize or a table
+  sort, and never with `prefers-reduced-motion`. To grow marks as well, use
+  `sel.call(rh.grow, attr, from, to)`, e.g. `circles.call(rh.grow, 'r', 0, (d) => d.r)` or bars
+  from a zero-height `rh.barPath`. Draw lines in with `path.call(rh.drawIn)`. Both just set the
+  final value when the chart shouldn't animate. `rh.motion(node)` tells you whether it will.
