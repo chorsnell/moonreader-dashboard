@@ -26,6 +26,10 @@ const POLL_INTERVAL = 'library-poll';
 export class RebuildService implements OnApplicationBootstrap, OnApplicationShutdown {
   private running: Promise<void> | null = null;
   private again = false;
+  /** Set by rebuildNow: build from the newest backup on the next check, changed or not. */
+  private force = false;
+  /** Why checks were asked for since the last build (upload, webdav, sync, catalogue…). */
+  private readonly reasons = new Set<string>();
   private readonly stop = new AbortController();
 
   constructor(
@@ -42,8 +46,8 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
   onApplicationBootstrap(): void {
     const timer = setInterval(() => void this.check(), this.config.pollSeconds * 1000);
     this.scheduler.addInterval(POLL_INTERVAL, timer);
-    void this.check();
-    this.lookUp(); // carry on with any lookups an earlier run didn't finish
+    void this.check('startup');
+    this.lookUp('startup'); // carry on with any lookups an earlier run didn't finish
   }
 
   async onApplicationShutdown(): Promise<void> {
@@ -53,7 +57,8 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
 
   /** Looks for something to rebuild now. Resolves when this and any queued check are done. */
   @OnEvent(LIBRARY_CHANGED)
-  check(): Promise<void> {
+  check(reason?: string): Promise<void> {
+    if (reason) this.reasons.add(reason);
     if (this.running) {
       this.again = true;
       return this.running;
@@ -72,15 +77,36 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
   }
 
   /** Looks up missing covers, then missing metadata, in the background, one service at a time. */
-  private lookUp(): void {
-    void this.covers.run().then(() => this.metadata.run());
+  private lookUp(trigger: string): void {
+    void this.covers.run(trigger).then(() => this.metadata.run(trigger));
+  }
+
+  /** Rebuilds from the newest backup now, even if nothing changed. False when there's none. */
+  async rebuildNow(): Promise<boolean> {
+    if (!(await this.library.backups()).length) return false;
+    this.force = true;
+    void this.check('admin');
+    return true;
+  }
+
+  get busy(): boolean {
+    return this.running !== null;
   }
 
   private async checkOnce(): Promise<void> {
-    const backup = await this.library.needsBuild();
-    if (!backup) return;
+    const forced = this.force;
+    this.force = false;
+    const backup =
+      (forced && (await this.library.backups())[0]) || (await this.library.needsBuild());
+    if (!backup) {
+      this.reasons.clear();
+      return;
+    }
     await this.waitUntilCopied(backup);
-    await this.build(backup);
+    // a new file in the inbox that nobody announced was copied there by hand
+    const trigger = [...this.reasons].join(', ') || 'inbox';
+    this.reasons.clear();
+    await this.build(backup, trigger);
   }
 
   /** Waits until a backup that's still being copied in stops growing. */
@@ -94,29 +120,58 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     }
   }
 
-  private async build(backup: string): Promise<void> {
+  private async build(backup: string, trigger: string): Promise<void> {
+    const name = basename(backup);
+    const started = Date.now();
     this.status.buildStarted();
-    this.activity.log(`Rebuilding from ${basename(backup)}`);
+    this.activity.log(`Rebuilding from ${name} (${trigger})`);
     try {
       const summary = await this.importer.importBackup(backup);
       for (const line of summary.lines) this.activity.log(`  ${line}`);
       this.status.buildSucceeded();
-      this.lookUp();
+      this.activity.record({
+        type: 'rebuild',
+        message: `Rebuilt from ${name}`,
+        trigger,
+        duration_ms: Date.now() - started,
+        details: {
+          backup: name,
+          books: summary.books,
+          reads: summary.reads,
+          reading_days: summary.readingDays,
+          highlights: summary.highlights,
+          synced_positions: summary.syncedApplied,
+          new_covers: summary.newCovers,
+          untagged_count: summary.untagged.length,
+          untagged: summary.untagged.slice(0, 100),
+        },
+      });
+      this.lookUp('rebuild');
     } catch (e) {
       // keep the last good data, and set the bad backup aside so it isn't retried
       const why = e instanceof Error ? e.message : String(e);
-      this.activity.log(`  ${why}`);
       this.status.buildFailed(why);
-      if (await this.library.setAside(backup)) {
-        this.activity.log(
-          `  Build failed, kept the previous data. Renamed it to ${basename(backup)}.failed`,
-        );
-      }
+      const setAside = await this.library.setAside(backup);
+      this.activity.record({
+        type: 'rebuild',
+        message: `Rebuild from ${name} failed, kept the previous data`,
+        outcome: 'failed',
+        trigger,
+        duration_ms: Date.now() - started,
+        error: why,
+        details: { backup: name, set_aside: setAside ? `${name}.failed` : null },
+      });
     } finally {
       this.status.buildEnded();
     }
-    for (const old of await this.library.pruneBackups()) {
-      this.activity.log(`Removed old backup ${this.library.relative(old)}`);
+    const removed = (await this.library.pruneBackups()).map((f) => this.library.relative(f));
+    if (removed.length) {
+      this.activity.record({
+        type: 'prune',
+        message: `Removed ${removed.length} old backup(s): ${removed.join(', ')}`,
+        trigger: 'rebuild',
+        details: { files: removed, keep: this.config.keepBackups },
+      });
     }
   }
 }

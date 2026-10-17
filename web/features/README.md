@@ -34,8 +34,47 @@ A feature script is an IIFE that uses `dash` (data and calcs) and `rh` (drawing 
 
   // a new tab; returns its <section>, then add cards with tab: 'mytab'
   rh.tab('mytab', 'My tab', { after: 'timeline' });
+
+  // a page with no tab, opened by its link (#mypage or #mypage/<anything>); draw(section)
+  // runs on every redraw while it's shown, so only rebuild what changed
+  rh.page('mypage', (section) => {});
 })();
 ```
+
+## Admin sections
+
+The admin page (`#admin`, drawn by `admin.js`) is only shown to the admin. Each of its
+sections (Data, Sync & logs, Access & privacy, Catalogue, Covers…) is registered the same
+way, so a feature adds its own settings without touching `admin.js`:
+
+```js
+rh.adminSection({
+  id: 'prices',          // its link is #admin/prices
+  title: 'Prices',       // the label in the section menu
+  order: 60,             // menu position; the built-in ones use 10–50, default 50
+  draw(box, api) {       // runs each time the section is opened; box is an empty card
+    const { h, block, msg } = api;
+    const out = msg();
+    box.append(block('Book prices', 'What each book cost.', h('button', {
+      class: 'up-primary ad-auto', type: 'button',
+      onclick: async () => { out.textContent = (await api.get('api/admin/prices')).summary; },
+    }, 'Load'), out));
+  },
+});
+```
+
+`api` gives the section:
+- `h(tag, attrs, ...children)`: builds an element (`class`, `on<event>` handlers, `value`, and `true`/`false` attributes).
+- `block(title, note, ...children)`: a titled block, the building piece of every section; `msg()`: a status line.
+- `get(url)`, `post(url, body)`, `put(url, body, contentType?)`: JSON requests to the server that throw an `Error` with the server's `error` message on failure.
+- `config()`: what `/api/config` said; `status()`: `/api/admin/status` (current data, backups, last error).
+- `waitForBuild(statusBefore, say)`: after a change that rebuilds, waits for the new data, reports progress through `say(text)` and reloads the dashboard.
+- `when(date)`, `ago(date)`, `size(bytes)`: formatting; `refresh()`: draws the open section again.
+
+Sections may register in any script, before or after `admin.js`. Their server endpoints
+belong under `/api/admin/` and must use `@AdminOnly` (see `src/admin/admin.controller.ts`).
+On the static demo there is no admin, so sections are never drawn. Use the `ad-*` and `up-*`
+classes in `admin.css` and `index.html` for forms and lists so they match.
 
 Conventions: show books, authors, series, genres and years with `rh.ref`, `rh.byline`,
 `rh.chip`, `rh.linkBook` or `rh.linkPage` so they link (test/web/links.spec.ts checks
