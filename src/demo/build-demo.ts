@@ -19,6 +19,7 @@ import { BackupImportService } from '../backup-import/backup-import.service';
 import type { Catalogue } from '../backup-import/reading-history.types';
 import { CoverLookupService } from '../covers/cover-lookup.service';
 import { WEB_DIR } from '../paths';
+import { withFeatures } from '../web/features';
 import { writeDemoBackup } from './demo-backup';
 import { DemoModule } from './demo.module';
 import { BOOKS, fileName } from './demo-books';
@@ -69,6 +70,8 @@ async function main(): Promise<void> {
 
     await rm(out, { recursive: true, force: true });
     await cp(WEB_DIR, out, { recursive: true });
+    const page = await readFile(join(out, 'index.html'), 'utf8');
+    await writeFile(join(out, 'index.html'), await withFeatures(page, WEB_DIR));
     await cp(join(lib, 'data'), join(out, 'data'), { recursive: true });
     await mkdir(join(out, 'covers'), { recursive: true });
     const coverUrls: Record<string, string> = {};

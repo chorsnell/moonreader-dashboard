@@ -915,7 +915,8 @@
   function drawEntity() {
     const root = $('#pg-body'), p = pages[pageKind];
     if (!p) { document.title = 'Reading history'; root.replaceChildren(el('div', 'dy-empty', 'Nothing to show here.')); return; }
-    try { p.draw(pageId, root); } catch (e) { console.error(pageKind, e); root.replaceChildren(el('div', 'fail', 'Failed to load')); }
+    try { p.draw(pageId, root); } catch (e) { console.error(pageKind, e); root.replaceChildren(el('div', 'fail', 'Failed to load')); return; }
+    (extensions[pageKind] || []).forEach((fn) => { try { fn(pageId, root); } catch (e) { console.error(pageKind, e); } });
   }
   $('#bk-read').addEventListener('change', (e) => { bookRead = +e.target.value; drawBook(); });
 
@@ -1020,6 +1021,7 @@
         el('td', 'n hide-sm', okDay(d) ? fmt(Math.round(d.words / d.minutes)) : '—'), el('td', 'n', progStep(d)));
       return tr;
     }));
+    drawBookCards(b);
   }
 
   // minutes per day as bars and progress as a line, across one read
@@ -1073,8 +1075,68 @@
       .on('click', (e) => { const day = at(e); if (byDate.has(day)) { hideTip(tip); openDiary(day); } });
   }
 
+  // ---------- feature scripts (web/features/*.js) ----------
+  // Each feature lives in its own file and adds itself with rh.card, rh.bookCard, rh.extend
+  // and rh.tab, so new views don't all edit this file and index.html.
+  const featureCards = [], bookCards = [], extensions = {};
+  function cardShell(o, cls) {
+    const c = el('div', 'rh-card' + (o.wide === false ? '' : ' wide') + (cls ? ' ' + cls : ''));
+    c.id = 'card-' + o.id;
+    const head = el('div', 'card-head'), h = el('h2', null, o.title || '');
+    head.append(h); c.append(head);
+    const note = el('p', 'note', o.note || ''); note.hidden = !o.note; c.append(note);
+    const box = el('div', 'chart' + (o.chartClass ? ' ' + o.chartClass : ''));
+    box.id = 'ch-' + o.id;
+    if (o.calc) box.dataset.source = o.calc;
+    c.append(box);
+    return { card: c, head, h, note, box };
+  }
+  // a card on a tab: { tab, id, title, note, wide, calc, before, after, draw(box, rows, parts) }
+  // draw runs on every redraw of that tab; with calc it gets that calc's rows (or isn't called
+  // until they load)
+  function addCard(o) {
+    const parts = cardShell(o);
+    featureCards.push({ ...o, parts, placed: false });
+    return parts;
+  }
+  function place(f, root) {
+    if (f.placed && f.parts.card.isConnected) return;
+    const ref = (f.before && document.getElementById(f.before)) || (f.after && document.getElementById(f.after));
+    if (ref && f.before) ref.before(f.parts.card); else if (ref) ref.after(f.parts.card); else root.append(f.parts.card);
+    f.placed = true;
+  }
+  function runCard(f, ...args) {
+    const { box } = f.parts;
+    let rows;
+    if (f.calc) { rows = state(box, f.calc); if (!rows) return; }
+    try { f.draw(box, rows, f.parts, ...args); } catch (e) { console.error(f.id, e); box.replaceChildren(el('div', 'fail', 'Failed to load')); }
+  }
+  function drawFeatureCards(name) {
+    const root = document.getElementById(name);
+    if (!root) return;
+    featureCards.filter((f) => f.tab === name).forEach((f) => {
+      place(f, root);
+      if (f.hidden && f.hidden()) { f.parts.card.hidden = true; return; }
+      f.parts.card.hidden = false;
+      runCard(f);
+    });
+  }
+  // a card on every book page: draw(box, rows, parts, book); return false to hide it for that book
+  function drawBookCards(b) {
+    const root = $('#book');
+    bookCards.forEach((f) => {
+      place(f, root);
+      f.parts.card.hidden = false;
+      const { box } = f.parts;
+      let rows;
+      if (f.calc) { rows = state(box, f.calc); if (!rows) return; }
+      try { if (f.draw(box, rows, f.parts, b) === false) f.parts.card.hidden = true; }
+      catch (e) { console.error(f.id, e); box.replaceChildren(el('div', 'fail', 'Failed to load')); }
+    });
+  }
+
   // ---------- tabs ----------
-  const tabs = [...document.querySelectorAll('.rh-tabs button')];
+  let tabs = [...document.querySelectorAll('.rh-tabs button')];
   const top = $('.rh-top'), nav = $('.rh-tabs');
   // keep scroll-margin in step with the sticky bar so scrollIntoView lands below it
   const syncTopH = () => document.documentElement.style.setProperty('--top-h', top.offsetHeight + 8 + 'px');
@@ -1103,6 +1165,22 @@
     }
   }
   tabs.forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
+  // a tab added by a feature script (rh.tab)
+  function addTab(id, label, o = {}) {
+    if (document.getElementById(id)) return document.getElementById(id);
+    const b = el('button', null, label);
+    Object.assign(b, { id: 'tab-' + id, role: 'tab' });
+    b.dataset.tab = id; b.setAttribute('aria-selected', 'false');
+    b.addEventListener('click', () => show(id));
+    const after = o.after && document.getElementById('tab-' + o.after);
+    if (after) after.after(b); else (document.getElementById('tab-checks') ? document.getElementById('tab-checks').before(b) : nav.append(b));
+    const page = el('section', 'rh-page');
+    page.id = id; page.hidden = true;
+    const prev = document.getElementById('checks');
+    prev.before(page);
+    tabs = [...document.querySelectorAll('.rh-tabs button')];
+    return page;
+  }
   document.addEventListener('animationend', (e) => e.target.classList?.remove('in-l', 'in-r'));
 
   // ---------- swipe between tabs (touch) ----------
@@ -1176,6 +1254,7 @@
     } else if (tab === 'book') drawBook();
     else if (tab === 'entity') drawEntity();
     else drawTables();
+    drawFeatureCards(tab);
   }
   dash.onData(redraw);
   // #speed, #diary… open a tab; #book/<id>, #author/<name>… open a page
@@ -1198,5 +1277,13 @@
     link, links, ref, byline, chip, linkBook: (n, id) => link(n, 'book', id), linkPage: link, openLink, openDiary,
     setTitle: (s) => { detailName = s || ''; document.title = s ? `${s} · Reading history` : 'Reading history'; },
     mins, pct, date, plural, span, okDay, speedFrom, avgWpm, vsAvg, STATUS,
+    // feature scripts
+    card: addCard,
+    bookCard: (o) => { const parts = cardShell(o); bookCards.push({ ...o, parts, placed: false }); return parts; },
+    extend: (kind, fn) => { (extensions[kind] = extensions[kind] || []).push(fn); },
+    tab: addTab,
+    show: (name) => show(name),
+    current: () => tab,
+    redraw: () => redraw(),
   };
 })();
