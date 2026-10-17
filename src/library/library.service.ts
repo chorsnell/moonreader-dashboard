@@ -83,7 +83,11 @@ export class LibraryService implements OnModuleInit {
     if (!newest) {
       const imports = await this.imports.newest();
       if (!imports) return null;
-      const changed = Math.max(imports, await mtimeMs(this.catalogue), await mtimeMs(this.metadata));
+      const changed = Math.max(
+        imports,
+        await mtimeMs(this.catalogue),
+        await mtimeMs(this.metadata),
+      );
       return changed > built ? IMPORTS_ONLY : null;
     }
     const syncs = await Promise.all((await findFiles(this.dav, '.po')).map(mtimeMs));

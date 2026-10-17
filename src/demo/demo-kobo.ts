@@ -1,4 +1,4 @@
-import { localDate, localDateTime, round1 } from '../common/time';
+import { localDateTime, round1 } from '../common/time';
 import type { ImportedBook, ImportFile } from '../imports/imports.types';
 import { Random } from './random';
 
@@ -35,7 +35,12 @@ export function demoKobo(firstDay: number, lastDay: number, seed: number): Impor
     while (progress < 100) {
       const minutes = round1(Math.max(10, rng.lognormal(3.4, 0.4)));
       progress = Math.min(100, round1(progress + (minutes * wpm) / 600));
-      daily.push({ date: localDate(new Date(day * DAY_MS)), minutes, words: null, progress });
+      daily.push({
+        date: new Date(day * DAY_MS).toISOString().slice(0, 10),
+        minutes,
+        words: null,
+        progress,
+      });
       day += rng.random() < 0.7 ? 1 : 2;
     }
     const mid = daily[Math.floor(daily.length / 2)].date;
@@ -79,7 +84,7 @@ export function demoKobo(firstDay: number, lastDay: number, seed: number): Impor
     schema_version: 1,
     source: 'kobo',
     file: 'KoboReader.sqlite',
-    imported: `${localDate()}T09:00:00`,
+    imported: '',
     books,
   };
 }

@@ -2,13 +2,13 @@ import { stat } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { Inject, Injectable, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { appConfig, type AppConfigType } from '../config/app.config';
 import { BackupImportService } from '../backup-import/backup-import.service';
 import { CoverLookupService } from '../covers/cover-lookup.service';
 import { ActivityLogService } from '../library/activity-log.service';
-import { LIBRARY_CHANGED } from '../library/library.events';
+import { LIBRARY_CHANGED, LIBRARY_REBUILT } from '../library/library.events';
 import { IMPORTS_ONLY, LibraryService } from '../library/library.service';
 import { ImportsStore } from '../imports/imports.store';
 import { StatusService } from '../library/status.service';
@@ -43,6 +43,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     private readonly activity: ActivityLogService,
     private readonly scheduler: SchedulerRegistry,
     private readonly imports: ImportsStore,
+    private readonly events: EventEmitter2,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -155,6 +156,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
         },
       });
       this.lookUp('rebuild');
+      this.events.emit(LIBRARY_REBUILT, trigger);
     } catch (e) {
       // keep the last good data, and set the bad backup aside so it isn't retried
       const why = e instanceof Error ? e.message : String(e);

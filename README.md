@@ -100,6 +100,16 @@ The admin page's **Imports** section takes a Goodreads library export (My Books 
 
 Without an import, nothing changes.
 
+### Kobo and Kindle
+
+The same **Imports** section takes e-reader data too; the file is recognised by its contents:
+
+- **Kobo**: connect it by USB and upload `.kobo/KoboReader.sqlite`. Each book you've opened brings its progress, time spent, when you started, last read and finished it, and your highlights and notes. Days come from the device's `AnalyticsEvents` table, which only holds what hasn't been sent to Kobo yet, so many databases give a read per book without days.
+- **Kindle highlights**: `documents/My Clippings.txt` from the Kindle. Highlights, notes (attached to their highlight) and bookmarks, with their dates.
+- **Kindle reading sessions**: Amazon's "Request your data" export has `Kindle.Devices.ReadingSession.csv`, with the start, end and length of every session: minutes per day for each book. It names books only by ASIN and says nothing about progress, so they aren't counted as finished unless Goodreads (or another source) says so. Upload any CSV with `ASIN` and `Title` columns, such as your digital orders, to name them, or name them in **Catalogue** (`kindle:<ASIN>`).
+
+Imported books are matched to Moon+'s by ISBN, then title and author. For a day Moon+ already has, Moon+'s figures stand; the import fills in the other days, and a read finished on another device finishes the Moon+ read. With no Moon+ backup at all, the dashboard is built from the imports alone.
+
 ## Who can see it
 
 `UPLOAD_TOKEN` is the admin password. Only the admin can upload, sync, or change settings. Visitors see a small **Admin** link and nothing else they can use.
@@ -231,7 +241,8 @@ The server also has three JSON endpoints: `/healthz`, which Docker uses as its h
 - **Time of day:** the reading log only records which days you read, not what time, so the diary is per day. Highlights and notes do carry a time, so time-of-day views use them as a stand-in for when you read.
 - **Highlights:** the backup records a chapter and position for each highlight but not the book's length, so how far in (%) is estimated from your progress on the day you made it. See [docs/moonplus-backup.md](docs/moonplus-backup.md) for what a backup holds.
 - **Data checks:** a first or last day 30+ days from the rest of a read counts as stray; a 60+ day gap mid-read is a pause; a read is thinly spread when it spans 60+ days but was opened on under 15% of them. The thresholds are in `CHECK` in `web/calcs.js`.
-- **Changing the rules:** the thresholds are at the top of `src/backup-import/reading-history.ts`, and every chart's calculation is in `web/calcs.js`.
+- **Changing the rules:** the thresholds are at the top of `src/backup-import/reading-history.ts`, and every chart's calculation is in `web/calcs.js` (or the feature script that draws it).
+- **Where they're worked out:** the server runs those same calculations after every rebuild, for each kind of viewer from only what they may see, so the page loads ready-made numbers instead of crunching the whole history on your phone. The same numbers are a JSON API (`/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`) for friends' dashboards and other tools: see [docs/api.md](docs/api.md).
 
 ## Development
 
@@ -273,12 +284,13 @@ src/privacy/                what visitors may see, and the filter that enforces 
 src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
   reading-history.ts        the rules: what counts as a read, finished, and so on
 src/covers/                 saves covers from the backup and looks up missing ones on Open Library
-src/imports/                Goodreads and StoryGraph exports: reading them, matching them to Moon+ books, exporting back
+src/imports/                Goodreads, StoryGraph, Kobo and Kindle imports: reading them, matching them to Moon+ books, exporting back
 src/rebuild/                watches for new backups, catalogue edits and syncs, and rebuilds
 src/upload/                 the admin page's backup upload
 src/admin/                  the admin page's API: data and backups, rebuild now, catalogue edits, covers
 src/dav/                    the WebDAV server Moon+ syncs to
 src/status/                 /healthz, /api/config and /api/covers
+src/stats/                  runs the page's calcs on the server, per viewer, and the /api/stats API (docs/api.md)
 src/web/                    serves the page, its data and the covers
 src/demo/                   builds the demo site from made-up data
 web/                        the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js (sign-in), pages/, features/ (admin.js is the admin page)
