@@ -12,8 +12,8 @@ services:
       PGID: 1000
       # The admin password: sign in with it (the "Admin" link) to upload, and use it for
       # WebDAV sync. Whether visitors need a read password is set from the dashboard.
-      # Generate one with:  openssl rand -hex 16
-      UPLOAD_TOKEN: ""
+      # Set it in .env (copy .env.example), so the secret stays out of this file.
+      UPLOAD_TOKEN: ${UPLOAD_TOKEN:-}
       # Only needed if your reverse proxy forwards /reading/... WITHOUT stripping the
       # prefix. With Traefik's stripPrefix (see examples/traefik.yml) leave it empty.
       BASE_PATH: ""

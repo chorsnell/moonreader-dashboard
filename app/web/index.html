@@ -31,6 +31,7 @@
 body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans);-webkit-font-smoothing:antialiased}
 #dash-root{padding:clamp(16px,4vw,40px)}
 .rh-src{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin:var(--cds-gap-xs) 0 0}
+.rh-src a{color:inherit}
 .dash-skeleton{color:transparent!important;position:relative}
 .dash-skeleton::after{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:min(60%,8rem);height:.8em;border-radius:6px;background:var(--cds-chart-grid);animation:sk 1.4s ease-in-out infinite}
 .chart.dash-skeleton::after,ul.dash-skeleton::after{top:0;transform:none;width:100%;height:100%;min-height:120px}
@@ -182,6 +183,19 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .ev.finished{color:var(--color-ok)}.ev.started,.ev.reread{color:var(--color-fg-muted)}
 .dy-more{margin-top:var(--cds-gap-md);font:inherit;font-size:var(--cds-font-size-body);padding:var(--cds-pad-xs) var(--cds-pad-md);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);cursor:pointer}
 .dy-empty{color:var(--color-fg-muted);font-size:var(--cds-font-size-body);padding:var(--cds-pad-lg) 0}
+.ck-filter{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs) var(--cds-gap-sm);margin-bottom:var(--cds-gap-md)}
+.ck-filter button{font:inherit;font-size:var(--cds-font-size-caption);padding:4px 10px;border:1px solid var(--color-border-line);border-radius:999px;background:var(--color-bg);color:var(--color-fg-muted);cursor:pointer;text-align:left}
+.ck-filter button b{color:var(--color-fg);font-weight:600;margin-left:4px;font-variant-numeric:tabular-nums}
+.ck-filter button[aria-pressed=true]{border-color:var(--color-fg);color:var(--color-fg)}
+.ck-filter button:disabled{opacity:.45;cursor:default}
+.ck-list li{align-items:flex-start}
+.ck-list .ttl p{margin:4px 0 0;font-size:var(--cds-font-size-caption);color:var(--color-fg);line-height:1.45;overflow-wrap:anywhere}
+.ck-list .tag{font-size:11px;color:var(--color-warn);margin-left:6px}
+.ck-strip{position:relative;height:10px;margin-top:6px;max-width:28rem;border-radius:3px;overflow:hidden}
+.ck-strip i{position:absolute;top:0;bottom:0;min-width:2px;border-radius:1px}
+.ck-strip span{position:absolute;inset:0;opacity:.16}
+.ck-date{all:unset;cursor:pointer;color:var(--series-1);font-size:var(--cds-font-size-caption);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ck-date:hover{text-decoration:underline}
 @media (max-width:520px){.dy-day{grid-template-columns:1fr;gap:var(--cds-gap-xs)}.dy-date b,.dy-date span{display:inline;margin-right:8px}.dy-gap{padding-left:0}}
 </style>
 
@@ -199,6 +213,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
     <button role="tab" data-tab="timeline" id="tab-timeline" aria-selected="false">Timeline &amp; habits</button>
     <button role="tab" data-tab="diary" id="tab-diary" aria-selected="false">Diary</button>
     <button role="tab" data-tab="library" id="tab-library" aria-selected="false">Library</button>
+    <button role="tab" data-tab="checks" id="tab-checks" aria-selected="false">Data checks</button>
   </nav>
 
   <!-- OVERVIEW -->
@@ -400,6 +415,16 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
       <table id="tbl-rereads" data-source="rereads" data-row-key="read_id">
         <thead><tr><th data-field="title"><button>Title</button></th><th data-field="read_no" class="n"><button>Read</button></th><th data-field="start"><button>Started</button></th><th data-field="end"><button>Last day</button></th><th data-field="days_read" class="n hide-sm"><button>Days</button></th><th data-field="hours" class="n hide-sm"><button>Hours</button></th><th data-field="progress" class="n"><button>Reached</button></th></tr></thead>
         <tbody></tbody></table></div></div>
+  </section>
+
+  <!-- DATA CHECKS -->
+  <section class="rh-page" id="checks" hidden>
+    <div class="rh-card wide" id="card-checks"><h2>Things that look odd</h2>
+      <p class="note">Places where the log may not reflect what you actually read: books opened once and then left for weeks, reads spread thinly over months, days with lots of books, implausible speeds and progress jumps. Pick a check to filter; click a date to open that day in the diary.</p>
+      <div class="ck-filter" id="ck-filter" role="group" aria-label="Checks" data-source="anomalies"></div>
+      <ul class="rh-list ck-list" id="ck-list" data-source="anomalies"></ul>
+      <button class="dy-more" id="ck-more" hidden>Show more</button>
+    </div>
   </section>
 </div>
 
