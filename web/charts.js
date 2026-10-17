@@ -843,6 +843,7 @@
     ['long', 'Very long sessions', 'Six hours or more on one book in a day.'],
     ['noprog', 'No progress recorded', 'Read, but never counts as finished.'],
     ['untagged', 'Untagged books', 'Missing from catalogue.json.'],
+    ['samework', 'Same work?', 'The metadata lookup matched these to the same Open Library work.'],
     ['noisbn', 'No ISBN', 'No ISBN in catalogue.json or found by the lookup, so it can’t be matched reliably across sources.'],
   ];
   const CK_PAGE = 50;
@@ -997,6 +998,8 @@
     fact('Last opened', b.last_read ? fDay(pDate(b.last_read)) : null);
     const p = b.progress || 0;
     if (b.status !== 'finished' && latest && latest.hours && p >= 5 && p < 99) fact('Left at this pace', `about ${fmt(Math.max(1, Math.round(latest.hours * (100 - p) / p)))} h`);
+    fact('Published', b.published_year != null ? (b.published_year < 0 ? `${-b.published_year} BC` : String(b.published_year)) : null);
+    fact('Pages', b.pages ? fmt(b.pages) : null);
     fact('ISBN', b.isbn13 ? b.isbn13 + (b.isbn10 ? ` · ${b.isbn10}` : '') : null);
     info.append(facts);
     head.replaceChildren(cover(b.id, b.title, b.genre, 'lg'), info);

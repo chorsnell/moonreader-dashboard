@@ -11,6 +11,7 @@ import { ActivityLogService } from '../library/activity-log.service';
 import { LIBRARY_CHANGED } from '../library/library.events';
 import { LibraryService } from '../library/library.service';
 import { StatusService } from '../library/status.service';
+import { MetadataLookupService } from '../metadata/metadata-lookup.service';
 
 /** How long to wait between size checks while a backup is still being copied in. */
 const SETTLE_MS = 2000;
@@ -32,6 +33,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     private readonly library: LibraryService,
     private readonly importer: BackupImportService,
     private readonly covers: CoverLookupService,
+    private readonly metadata: MetadataLookupService,
     private readonly status: StatusService,
     private readonly activity: ActivityLogService,
     private readonly scheduler: SchedulerRegistry,
@@ -41,7 +43,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     const timer = setInterval(() => void this.check(), this.config.pollSeconds * 1000);
     this.scheduler.addInterval(POLL_INTERVAL, timer);
     void this.check();
-    this.covers.start(); // carry on with any lookups an earlier run didn't finish
+    this.lookUp(); // carry on with any lookups an earlier run didn't finish
   }
 
   async onApplicationShutdown(): Promise<void> {
@@ -69,6 +71,11 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     return this.running;
   }
 
+  /** Looks up missing covers, then missing metadata, in the background, one service at a time. */
+  private lookUp(): void {
+    void this.covers.run().then(() => this.metadata.run());
+  }
+
   private async checkOnce(): Promise<void> {
     const backup = await this.library.needsBuild();
     if (!backup) return;
@@ -94,7 +101,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
       const summary = await this.importer.importBackup(backup);
       for (const line of summary.lines) this.activity.log(`  ${line}`);
       this.status.buildSucceeded();
-      this.covers.start();
+      this.lookUp();
     } catch (e) {
       // keep the last good data, and set the bad backup aside so it isn't retried
       const why = e instanceof Error ? e.message : String(e);
