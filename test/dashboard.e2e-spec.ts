@@ -275,7 +275,7 @@ describe('serving', () => {
     expect(page.headers['x-content-type-options']).toBe('nosniff');
     await request(dash.server).get('/runtime.js').expect(200);
     await request(dash.server).get('/vendor/d3.min.js').expect(200);
-    await request(dash.server).get('/upload').expect(302).expect('Location', '/#upload');
+    await request(dash.server).get('/upload').expect(302).expect('Location', '/#admin');
   });
 
   it('follows the proxy prefix in the <base> tag', async () => {

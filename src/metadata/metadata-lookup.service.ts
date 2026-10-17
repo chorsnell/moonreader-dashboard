@@ -63,16 +63,23 @@ export class MetadataLookupService implements OnApplicationShutdown {
   ) {}
 
   /** Starts a lookup unless one is running or lookups are off. Doesn't wait for it. */
-  start(): void {
-    void this.run();
+  start(trigger = 'rebuild'): void {
+    void this.run(trigger);
   }
 
   /** Looks up what's missing; resolves when done (or joins a lookup already running). */
-  run(): Promise<void> {
+  run(trigger = 'rebuild'): Promise<void> {
     if (!this.config.metadataLookup || this.stop.signal.aborted) return Promise.resolve();
-    this.running ??= this.lookUpMissing()
+    this.running ??= this.lookUpMissing(trigger)
       .catch((e: unknown) => {
-        if (!this.stop.signal.aborted) this.activity.log(`Metadata lookup failed: ${String(e)}`);
+        if (this.stop.signal.aborted) return;
+        this.activity.record({
+          type: 'metadata',
+          message: 'Metadata lookup failed',
+          outcome: 'failed',
+          trigger,
+          error: String(e),
+        });
       })
       .finally(() => (this.running = null));
     return this.running;
@@ -83,7 +90,8 @@ export class MetadataLookupService implements OnApplicationShutdown {
     await this.running;
   }
 
-  private async lookUpMissing(): Promise<void> {
+  private async lookUpMissing(trigger: string): Promise<void> {
+    const started = Date.now();
     let books: BookRow[];
     try {
       books = JSON.parse(
@@ -101,6 +109,7 @@ export class MetadataLookupService implements OnApplicationShutdown {
     const signal = this.stop.signal;
     let changed = false;
     let failures = 0;
+    let unreachable = '';
     /** Runs one lookup; false when it's time to stop for this round. */
     const attempt = async (fn: () => Promise<void>): Promise<boolean> => {
       try {
@@ -110,10 +119,7 @@ export class MetadataLookupService implements OnApplicationShutdown {
       } catch (e) {
         if (signal.aborted) return false;
         if (++failures < MAX_FAILURES) return true;
-        this.activity.log(
-          `  Stopped looking up metadata: ${(e as Error).message}. ` +
-            'The rest will be tried after the next rebuild.',
-        );
+        unreachable = (e as Error).message;
         return false;
       }
     };
@@ -183,12 +189,27 @@ export class MetadataLookupService implements OnApplicationShutdown {
     // a new metadata.json makes the watcher rebuild, which merges it into books.json
     if (changed) {
       await this.store.write(metadata);
-      this.library.changed();
+      this.library.changed('metadata');
     }
     if (signal.aborted || (!todoBooks.length && !todoAuthors.length)) return;
-    this.activity.log(
-      `  Found metadata for ${foundBooks} of ${todoBooks.length} book(s) and ` +
-        `${foundAuthors} of ${todoAuthors.length} author(s); the rest are retried after ${RETRY_DAYS} days`,
-    );
+    const found =
+      `${foundBooks} of ${todoBooks.length} book(s) and ` +
+      `${foundAuthors} of ${todoAuthors.length} author(s)`;
+    this.activity.record({
+      type: 'metadata',
+      message: unreachable
+        ? `Stopped looking up metadata: a service could not be reached. Found ${found} first; the rest will be tried after the next rebuild`
+        : `Found metadata for ${found}; the rest are retried after ${RETRY_DAYS} days`,
+      outcome: unreachable ? 'failed' : 'ok',
+      error: unreachable || undefined,
+      trigger,
+      duration_ms: Date.now() - started,
+      details: {
+        books_tried: todoBooks.length,
+        books_found: foundBooks,
+        authors_tried: todoAuthors.length,
+        authors_found: foundAuthors,
+      },
+    });
   }
 }

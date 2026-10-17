@@ -8,5 +8,6 @@ import { RebuildService } from './rebuild.service';
 @Module({
   imports: [LibraryModule, BackupImportModule, CoversModule, MetadataModule],
   providers: [RebuildService],
+  exports: [RebuildService],
 })
 export class RebuildModule {}
