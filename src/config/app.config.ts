@@ -40,6 +40,10 @@ export interface AppConfig {
   mediaPollMinutes: number;
   /** How often to refresh friends' data from their installations, in minutes; 0 is never. */
   federationRefreshMinutes: number;
+  /** A Mixpanel project token: turns on anonymous page-view and interaction analytics. Empty means off. */
+  mixpanelToken: string;
+  /** Mixpanel's API host, e.g. https://api-eu.mixpanel.com for EU data residency. */
+  mixpanelApiHost: string;
   /** Who should own the files in the library when the container starts as root. */
   puid: number;
   pgid: number;
@@ -93,6 +97,8 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     audiobookshelfToken: (env.AUDIOBOOKSHELF_TOKEN ?? '').trim(),
     mediaPollMinutes: Math.max(1, integer(env, 'MEDIA_POLL_MINUTES', 60)),
     federationRefreshMinutes: Math.max(0, integer(env, 'FEDERATION_REFRESH_MINUTES', 60)),
+    mixpanelToken: (env.MIXPANEL_TOKEN ?? '').trim(),
+    mixpanelApiHost: url(env, 'MIXPANEL_API_HOST', 'https://api-js.mixpanel.com'),
     puid: integer(env, 'PUID', 1000),
     pgid: integer(env, 'PGID', 1000),
   };

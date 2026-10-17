@@ -1251,6 +1251,8 @@
     const back = '← Back to ' + ((history.state && history.state.back) || tabName(prevTab));
     document.querySelectorAll('.bk-back').forEach((b) => (b.textContent = back));
     if (setLink) dash.setLink(name);
+    // for web/features/analytics.js: which view is now on screen
+    window.dispatchEvent(new CustomEvent('rh:view', { detail: { view: name, kind: name === 'entity' ? pageKind : name === 'book' ? 'book' : null } }));
     redraw();
     // bring the active tab into view inside the (horizontally scrolling) tab strip
     const b = tabs.find((t) => t.dataset.tab === name);

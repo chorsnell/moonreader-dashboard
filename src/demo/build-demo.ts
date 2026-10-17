@@ -9,6 +9,7 @@
  * so the page works on any static host, such as GitHub Pages. The history always ends
  * yesterday, so "this year" is never empty. DEMO_SEED picks another made-up history, and
  * DEMO_TODAY=YYYY-MM-DD builds it as if run on that day (for repeatable screenshots).
+ * MIXPANEL_TOKEN (and MIXPANEL_API_HOST) turn on the page's analytics, as on the server.
  */
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -24,6 +25,15 @@ import { writeStaticClubs, writeStaticFriends } from './demo-friends-site';
 import { buildDemoLibrary } from './demo-library';
 
 const DAY_MS = 86_400_000;
+
+/** The same `analytics` block /api/config gives when MIXPANEL_TOKEN is set. */
+function analytics() {
+  const token = process.env.MIXPANEL_TOKEN?.trim();
+  const host = process.env.MIXPANEL_API_HOST?.trim().replace(/\/+$/, '');
+  return token
+    ? { analytics: { mixpanel_token: token, api_host: host || 'https://api-js.mixpanel.com' } }
+    : {};
+}
 
 async function main(): Promise<void> {
   const out = resolve(process.argv[2] ?? 'site');
@@ -73,6 +83,7 @@ async function main(): Promise<void> {
         has_media: true,
         demo: true,
         meta,
+        ...analytics(),
       }),
     );
     await writeFile(join(out, 'api', 'covers'), JSON.stringify(coverUrls));
