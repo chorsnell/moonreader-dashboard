@@ -25,7 +25,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 - **Diary:** a day-by-day log for any period: which books, minutes, words and progress, with starts and finishes.
 - **Library:** every book and every re-read, searchable and sortable, and where you give up.
 - **TV & film:** hours watched, what's on screen now, dropped seasons, season completion, binge fingerprints, when you watch, genre drift, films, the cost per hour of each subscription, whether TV crowds out reading, and book-to-screen adaptations. It appears once there's something watched.
-- **Money:** spending by month and year, a budget, how you got your books, value for money, the cost to finish a series, whether a subscription paid off, money left on the shelf, and what your reading time is worth at a rate you choose.
+- **Money:** spending by month and year, a budget, how you got your books, value for money, an hour of streaming against an hour of books, the cost to finish a series, whether a subscription paid off, money left on the shelf, and what your reading time is worth at a rate you choose.
 - **Friends:** friends' reading next to yours: a taste match, overlaid heatmaps, opt-in leaderboards, their favourites you haven't read, and book clubs. On a book's page, a buddy-read race against every friend who read it.
 - **Data checks:** things in the log that look odd (stray days, long pauses, implausible speeds, progress jumps, untagged books or books without an ISBN).
 
@@ -200,7 +200,7 @@ Moon+ doesn't know what you paid, so prices live in `library/prices.json`, set i
 - **Bundles** split their price by length; **subscriptions** (Kindle Unlimited, Kobo Plus…) take a monthly fee and dates.
 - Prices aren't looked up automatically: no free, keyless source covers ebook stores, and only your order history knows what you actually paid.
 
-TV subscriptions are entered in **Other media**, for the cost per hour watched.
+TV subscriptions are entered in **Other media**, for the cost per hour watched; with book prices too, the Money tab puts each subscription's cost per hour next to your books' and the benchmarks (subscriptions in another currency than the home one are left out).
 
 ## Your book manager (*arr)
 
