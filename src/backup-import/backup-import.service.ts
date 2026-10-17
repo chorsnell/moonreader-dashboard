@@ -8,6 +8,7 @@ import { localDateTime, round1 } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
 import { LibraryService } from '../library/library.service';
 import { readBackup } from './backup-archive';
+import { buildHighlights, type Highlight, type NoteRow, readNotes } from './highlights';
 import { buildReadingHistory } from './reading-history';
 import type {
   BookHistory,
@@ -25,6 +26,7 @@ export interface ImportSummary {
   newCovers: number;
   /** "<file>  ->  <title>" for every file not in catalogue.json. */
   untagged: string[];
+  highlights: number;
   lines: string[];
 }
 
@@ -55,7 +57,7 @@ export class BackupImportService {
     try {
       const contents = await readBackup(backup, tmp);
       if (!contents.databasePath) throw new Error('This backup has no mrbooks.db database.');
-      const { bookMeta, statistics } = readDatabase(contents.databasePath);
+      const { bookMeta, statistics, notes } = readDatabase(contents.databasePath);
       const result = buildReadingHistory({
         catalogue,
         bookMeta,
@@ -63,6 +65,8 @@ export class BackupImportService {
         positions: parsePositions(contents.positionsXml),
         synced: await this.readSyncedPositions(),
       });
+
+      const { highlights } = buildHighlights(result.books, notes);
 
       let newCovers = 0;
       for (const book of result.books) {
@@ -78,6 +82,7 @@ export class BackupImportService {
       const counts = await this.writeData(
         backup,
         result.books,
+        highlights,
         result.untagged.length,
         result.syncedApplied,
       );
@@ -88,6 +93,7 @@ export class BackupImportService {
       await utimes(join(this.library.data, 'meta.json'), builtFrom, builtFrom);
       const lines = [
         `${basename(backup)}: ${counts.books} books, ${counts.reads} reads, ${counts.readingDays} reading days` +
+          (counts.highlights ? `, ${counts.highlights} highlights and notes` : '') +
           (result.syncedApplied ? `, ${result.syncedApplied} synced position(s) applied` : '') +
           (newCovers ? `, ${newCovers} new cover(s) from the backup` : ''),
       ];
@@ -132,9 +138,10 @@ export class BackupImportService {
   private async writeData(
     backup: string,
     books: BookHistory[],
+    highlights: Highlight[],
     untagged: number,
     synced: number,
-  ): Promise<Pick<ImportSummary, 'books' | 'reads' | 'readingDays'>> {
+  ): Promise<Pick<ImportSummary, 'books' | 'reads' | 'readingDays' | 'highlights'>> {
     const booksRows = [];
     const readsRows = [];
     const dailyRows = [];
@@ -196,6 +203,8 @@ export class BackupImportService {
     await this.dump('books.json', booksRows);
     await this.dump('reads.json', readsRows);
     await this.dump('daily.json', dailyRows);
+    // kept apart from the reading data: highlights are the most personal part
+    await this.dump('highlights.json', highlights);
     await this.dump(
       'reading_history.json',
       {
@@ -212,7 +221,12 @@ export class BackupImportService {
       untagged,
       synced_positions: synced,
     });
-    return { books: books.length, reads: readsRows.length, readingDays: dailyRows.length };
+    return {
+      books: books.length,
+      reads: readsRows.length,
+      readingDays: dailyRows.length,
+      highlights: highlights.length,
+    };
   }
 
   /** Writes through a .tmp file so the page never reads a half-written one. */
@@ -223,10 +237,11 @@ export class BackupImportService {
   }
 }
 
-/** Book titles and authors, and the reading log, from Moon+'s database. */
+/** Book titles and authors, the reading log and highlights, from Moon+'s database. */
 function readDatabase(path: string): {
   bookMeta: Map<string, [string, string]>;
   statistics: StatisticsRow[];
+  notes: NoteRow[];
 } {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
@@ -247,7 +262,7 @@ function readDatabase(path: string): {
         readWords: r.readWords == null ? null : Number(r.readWords),
         dates: r.dates == null ? null : String(r.dates),
       }));
-    return { bookMeta, statistics };
+    return { bookMeta, statistics, notes: readNotes(db) };
   } finally {
     db.close();
   }

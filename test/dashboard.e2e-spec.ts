@@ -72,6 +72,16 @@ describe('rebuilding', () => {
     expect(daily).toHaveLength(5);
     expect(daily[0].minutes).toBe(30);
     expect(daily[0].progress).toBe(40);
+    const highlights = await dash.json<{ book_id: string; kind: string; text: string }[]>(
+      'data',
+      'highlights.json',
+    );
+    expect(highlights.map((h) => [h.book_id, h.kind, h.text])).toEqual([
+      ['alpha', 'highlight', 'It was a dark\nand stormy night.'],
+      ['alpha', 'note', 'The end.'],
+      ['beta', 'bookmark', 'Chapter 3'],
+    ]);
+    await request(dash.server).get('/data/highlights.json').expect(200);
   });
 });
 
