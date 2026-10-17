@@ -16,6 +16,7 @@ import { LibraryService } from '../library/library.service';
 import { MEDIA_META, MediaBuildService } from './media-build.service';
 import { MediaFiles, readJson, toSubscriptions } from './media-files.service';
 import { MediaService } from './media.service';
+import { AudiobookshelfClient, type AbsConnection } from './sources/audiobookshelf';
 import { TautulliClient, type TautulliConnection } from './sources/tautulli.client';
 
 const isStringList = (x: unknown): x is string[] =>
@@ -33,6 +34,7 @@ export class MediaController {
     private readonly library: LibraryService,
     private readonly activity: ActivityLogService,
     private readonly tautulli: TautulliClient,
+    private readonly abs: AudiobookshelfClient,
   ) {}
 
   /** What's been uploaded, which Netflix profiles are imported, and the last media build. */
@@ -42,16 +44,24 @@ export class MediaController {
     const settings = await this.files.settings();
     const inbox = await this.builder.netflixInbox();
     const found = [...new Set(inbox.flatMap((f) => f.profiles))].sort();
+    const status = this.media.status();
     return {
-      ...this.media.status(),
+      ...status,
       meta: await readJson<Record<string, unknown>>(join(this.library.data, MEDIA_META), {}),
       netflix: { files: inbox, profiles_found: found, profiles: settings.netflix.profiles },
       tautulli: {
+        ...status.tautulli,
         url: settings.tautulli.url || this.config.tautulliUrl,
         user_id: settings.tautulli.user_id,
         has_key: Boolean(settings.tautulli.api_key || this.config.tautulliApiKey),
         from_env: !settings.tautulli.url && Boolean(this.config.tautulliUrl),
         poll_minutes: this.config.mediaPollMinutes,
+      },
+      audiobookshelf: {
+        ...status.audiobookshelf,
+        url: settings.audiobookshelf.url || this.config.audiobookshelfUrl,
+        has_token: Boolean(settings.audiobookshelf.token || this.config.audiobookshelfToken),
+        from_env: !settings.audiobookshelf.url && Boolean(this.config.audiobookshelfUrl),
       },
       subscriptions: settings.subscriptions,
       tmdb: {
@@ -152,6 +162,62 @@ export class MediaController {
     if (userId && !/^\d+$/.test(userId))
       throw new BadRequestException({ error: 'Pick a Plex user.' });
     return { url, api_key: apiKey, user_id: userId };
+  }
+
+  /** Checks an Audiobookshelf address and token (or the saved ones). */
+  @Post('audiobookshelf/test')
+  @HttpCode(200)
+  async testAudiobookshelf(@Body() body: unknown) {
+    const conn = await this.absConnection(body);
+    try {
+      return { ok: true, user: await this.abs.test(conn) };
+    } catch (e) {
+      throw new BadRequestException({ error: (e as Error).message });
+    }
+  }
+
+  /** Saves Audiobookshelf's address and token, then pulls. A blank token keeps the saved one. */
+  @Post('audiobookshelf')
+  @HttpCode(200)
+  async saveAudiobookshelf(@Body() body: unknown) {
+    const conn = await this.absConnection(body);
+    const before = await this.files.audiobookshelf();
+    await this.files.update((s) => (s.audiobookshelf = { ...conn }));
+    if (before && before.url !== conn.url) await this.abs.clearCache();
+    this.activity.log(`Saved the Audiobookshelf settings (${conn.url})`);
+    void this.media.pullAudiobookshelf();
+    return { ok: true };
+  }
+
+  /** Pulls listening sessions now. */
+  @Post('audiobookshelf/sync')
+  @HttpCode(200)
+  async syncAudiobookshelf() {
+    if (!(await this.files.audiobookshelf())) {
+      throw new BadRequestException({ error: 'Set up Audiobookshelf first.' });
+    }
+    const r = await this.media.pullAudiobookshelf();
+    const error = this.media.status().audiobookshelf.last_error;
+    if (!r && error) throw new BadRequestException({ error });
+    return { ok: true, new_rows: r?.new_rows ?? 0, total: r?.total ?? 0 };
+  }
+
+  private async absConnection(body: unknown): Promise<AbsConnection> {
+    const b = (body ?? {}) as Record<string, unknown>;
+    const saved = await this.files.audiobookshelf();
+    const str = (x: unknown) => (typeof x === 'string' ? x.trim() : '');
+    const url = (str(b.url) || saved?.url || '').replace(/\/+$/, '');
+    const token = str(b.token) || saved?.token || '';
+    if (!/^https?:\/\/[^\s]+$/i.test(url)) {
+      throw new BadRequestException({
+        error: "Enter Audiobookshelf's address, such as http://audiobookshelf:13378.",
+      });
+    }
+    if (!token)
+      throw new BadRequestException({
+        error: 'Enter an Audiobookshelf API token (Settings → Users → your user).',
+      });
+    return { url, token };
   }
 
   /** Streaming subscriptions, for the cost per hour watched. */
