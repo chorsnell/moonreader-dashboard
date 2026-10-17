@@ -120,7 +120,7 @@ export function demoPrices(
         acquisition: 'subscription',
         subscription: 'Kindle Unlimited',
         store: 'Amazon Kindle',
-        list_price: [1.99, 2.99, 3.99, 4.99][rng.randint(0, 3)],
+        list_price: [2.99, 3.99, 4.99, 6.99][rng.randint(0, 3)],
       });
     } else if (!usd && rng.random() < 0.1) {
       usd = true;

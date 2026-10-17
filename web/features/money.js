@@ -37,7 +37,7 @@
         return {
           book_id: e.book_id, title: b ? b.title : e.title, author: (b ? b.author : e.author) || null,
           genre: b ? b.genre : null, subgenre: b ? b.subgenre : null, series: b ? b.series : null, series_no: b ? b.series_no : null,
-          status: b ? b.status : 'not_opened', progress: b ? b.progress : null, opened: !!b,
+          status: b ? b.status : 'not_opened', progress: b ? b.progress : null, last_read: b ? b.last_read : null, opened: !!b,
           hours, words, times_read: b ? b.times_read : 0,
           price: e.price, list_price: e.list_price, acquisition: e.acquisition, date: e.date, store: e.store,
           subscription: e.subscription, bundle: e.bundle,
@@ -214,7 +214,7 @@
     const g = svg.selectAll('g.r').data(rows).join('g').attr('transform', (d, i) => `translate(0,${i * (bh + gap)})`).each(function (d) { if (linkTo) rh.linkPage(this, ...linkTo(d)); });
     g.append('text').attr('class', 'axl').attr('x', lw - 8).attr('y', bh / 2).attr('dy', '0.35em').attr('text-anchor', 'end')
       .text((d) => { const s = label(d); return s.length > 34 ? s.slice(0, 33) + '…' : s; });
-    g.append('path').call(rh.grow, 'd', () => rh.barPath(lw, 0, 0, bh, 'right'), (d) => rh.barPath(lw, 0, Math.max(2, x(value(d))), bh, 'right')).attr('fill', color);
+    g.append('path').call(rh.grow, 'd', () => rh.barPath(lw, 0, 0, bh, 'right'), (d) => rh.barPath(lw, 0, value(d) > 0 ? Math.max(2, x(value(d))) : 0, bh, 'right')).attr('fill', color);
     g.append('text').attr('class', 'lbl-in').attr('x', (d) => lw + x(value(d)) + 6).attr('y', bh / 2).attr('dy', '0.35em').text(text).call(rh.grow, 'opacity', 0, 1);
     g.append('rect').attr('class', 'hit').attr('y', -gap / 2).attr('width', w).attr('height', bh + gap).attr('fill', 'transparent')
       .on('mousemove', (e, d) => rh.showTip(tipEl, box, e, (t) => tip(t, d))).on('mouseleave', () => rh.hideTip(tipEl));
@@ -562,6 +562,172 @@
         ul.append(li);
       });
       box.replaceChildren(ul);
+    },
+  });
+
+  // ---------- BOO-44: is a subscription worth it? ----------
+  // For each month a subscription ran: its fee, the hours read in its books that month, and
+  // what buying the books first opened that month would have cost (their list prices).
+  dash.calc('money_subscriptions', {
+    inputs: ['money_books', 'daily', 'prices', 'as_of'],
+    title: 'Subscriptions month by month',
+    description: 'For each month a subscription ran: the fee, hours read in books from it, cost per hour, and what the books first opened that month would have cost to buy (their list price).',
+    fn: (rows, daily, prices, asOf) => {
+      const p = pricesOf(prices);
+      if (!p || !p.subscriptions.length) return [];
+      const today = ((asOf[0] && asOf[0].date) || new Date().toISOString()).slice(0, 7);
+      const out = [];
+      p.subscriptions.forEach((s) => {
+        const end = s.end && s.end < today ? s.end : today;
+        const months = monthsBetween(s.start, end);
+        if (!months.length) return;
+        // books from this subscription; with only one subscription, unnamed ones are its
+        const mine = new Map(rows.filter((r) => r.acquisition === 'subscription' && (r.subscription === s.name || (!r.subscription && p.subscriptions.length === 1))).map((r) => [r.book_id, r]));
+        const by = new Map(months.map((m) => [m, { subscription: s.name, month: m, fee: s.monthly_fee, minutes: 0, list_value: 0, books: [], unpriced: 0 }]));
+        const first = new Map();
+        daily.forEach((d) => {
+          if (!mine.has(d.book_id)) return;
+          const r = by.get(d.date.slice(0, 7));
+          if (!r) return; // read outside the subscription
+          r.minutes += d.minutes || 0;
+          if (!first.has(d.book_id) || d.date < first.get(d.book_id)) first.set(d.book_id, d.date);
+        });
+        first.forEach((date, id) => {
+          const r = by.get(date.slice(0, 7)), b = mine.get(id);
+          r.books.push(b.title);
+          if (b.list_price) r.list_value = round2(r.list_value + b.list_price); else r.unpriced++;
+        });
+        by.forEach((r) => {
+          const hours = Math.round((r.minutes / 60) * 10) / 10;
+          out.push({ ...r, hours, per_hour: hours >= MIN_HOURS ? round2(r.fee / hours) : null, paid_off: r.list_value >= r.fee });
+        });
+      });
+      return out;
+    },
+  });
+
+  let subPick = null;
+  card({
+    id: 'money-subs', title: 'Is your subscription worth it?', calc: 'money_subscriptions',
+    note: 'Each month a subscription ran: its fee against what the books you started that month would have cost to buy (the list price you gave them in Admin → Prices). Months where buying would have cost more paid off.',
+    hidden: () => !hasPrices() || !(data('money_subscriptions') || []).length,
+    draw(box, rows, parts) {
+      const names = [...new Set(rows.map((r) => r.subscription))];
+      if (!names.includes(subPick)) subPick = names[0];
+      let sel = parts.head.querySelector('select');
+      if (names.length > 1 && !sel) {
+        sel = el('select', 'rng-sel'); sel.setAttribute('aria-label', 'Subscription');
+        sel.addEventListener('change', () => { subPick = sel.value; rh.redraw(); });
+        parts.head.append(sel);
+      }
+      if (sel) { sel.replaceChildren(...names.map((n) => { const o = el('option', null, n); o.value = n; return o; })); sel.value = subPick; }
+      const mine = rows.filter((r) => r.subscription === subPick);
+      const fees = round2(d3.sum(mine, (r) => r.fee)), value = round2(d3.sum(mine, (r) => r.list_value)), hours = d3.sum(mine, (r) => r.hours);
+      const books = d3.sum(mine, (r) => r.books.length), unpriced = d3.sum(mine, (r) => r.unpriced), won = mine.filter((r) => r.paid_off).length;
+      const k = el('div', 'rh-kpis');
+      k.append(
+        kpi('Fees paid', money(fees), `${plural(mine.length, 'month')} of ${subPick}`),
+        kpi('Buying would have cost', money(value), `${plural(books, 'book')} started${unpriced ? `, ${fmt(unpriced)} with no list price` : ''}`),
+        kpi('Per hour read', perHour(hours ? round2(fees / hours) : null), `${fmt(Math.round(hours))} hours in its books`),
+        kpi('Months it paid off', `${fmt(won)} of ${fmt(mine.length)}`, null),
+      );
+      const take = el('p', 'mn-take');
+      take.append(el('b', null, subPick), value >= fees ? ` saved you about ${money(value - fees)} on buying the same books.` : ` cost ${money(fees - value)} more than buying the same books would have.`);
+      const C = rh.C;
+      const chart = el('div', 'chart mn-chart');
+      box.replaceChildren(k, take, swatchLegend([['var(--cds-chart-muted)', 'Fee'], [C[0], 'Would have cost to buy']]), chart);
+      const h = 220, { svg, w, tip } = rh.svgIn(chart, h), m = { t: 10, r: 6, b: 24, l: 44 };
+      const x = d3.scaleBand(mine.map((r) => r.month), [m.l, w - m.r]).padding(0.25);
+      const y = d3.scaleLinear([0, d3.max(mine, (r) => Math.max(r.fee, r.list_value)) || 1], [h - m.b, m.t]).nice();
+      rh.axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(4).tickFormat((v) => money(v, 0)).tickSize(-(w - m.l - m.r)));
+      svg.select('.domain').remove();
+      const every = Math.ceil(mine.length / Math.max(1, Math.floor((w - m.l) / 52)));
+      rh.axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).tickValues(mine.filter((_, i) => i % every === 0).map((r) => r.month)).tickFormat((s) => d3.utcFormat('%b %y')(pDate(s + '-01'))).tickSize(0).tickPadding(8));
+      const bw = Math.min(rh.MARK.bar, (x.bandwidth() - rh.MARK.gap) / 2);
+      const g = svg.append('g').selectAll('g').data(mine).join('g').attr('transform', (d) => `translate(${x(d.month) + x.bandwidth() / 2},0)`);
+      g.append('path').call(rh.grow, 'd', () => rh.barPath(-bw - rh.MARK.gap / 2, y(0), bw, 0), (d) => rh.barPath(-bw - rh.MARK.gap / 2, y(d.fee), bw, y(0) - y(d.fee))).attr('fill', 'var(--cds-chart-muted)');
+      g.filter((d) => d.list_value > 0).append('path').call(rh.grow, 'd', () => rh.barPath(rh.MARK.gap / 2, y(0), bw, 0), (d) => rh.barPath(rh.MARK.gap / 2, y(d.list_value), bw, y(0) - y(d.list_value))).attr('fill', C[0]);
+      g.append('rect').attr('class', 'hit').attr('x', -x.step() / 2).attr('width', x.step()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent')
+        .on('mousemove', (e, d) => rh.showTip(tip, chart, e, (t) => {
+          rh.tipLines(t, fMonth(pDate(d.month + '-01')), [['var(--cds-chart-muted)', 'Fee', money(d.fee)], [C[0], 'Would have cost', money(d.list_value)], [null, 'Hours read', fmt(d.hours)], [null, 'Per hour', perHour(d.per_hour)], [null, '', d.paid_off ? 'Paid off' : 'Buying was cheaper']]);
+          if (d.books.length) t.append('div').attr('class', 'mn-tip-books').text('Started: ' + d.books.join(', '));
+        }))
+        .on('mouseleave', () => rh.hideTip(tip));
+    },
+  });
+
+  // ---------- BOO-45: money left on the shelf ----------
+  const BUCKETS = [[0, 10, 'Under 10%'], [10, 25, '10–25%'], [25, 50, '25–50%'], [50, 75, '50–75%'], [75, 95, '75–95%']];
+  const SHELF_DAYS = 60; // not opened for this long counts as given up (as "Left unfinished" does)
+  dash.calc('money_shelf', {
+    inputs: ['money_books', 'as_of'],
+    title: 'Money left on the shelf',
+    description: 'Priced books you gave up on (not finished and not opened for 60+ days) or never opened, with how far you got and the unread part of what each cost (price × the share not read).',
+    fn: (rows, asOf) => {
+      const end = Date.parse(((asOf[0] && asOf[0].date) || new Date().toISOString().slice(0, 10)) + 'T00:00:00Z');
+      return rows.flatMap((r) => {
+        let state = null;
+        if (!r.opened || r.status === 'not_started' || !r.progress) state = 'unopened';
+        else if (r.status !== 'finished' && r.progress < 95 && r.last_read && end - Date.parse(r.last_read + 'T00:00:00Z') > SHELF_DAYS * 864e5) state = 'abandoned';
+        if (!state) return [];
+        const progress = state === 'unopened' ? 0 : r.progress;
+        const bucket = state === 'unopened' ? null : (BUCKETS.find(([lo, hi]) => progress >= lo && progress < hi) || BUCKETS[BUCKETS.length - 1])[2];
+        return [{ ...r, state, progress, bucket, unread_value: round2(r.price * (1 - progress / 100)) }];
+      });
+    },
+  });
+
+  const shelfCard = (o) => card({ hidden: () => !hasPrices() || !(data('money_shelf') || []).some((r) => r.price > 0), ...o });
+  shelfCard({
+    id: 'money-shelf', title: 'Money left on the shelf', calc: 'money_shelf',
+    note: `Paid books you gave up on (not finished and not opened for ${SHELF_DAYS} days or more) and books you bought but never opened. The unread part is each price times the share of the book you didn't read.`,
+    draw(box, rows) {
+      const paid = rows.filter((r) => r.price > 0);
+      const gaveUp = paid.filter((r) => r.state === 'abandoned'), pile = paid.filter((r) => r.state === 'unopened');
+      const k = el('div', 'rh-kpis');
+      k.append(
+        kpi('Spent on books you gave up', money(d3.sum(gaveUp, (r) => r.price)), plural(gaveUp.length, 'book')),
+        kpi('Your unread pile', money(d3.sum(pile, (r) => r.price)), `${plural(pile.length, 'book')} bought, never opened`),
+        kpi('The unread part', money(d3.sum(paid, (r) => r.unread_value)), 'what the pages you never read cost'),
+      );
+      const top = paid.slice().sort((a, b) => b.unread_value - a.unread_value).slice(0, 6);
+      const ttl = el('h3', 'mn-h3', 'Dearest left unread');
+      box.replaceChildren(k, ttl, bookRows(top, (r) => `${r.state === 'unopened' ? 'never opened' : `${Math.round(r.progress)}% read`} · ${money(r.price)}`));
+    },
+  });
+
+  shelfCard({
+    id: 'money-shelf-progress', title: 'How far you got', calc: 'money_shelf', wide: false,
+    note: 'What books you gave up on cost, by how far into them you got.',
+    draw(box, rows) {
+      const gave = rows.filter((r) => r.state === 'abandoned' && r.price > 0);
+      const by = BUCKETS.map(([, , label]) => ({ label, books: gave.filter((r) => r.bucket === label) })).map((b) => ({ ...b, spent: round2(d3.sum(b.books, (r) => r.price)) }));
+      const chart = el('div', 'chart mn-chart');
+      box.replaceChildren(chart);
+      moneyBars(chart, by, {
+        label: (r) => r.label, value: (r) => r.spent,
+        text: (r) => (r.books.length ? `${money(r.spent)} · ${plural(r.books.length, 'book')}` : '—'),
+        tip: (t, r) => rh.tipLines(t, r.label, [[null, 'Spent', money(r.spent)], ...r.books.map((b) => [null, b.title, money(b.price)])]),
+      });
+    },
+  });
+
+  shelfCard({
+    id: 'money-shelf-genre', title: 'Given up, by genre', calc: 'money_shelf', wide: false,
+    note: 'What books you gave up on cost, by genre, and the unread part of it.',
+    draw(box, rows) {
+      const gave = rows.filter((r) => r.state === 'abandoned' && r.price > 0);
+      const genres = [...new Set(gave.map((r) => r.genre))].map((genre) => {
+        const mine = gave.filter((r) => r.genre === genre);
+        return { genre, spent: round2(d3.sum(mine, (r) => r.price)), unread: round2(d3.sum(mine, (r) => r.unread_value)), n: mine.length };
+      }).sort((a, b) => b.spent - a.spent);
+      const chart = el('div', 'chart mn-chart');
+      box.replaceChildren(chart);
+      if (!genres.length) { chart.append(el('p', 'note', 'You haven\'t given up on any paid books.')); return; }
+      moneyBars(chart, genres, {
+        label: (r) => r.genre, value: (r) => r.spent, color: (r) => rh.gColor(r.genre), linkTo: (r) => ['genre', r.genre],
+        tip: (t, r) => rh.tipLines(t, r.genre, [[null, 'Spent', money(r.spent)], [null, 'Unread part', money(r.unread)], [null, 'Books', fmt(r.n)]]),
+      });
     },
   });
 

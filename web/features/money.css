@@ -15,3 +15,5 @@
 .chart.mn-box{min-height:0}
 @media (max-width:640px){#money.rh-page:not([hidden]){gap:var(--cds-gap-sm)}}
 .mn-foot{margin:var(--cds-gap-sm) 0 0}.mn-foot b{color:var(--color-fg);font-weight:600}
+.mn-tip-books{max-width:16rem;margin-top:4px;font-size:11px;color:var(--color-fg-muted)}
+.rh-kpis+.mn-take,.rh-kpis+.mn-h3{margin-top:var(--cds-gap-md)}
