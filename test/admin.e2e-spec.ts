@@ -198,6 +198,28 @@ describe('the Catalogue section', () => {
       );
     expect(await waitFor(async () => (await reborn()) !== undefined)).toBe(true);
     expect((await reborn())!.untagged).toBe(false);
+
+    // hand-entered metadata the editor doesn't show survives a save
+    const path = dash.path('catalogue.json');
+    const cat = JSON.parse(await readFile(path, 'utf8')) as {
+      books: Record<string, Record<string, unknown>>;
+    };
+    Object.assign(cat.books['beta - bob writer.epub'], {
+      published_year: 1900,
+      author_gender: 'male',
+    });
+    await writeFile(path, JSON.stringify(cat));
+    await admin(dash)
+      .put('/api/admin/catalogue', { files: beta.files, title: 'Beta Reborn', genre: 'Fantasy' })
+      .expect(200);
+    const after = await dash.json<{ books: Record<string, Record<string, unknown>> }>(
+      'catalogue.json',
+    );
+    expect(after.books['beta - bob writer.epub']).toMatchObject({
+      published_year: 1900,
+      author_gender: 'male',
+      isbn13: '9780141439518',
+    });
   });
 
   it('hides a file that is not a book', async () => {
