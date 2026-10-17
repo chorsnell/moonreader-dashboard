@@ -33,7 +33,15 @@ describe('links on the page', () => {
   });
 
   it('never shows a linkable field as plain text', () => {
-    expect([...fields].sort()).toEqual(['author', 'genre', 'series', 'subgenre', 'year']);
+    expect([...fields].sort()).toEqual([
+      'author',
+      'film',
+      'genre',
+      'series',
+      'show',
+      'subgenre',
+      'year',
+    ]);
     const f = fields.join('|');
     const plain = [
       new RegExp(`\\bel\\([^()]*,\\s*\\w+\\.(?:${f})\\s*\\)`, 'g'), // el('small', null, r.author)

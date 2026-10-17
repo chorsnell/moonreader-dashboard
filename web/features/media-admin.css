@@ -1,0 +1,9 @@
+/* TV & film admin section (features/media-admin.js) */
+.ad-subs{display:flex;flex-direction:column;gap:var(--cds-gap-sm);max-width:44rem}
+.ad-sub{display:grid;grid-template-columns:2fr 1fr 5rem 1.3fr 1.3fr auto;gap:var(--cds-gap-sm);align-items:end;padding:var(--cds-pad-sm) var(--cds-pad-md);border-radius:8px;background:var(--color-bg)}
+.ad-sub .ad-field{display:flex;flex-direction:column;gap:2px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);min-width:0}
+.ad-sub input{background:var(--color-panel);min-width:0;width:100%}
+.ad-sub .up-link{margin-bottom:8px}
+@media (max-width:600px){
+  .ad-sub{grid-template-columns:1fr 1fr}
+}

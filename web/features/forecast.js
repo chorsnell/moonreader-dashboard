@@ -8,6 +8,7 @@
     inputs: ['reads', 'daily', 'as_of'], title: 'Year-end forecast',
     description: 'This year so far, last year by the same date (the ghost), and a projection to 31 December at the pace of the last 365 days, with a rough 80% band from how much your 30-day pace varies.',
     fn: (reads, daily, as_of) => {
+      if (!as_of[0]?.date) return []; // no books yet
       const end = as_of[0].date, Y = +end.slice(0, 4), first = Y + '-01-01', last = Y + '-12-31';
       const left = (t(last) - t(end)) / DAY;
       const fin = reads.filter((r) => r.finished === true && r.end);

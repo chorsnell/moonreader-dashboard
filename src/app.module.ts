@@ -7,6 +7,7 @@ import { appConfig } from './config/app.config';
 import { DavModule } from './dav/dav.module';
 import { FederationModule } from './federation/federation.module';
 import { FriendsModule } from './friends/friends.module';
+import { MediaModule } from './media/media.module';
 import { PricesModule } from './prices/prices.module';
 import { RebuildModule } from './rebuild/rebuild.module';
 import { StatsModule } from './stats/stats.module';
@@ -24,6 +25,7 @@ import { WebModule } from './web/web.module';
     StatsModule,
     UploadModule,
     AdminModule,
+    MediaModule,
     PricesModule,
     DavModule,
     FriendsModule,
