@@ -1,6 +1,6 @@
 // Money: what your books cost (data/prices.json, set in Admin → Prices). Spending over time
 // and against a budget, value for money (cost per hour and per 10k words), the dearest
-// authors, genres and series, and money stats on their pages. Everything here hides when
+// authors, genres and series, and money stats on their pages. Every card here hides when
 // there are no prices, or when they're kept from this viewer.
 (() => {
   const { el, fmt, plural, pDate, fDay } = rh;
@@ -236,15 +236,12 @@
   }
 
   // ---------- the tab ----------
-  // made once there are prices to show, so viewers without any never see an empty tab
-  let tabMade = false;
+  // always there: what your reading time is worth (time-value.js) needs no prices; the
+  // cards here hide themselves without them
+  rh.tab('money', 'Money', { after: 'library' });
   dash.onData(() => {
     const p = data('prices');
     if (p && pricesOf(p)) CUR = p.currency || 'GBP';
-    if (tabMade || !hasPrices()) return;
-    tabMade = true;
-    rh.tab('money', 'Money', { after: 'library' });
-    if (location.hash === '#money') rh.show('money');
   });
   const card = (o) => rh.card({ tab: 'money', hidden: () => !hasPrices(), chartClass: 'mn-box', ...o });
 
