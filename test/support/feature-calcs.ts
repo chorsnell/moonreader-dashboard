@@ -16,6 +16,8 @@ export function loadCalcs(...scripts: string[]) {
   const rh = new Proxy({}, { get: () => noop });
   const dash = {
     calc: (id: string, o: Calc) => calcs.set(id, o),
+    reuse: (id: string, from: string, inputs: string[]) =>
+      calcs.set(id, { ...calcs.get(from)!, inputs }),
     file: noop,
     data: () => ({ status: 'missing', data: [] }),
     onData: noop,

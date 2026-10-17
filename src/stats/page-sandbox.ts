@@ -157,6 +157,12 @@ export async function loadPageCalcs(webDir: string): Promise<PageCalcs> {
       if (m) files.set(id, { id, name: m[1], optional: Boolean(o.optional) });
     },
     calc: (id: string, o: Omit<CalcDef, 'id'>) => calcs.push({ ...o, id }),
+    // another calc's function over other inputs, as runtime.js does
+    reuse: (id: string, from: string, inputs: string[]) => {
+      const base = calcs.find((c) => c.id === from);
+      if (!base) throw new Error(`dash.reuse: no calc ${from}`);
+      calcs.push({ ...base, id, inputs });
+    },
     // the rest is what a calc must not use: it depends on the viewer or the page
     data: (id: string) => (touched(`dash.data:${id}`), { status: 'missing', data: [] }),
     params: () => (touched('dash.params'), {}),

@@ -71,7 +71,9 @@ describe('the page scripts in Node', () => {
     const scripts = await pageScripts(WEB_DIR);
     const sources = await Promise.all(scripts.map((f) => readFile(join(WEB_DIR, f), 'utf8')));
     const declared = new Set(
-      sources.flatMap((src) => [...src.matchAll(/dash\.calc\('([a-z_0-9]+)'/g)].map((m) => m[1])),
+      sources.flatMap((src) =>
+        [...src.matchAll(/dash\.(?:calc|reuse)\('([a-z_0-9]+)'/g)].map((m) => m[1]),
+      ),
     );
     expect(declared.size).toBeGreaterThanOrEqual(40);
     expect(new Set(ids())).toEqual(declared);
