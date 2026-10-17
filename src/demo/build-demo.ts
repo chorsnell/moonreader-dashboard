@@ -20,7 +20,9 @@ import type { Catalogue } from '../backup-import/reading-history.types';
 import { CoverLookupService } from '../covers/cover-lookup.service';
 import { WEB_DIR } from '../paths';
 import { withFeatures } from '../web/features';
+import { servedPrices } from '../prices/prices';
 import { writeDemoBackup } from './demo-backup';
+import { demoPrices } from './demo-prices';
 import { simulateHighlights } from './demo-highlights';
 import { DemoModule } from './demo.module';
 import { BOOKS, fileName } from './demo-books';
@@ -76,6 +78,9 @@ async function main(): Promise<void> {
     const page = await readFile(join(out, 'index.html'), 'utf8');
     await writeFile(join(out, 'index.html'), await withFeatures(page, WEB_DIR));
     await cp(join(lib, 'data'), join(out, 'data'), { recursive: true });
+    // what the server writes from library/prices.json
+    const prices = servedPrices(demoPrices(log, firstDay, seed));
+    await writeFile(join(out, 'data', 'prices.json'), JSON.stringify(prices));
     await mkdir(join(out, 'covers'), { recursive: true });
     const coverUrls: Record<string, string> = {};
     for (const f of (await readdir(covers)).sort()) {

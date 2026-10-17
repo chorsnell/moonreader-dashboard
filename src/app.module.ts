@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { appConfig } from './config/app.config';
 import { DavModule } from './dav/dav.module';
+import { PricesModule } from './prices/prices.module';
 import { RebuildModule } from './rebuild/rebuild.module';
 import { StatusModule } from './status/status.module';
 import { UploadModule } from './upload/upload.module';
@@ -17,6 +18,7 @@ import { WebModule } from './web/web.module';
     RebuildModule,
     StatusModule,
     UploadModule,
+    PricesModule,
     DavModule,
     // last: its catch-all route for the page's files must come after every other route
     WebModule,
