@@ -102,13 +102,13 @@ dash.calc('subgenres', {
   },
 });
 
-dash.calc('genre_year', {
-  inputs: ['reads'], title: 'Genre mix by year',
-  description: 'Finished reads per year and genre.',
-  fn: (reads) => {
+dash.calc('genre_month', {
+  inputs: ['daily'], title: 'Genre mix over time',
+  description: 'Hours read per genre in each calendar month.',
+  fn: (daily) => {
     const g = {};
-    reads.filter((r) => r.finished === true).forEach((r) => { const k = r.end.slice(0, 4) + '|' + r.genre; g[k] = (g[k] || 0) + 1; });
-    return Object.entries(g).map(([k, n]) => ({ year: +k.split('|')[0], genre: k.split('|')[1], reads: n })).sort((a, b) => a.year - b.year);
+    daily.forEach((d) => { if (!(d.minutes > 0)) return; const k = d.date.slice(0, 7) + '|' + (d.genre || 'Unknown'); g[k] = (g[k] || 0) + d.minutes; });
+    return Object.entries(g).map(([k, m]) => ({ month: k.split('|')[0], genre: k.split('|')[1], hours: Math.round(m / 6) / 10 })).sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
   },
 });
 
@@ -195,6 +195,60 @@ dash.calc('timeline', {
       .map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, genre: r.genre, start: r.start, end: r.end, progress: r.progress, read_no: r.read_no,
         days_read: r.days_read, active: runs(days.get(r.read_id).map((d) => d.date)) }))
       .sort((a, b) => (a.start < b.start ? -1 : 1));
+  },
+});
+
+// ---------- book fingerprints ----------
+// The shape of each read from its minutes per day. Finished reads are rescued (put down for
+// a long spell part way, then finished), devoured (most days, long sessions, done fast),
+// stop-start (opened on few of its days, in bursts) or a slow burn (steady, small doses).
+// Unfinished reads are abandoned, or still on the go if opened lately.
+const SHAPE = {
+  rescueGap: 28,       // a break this many days long...
+  rescueFrom: 5,       // ...after getting at least this far (%) and before 95%
+  devourDays: 14,      // devoured: done within this many days...
+  devourDensity: 0.6,  // ...opened on at least this share of them...
+  devourMinutes: 40,   // ...averaging this many minutes per day across the read...
+  devourShort: 8,      // ...or done within this many days (anything done within 3 days is devoured)
+  stopDensity: 0.45,   // stop-start: opened on less than this share of its days...
+  stopGaps: 3,         // ...or this many breaks of stopGap+ days
+  stopGap: 4,
+  abandonDays: 60,     // unfinished and not opened for this long: abandoned
+  sparkBins: 60,       // sparklines longer than this many days are summed into this many bins
+};
+const SHAPES = ['devoured', 'slow_burn', 'stop_start', 'rescued', 'abandoned', 'reading'];
+dash.calc('fingerprints', {
+  inputs: ['reads', 'daily', 'as_of'], title: 'Book fingerprints',
+  description: 'Each read classified by the shape of its minutes per day: devoured, slow burn, stop-start, rescued (dropped then picked up again), abandoned or still reading; with a sparkline of minutes per day.',
+  fn: (reads, daily, as_of) => {
+    const days = readDays(reads, daily), today = dayNo(as_of[0].date);
+    return reads.map((r) => {
+      const ds = days.get(r.read_id).filter((d) => d.minutes > 0 || d.progress != null);
+      // a stray opening long before the read really starts isn't part of its shape
+      if (ds.length > 2 && (ds[0].progress ?? 0) < SHAPE.rescueFrom && dayNo(ds[1].date) - dayNo(ds[0].date) > SHAPE.rescueGap) ds.shift();
+      if (!ds.length) return null;
+      const d0 = dayNo(ds[0].date), span = dayNo(ds[ds.length - 1].date) - d0 + 1;
+      const minutes = d3.sum(ds, (d) => d.minutes || 0), gaps = ds.slice(1).map((d, i) => dayNo(d.date) - dayNo(ds[i].date) - 1);
+      const density = ds.length / span, perDay = minutes / span;
+      // a long break after getting somewhere, before nearly done (a stray first opening doesn't count)
+      let rescue = 0, prog = 0;
+      ds.slice(1).forEach((d, i) => { prog = Math.max(prog, ds[i].progress ?? 0); if (gaps[i] >= SHAPE.rescueGap && prog >= SHAPE.rescueFrom && prog < 95) rescue = Math.max(rescue, gaps[i]); });
+      let shape;
+      if (!r.finished) shape = today - dayNo(ds[ds.length - 1].date) > SHAPE.abandonDays ? 'abandoned' : 'reading';
+      else if (rescue) shape = 'rescued';
+      else if (span <= 3 || (span <= SHAPE.devourDays && density >= SHAPE.devourDensity && (perDay >= SHAPE.devourMinutes || span <= SHAPE.devourShort))) shape = 'devoured';
+      else if (density < SHAPE.stopDensity || gaps.filter((g) => g >= SHAPE.stopGap).length >= SHAPE.stopGaps) shape = 'stop_start';
+      else shape = 'slow_burn';
+      const bin = Math.max(1, Math.ceil(span / SHAPE.sparkBins)), spark = Array(Math.ceil(span / bin)).fill(0);
+      ds.forEach((d) => (spark[Math.floor((dayNo(d.date) - d0) / bin)] += d.minutes || 0));
+      return {
+        read_id: r.read_id, book_id: r.book_id, title: r.title, author: r.author, genre: r.genre, subgenre: r.subgenre, read_no: r.read_no,
+        start: ds[0].date, end: ds[ds.length - 1].date, finished: r.finished === true, progress: r.progress, shape,
+        span_days: span, active_days: ds.length, minutes: Math.round(minutes), mins_per_day: Math.round(minutes / ds.length),
+        density: Math.round(density * 100) / 100, longest_gap: Math.max(0, ...gaps), rescue_gap: rescue,
+        spark: spark.map((v) => Math.round(v / bin)), bin_days: bin,
+      };
+    }).filter(Boolean).sort((a, b) => (a.start < b.start ? -1 : 1));
   },
 });
 

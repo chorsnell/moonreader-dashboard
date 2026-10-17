@@ -176,12 +176,12 @@
     const lab = Math.min(w * 0.42, measure(svg, rows.map((r) => short(r.title, 26))) + 12);
     const ext = d3.extent(rows.map((r) => r.wpm).concat([avg]));
     const x = d3.scaleLinear([ext[0] - 8, ext[1] + 8], [lab, w - m.r]);
-    svg.append('line').attr('x1', x(avg)).attr('x2', x(avg)).attr('y1', m.t - 4).attr('y2', h - m.b).attr('stroke', 'var(--color-fg-muted)').attr('stroke-dasharray', '4 3');
+    svg.append('line').attr('class', 'ref').attr('x1', x(avg)).attr('x2', x(avg)).attr('y1', m.t - 4).attr('y2', h - m.b);
     svg.append('text').attr('class', 'axl').attr('x', x(avg)).attr('y', m.t - 8).attr('text-anchor', 'middle').text(`avg ${avg}`);
     const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (d, i) => `translate(0,${m.t + i * rh_ + rh_ / 2})`);
     g.append('text').attr('class', 'axl').attr('x', lab - 10).attr('dy', '0.35em').attr('text-anchor', 'end').text((d) => short(d.title, 26));
     g.append('line').attr('x1', x(avg)).attr('x2', (d) => x(d.wpm)).attr('stroke', (d) => gColor(d.genre)).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-opacity', 0.6);
-    g.append('circle').attr('cx', (d) => x(d.wpm)).attr('r', 5.5).attr('fill', (d) => gColor(d.genre));
+    g.append('circle').attr('class', 'ring').attr('cx', (d) => x(d.wpm)).attr('r', 5.5).attr('fill', (d) => gColor(d.genre));
     const leftOf = (d) => d.wpm < avg && x(d.wpm) - lab > 40;
     g.append('text').attr('class', 'lbl-in').attr('x', (d) => (leftOf(d) ? x(d.wpm) - 10 : d.wpm < avg ? x(avg) + 8 : x(d.wpm) + 10)).attr('dy', '0.35em')
       .attr('text-anchor', (d) => (leftOf(d) ? 'end' : 'start')).text((d) => d.wpm);

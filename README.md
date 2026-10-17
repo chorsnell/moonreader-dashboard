@@ -9,7 +9,7 @@ A self-hosted dashboard for your [Moon+ Reader](https://www.moondownload.com/) r
 
 <a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png"><img src="docs/screenshots/overview.png" alt="The Overview tab"></picture></a>
 
-It reads the statistics Moon+ keeps inside its backups (every book, every day you read, minutes, words and progress). It keeps that history even for books whose files are long gone, and turns it into:
+It reads the statistics Moon+ keeps inside its backups (every book, every day you read, minutes, words and progress, plus your highlights, notes and bookmarks). It keeps that history even for books whose files are long gone, and turns it into:
 
 - **Overview:** this year against last year, streaks, minutes per day, what's on the go (shown large, with time left at your current pace, when it's a single book), recently finished, books per year and hours per month.
 - **Genres & authors:** genre and subgenre mix, how it shifts over the years, top authors and series progress.
@@ -18,7 +18,7 @@ It reads the statistics Moon+ keeps inside its backups (every book, every day yo
 - **Diary:** a day-by-day log for any period showing which books you read, minutes, words, and progress from one day to the next, with started and finished markers, under a day-by-day strip of minutes read, stacked by book and coloured by genre (click a day to jump to it). Click any heatmap square to jump to that day.
 - **Library:** every book and every re-read, searchable and sortable.
 - **Data checks:** things in the log that look odd. These include a book opened once and then left for weeks (which stretches its dates), reads spread thinly over months, long pauses, days with three or more books, implausible speeds, very long sessions, progress jumps, and untagged books. Click a date to open that day in the diary.
-- **Book pages:** click any book, anywhere (lists, tables, the diary, chart bars and dots), for everything about it: times read, when each read started and finished, how long it took, time spent, words, speed against your average, its longest day, a day-by-day chart of minutes and progress for each read, the rest of its series (or more by the author) and every day you opened it. Each book has its own link (`#book/<id>`).
+- **Book pages:** click any book, anywhere (lists, tables, the diary, chart bars and dots), for everything about it: times read, when each read started and finished, how long it took, time spent, words, speed against your average, its longest day, a day-by-day chart of minutes and progress for each read, the rest of its series (or more by the author), your highlights and notes in the order they come in the book (with a strip showing where in the book you highlighted most), and every day you opened it. Each book has its own link (`#book/<id>`).
 - **Author, series, genre and year pages:** click an author, series, genre, subgenre or year wherever it's shown (bylines, tables, chart bars and legends, the diary, a book page) for its own page of stats, charts and books, with links between them. Each has its own link too (`#author/<name>`, `#series/<name>`, `#genre/<name>`, `#subgenre/<name>`, `#year/<year>`).
 
 Every book shows its cover, taken from the backup or looked up on Open Library (see [Book covers](#book-covers)).
@@ -167,7 +167,8 @@ The server also has three JSON endpoints: `/healthz`, which Docker uses as its h
 - **Finished:** a read is finished when it ends at 99% or more. Before about 2019, Moon+ often didn't record progress, so early years undercount.
 - **Minutes and words:** these are only logged per day from 2019 onwards. Per-book totals use the app's lifetime counters.
 - **Speed:** words divided by minutes, over days where Moon+ logged both. Days above 800 wpm (flicking through) or below 40 wpm (book left open) are skipped, and a book needs 2+ hours of timed reading to get a speed.
-- **Time of day:** Moon+ records which days you read, not what time, so the diary is per day.
+- **Time of day:** the reading log only records which days you read, not what time, so the diary is per day. Highlights and notes do carry a time, so time-of-day views use them as a stand-in for when you read.
+- **Highlights:** the backup records a chapter and position for each highlight but not the book's length, so how far in (%) is estimated from your progress on the day you made it. See [docs/moonplus-backup.md](docs/moonplus-backup.md) for what a backup holds.
 - **Data checks:** a first or last day 30+ days from the rest of a read counts as stray; a 60+ day gap mid-read is a pause; a read is thinly spread when it spans 60+ days but was opened on under 15% of them. The thresholds are in `CHECK` in `web/calcs.js`.
 - **Changing the rules:** the thresholds are at the top of `src/backup-import/reading-history.ts`, and every chart's calculation is in `web/calcs.js`.
 
@@ -187,7 +188,7 @@ Everything you can click through to (books, authors, series, genres, subgenres, 
 
 ### The demo
 
-`src/demo/` makes up three years of reading (65 public-domain books, with series, a re-read, abandoned books, one on the go, and a few of the oddities the Data checks tab looks for), writes it as a fake Moon+ backup, and runs it through the real backup import. The result is a static copy of the page that works on any static host:
+`src/demo/` makes up three years of reading (65 public-domain books, with series, a few re-reads, books devoured or read in fits and starts, abandoned books, one on the go, and a few of the oddities the Data checks tab looks for), writes it as a fake Moon+ backup, and runs it through the real backup import. The result is a static copy of the page that works on any static host:
 
 ```sh
 npm run demo -- site                            # COVER_LOOKUP=off to skip Open Library

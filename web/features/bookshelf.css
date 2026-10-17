@@ -1,0 +1,21 @@
+/* The Bookshelf (features/bookshelf.js) */
+:root{--bs-back:#f3efe7;--bs-wood:#b98f5f;--bs-edge:#d4b48a;--bs-ink:#fff;--bs-band:rgba(255,236,190,.55);--bs-ribbon:#b3261e}
+@media (prefers-color-scheme: dark){:root{--bs-back:#1b1a18;--bs-wood:#5a4632;--bs-edge:#7a6146;--bs-ink:#1a1816;--bs-band:rgba(40,28,10,.4);--bs-ribbon:#f08a80}}
+.bs-chart{min-height:320px}
+.bs-year{font-family:var(--font-anthropic-serif);font-size:20px;fill:var(--color-fg)}
+.bs-year tspan[data-link]:hover{text-decoration:underline}
+.bs .bs-sum{font-family:var(--font-anthropic-sans);font-size:var(--cds-font-size-caption);fill:var(--color-fg-muted)}
+.bs-back{fill:var(--bs-back)}
+.bs-plank{fill:var(--bs-wood)}
+.bs-edge{fill:var(--bs-edge)}
+.bs-band{fill:var(--bs-band)}
+.bs-ribbon{fill:var(--bs-ribbon)}
+.bs-title{fill:var(--bs-ink);font-family:var(--font-anthropic-serif);letter-spacing:.02em;pointer-events:none}
+.bs-body{transition:transform .18s ease-out}
+.bs-spine:hover .bs-body,.bs-spine:focus .bs-body{transform:translateY(-7px)}
+.bs-spine:hover .bs-title{text-decoration:none;fill:var(--bs-ink)}
+@media (prefers-reduced-motion:reduce){.bs-body{transition:none}}
+.bs-key{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.bs-key i{display:inline-block;width:8px;height:12px;border-radius:1px;background:var(--color-fg-muted)}
+.bs-k-re{background:repeating-linear-gradient(45deg,var(--color-fg-muted) 0 2px,color-mix(in srgb,var(--color-fg-muted) 45%,transparent) 2px 4px)!important}
+.bs-k-lean{transform:rotate(14deg);margin-left:8px}
