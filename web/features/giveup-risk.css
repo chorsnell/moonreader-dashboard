@@ -1,0 +1,22 @@
+/* will you finish it? (BOO-78) */
+.gr-flag{display:inline-block;font-size:var(--cds-font-size-caption);line-height:1.5;padding:0 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.gr-flag::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:1px}
+.gr-likely{color:var(--color-warn)}
+.gr-watch{color:var(--color-fg-muted)}
+.gr-fine{color:var(--color-ok)}
+.gr-take{margin:0 0 var(--cds-gap-sm);font-size:var(--cds-font-size-body);line-height:1.6}
+.gr-take .gr-flag{margin-right:4px}
+.gr-signals{list-style:none;margin:0 0 var(--cds-gap-md);padding:0;display:flex;flex-direction:column;gap:6px;font-size:var(--cds-font-size-body);line-height:1.5;max-width:75ch}
+.gr-signals li{display:flex;gap:8px;align-items:baseline}
+.gr-signals li.off{color:var(--color-fg-muted)}
+.gr-dot{flex:none;width:8px;height:8px;border-radius:50%;border:1.5px solid var(--color-fg-muted);transform:translateY(-1px)}
+.gr-signals li.on .gr-dot{background:var(--color-warn);border-color:var(--color-warn)}
+.gr-near-h{margin:0 0 6px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.gr-near{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px var(--cds-gap-md);font-size:var(--cds-font-size-caption)}
+.gr-near li{display:flex;gap:6px;align-items:baseline;cursor:pointer;min-width:0}
+.gr-near .gr-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr-near .gr-r{color:var(--color-fg-muted);white-space:nowrap}
+.gr-near .gr-mark{flex:none;width:1em;text-align:center;color:var(--color-ok)}
+.gr-near li.dnf .gr-mark{color:var(--color-warn)}
+.gr-near li[data-link]:hover .gr-t{text-decoration:underline}
+.gr-foot{margin:var(--cds-gap-sm) 0 0;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}

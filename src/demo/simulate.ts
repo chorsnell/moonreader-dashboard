@@ -7,6 +7,7 @@ import {
   PAUSE,
   REREADS,
   SPEED,
+  STALLING,
   STRAY,
   STYLE,
   STYLE_ODDS,
@@ -26,7 +27,9 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 
 /** Shuffles the books, keeping each series in order; a few re-reads, and the book on the go last. */
 function order(rng: Random): DemoBook[] {
-  const singles = BOOKS.filter((b) => !b[4] && b[0] !== CURRENT && !REREADS.includes(b[0]));
+  const singles = BOOKS.filter(
+    (b) => !b[4] && b[0] !== CURRENT && b[0] !== STALLING && !REREADS.includes(b[0]),
+  );
   const series = new Map<string, DemoBook[]>();
   for (const b of BOOKS) {
     if (b[4]) series.set(b[4], [...(series.get(b[4]) ?? []), b]);
@@ -117,5 +120,30 @@ export function simulate(rng: Random): { log: Map<string, DemoDay[]>; days: numb
     }
     if (i < queue.length - 1 && rng.random() < 0.3) day += rng.randint(1, 6); // a few days between books
   });
+  stalling(log, day, new Random(rng.randint(1, 1e9)));
   return { log, days: day };
+}
+
+/**
+ * A second book on the go that's going the way given-up books go: read steadily for a few
+ * weeks alongside the others, then slower, with longer and longer breaks, and not opened for
+ * the last ten days or so. It has its own random numbers, so the rest of the history is as it was.
+ */
+function stalling(log: Map<string, DemoDay[]>, end: number, rng: Random): void {
+  const [title, author, genre, , , , words] = BOOKS.find((b) => b[0] === STALLING)!;
+  const wpm = SPEED[genre] * rng.uniform(0.9, 1.05);
+  const entries: DemoDay[] = [];
+  let day = end - 95,
+    done = 0;
+  // most days for four weeks, then breaks that keep growing
+  const gaps = [0, 1, 0, 1, 0, 0, 2, 0, 1, 0, 0, 1, 0, 2, 0, 1, 0, 1, 3, 4, 5, 7, 9, 12];
+  for (const gap of gaps) {
+    day += gap + 1;
+    const late = gap >= 3;
+    const minutes = round1(Math.max(6, rng.lognormal(late ? 2.3 : 2.8, 0.35)));
+    const w = Math.floor(minutes * wpm * rng.uniform(0.85, 1.15));
+    done += w;
+    entries.push({ day, minutes, words: w, progress: round1((done / words) * 100) });
+  }
+  log.set(fileName(title, author), entries);
 }
