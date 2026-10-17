@@ -240,6 +240,13 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .chip[data-link]:hover{border-color:currentColor}
 .legend span[data-link]:hover,svg [data-link]:hover text,svg text[data-link]:hover{text-decoration:underline;fill:var(--color-fg)}
 .legend span[data-link]:hover{color:var(--color-fg)}
+.gs-stream{stroke:var(--color-panel);stroke-width:.6;transition:opacity .15s}
+.gs:has(.gs-stream:hover) .gs-stream:not(:hover){opacity:.45}
+.gs-lbl{fill:#fff;font-size:var(--cds-font-size-caption);font-weight:500;text-anchor:middle;pointer-events:none;paint-order:stroke}
+.gs-yr{stroke:var(--cds-chart-grid);stroke-dasharray:2 3}
+.gs-guide{stroke:var(--color-fg);stroke-opacity:.5;pointer-events:none}
+.gs-scale line{stroke:var(--color-fg-muted)}
+@media (prefers-color-scheme: dark){.gs-lbl{fill:#1a1816}}
 .dy-book .t small.by{display:block}
 .pg-body{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
 .rh .bk-tbl th{padding:var(--cds-pad-xs) var(--cds-pad-sm)}
@@ -329,10 +336,10 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
         <p class="note">Finished books in the 12 most-read subgenres.</p>
         <div class="chart" id="ch-sub" data-source="subgenres"></div></div>
     </div>
-    <div class="rh-card wide" id="card-genre-year"><h2>Genre mix by year</h2>
-      <p class="note">Share of each year's finished reads.</p>
+    <div class="rh-card wide" id="card-genre-year"><h2>Genre mix over time</h2>
+      <p class="note">Hours read each month, by genre. Thicker streams mean more hours; hover for a month, click a stream for its genre.</p>
       <div class="legend" id="leg-gy"></div>
-      <div class="chart" id="ch-gy" data-source="genre_year"></div></div>
+      <div class="chart" id="ch-gy" data-source="genre_month"></div></div>
     <div class="rh-grid">
       <div class="rh-card" id="card-authors"><h2>Most-read authors</h2>
         <p class="note">Books finished per author, top 15. Hover for hours.</p>
