@@ -5,6 +5,7 @@ import { BackupImportModule } from '../backup-import/backup-import.module';
 import { appConfig } from '../config/app.config';
 import { CoversModule } from '../covers/covers.module';
 import { MediaCoreModule } from '../media/media-core.module';
+import { MetadataModule } from '../metadata/metadata.module';
 
 /** Just the imports (books and other media) and covers, without the web server or the rebuild watcher. */
 @Module({
@@ -14,6 +15,7 @@ import { MediaCoreModule } from '../media/media-core.module';
     BackupImportModule,
     CoversModule,
     MediaCoreModule,
+    MetadataModule,
   ],
 })
 export class DemoModule {}

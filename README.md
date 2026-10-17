@@ -17,6 +17,7 @@ It reads the statistics Moon+ keeps inside its backups (every book, every day yo
 - **Timeline & habits:** a day-by-day heatmap and a "what you read when" timeline, each with its own date range (presets or custom dates), plus weekday rhythm, a 24-hour reading clock (from when you made highlights: night owl or morning reader?), biggest reads and books left unfinished. Each timeline bar is faint from first to last day and solid on the days you actually opened the book.
 - **Diary:** a day-by-day log for any period showing which books you read, minutes, words, and progress from one day to the next, with started and finished markers, under a day-by-day strip of minutes read, stacked by book and coloured by genre (click a day to jump to it). Click any heatmap square to jump to that day.
 - **Library:** every book and every re-read, searchable and sortable.
+- **Money:** what your reading time is worth at an hourly rate you choose (kept in your browser only), by book, author, genre, series and year, and the true cost of a book (price plus your time). Once you've added prices (see [What your books cost](#what-your-books-cost)) it also shows spending by month and year, a lifetime total, spending against a yearly budget, how you got your books, price against hours read with rough benchmarks (cinema, streaming…), best- and worst-value books, how re-reads bring the cost per hour down, the dearest authors, genres and series, the rough cost to finish a series, whether a subscription such as Kindle Unlimited paid off month by month, and the money left on the shelf in books you gave up on or never opened. Author, series, genre and year pages get a money card too.
 - **Data checks:** things in the log that look odd. These include a book opened once and then left for weeks (which stretches its dates), reads spread thinly over months, long pauses, days with three or more books, implausible speeds, very long sessions, progress jumps, and untagged books. Click a date to open that day in the diary.
 - **Book pages:** click any book, anywhere (lists, tables, the diary, chart bars and dots), for everything about it: times read, when each read started and finished, how long it took, time spent, words, speed against your average, its longest day, a day-by-day chart of minutes and progress for each read, the rest of its series (or more by the author), your highlights and notes in the order they come in the book (with a strip showing where in the book you highlighted most, and a word cloud of them; author pages get one too), and every day you opened it. Each book has its own link (`#book/<id>`).
 - **Author, series, genre and year pages:** click an author, series, genre, subgenre or year wherever it's shown (bylines, tables, chart bars and legends, the diary, a book page) for its own page of stats, charts and books, with links between them. Each has its own link too (`#author/<name>`, `#series/<name>`, `#genre/<name>`, `#subgenre/<name>`, `#year/<year>`).
@@ -99,6 +100,17 @@ To choose who can *read* the dashboard, sign in as the admin, open the admin pag
 
 Setting a new read password signs out everyone who used the old one. Changing `UPLOAD_TOKEN` signs out the admin.
 
+**What visitors see.** The same section chooses, separately for the public and for people with the read password, which details they get. Start from a preset (**Everything**, **Everything but exact dates** or **Taste only**), or set each one:
+
+- **Dates:** exact days, or only the week or month.
+- **Day-by-day reading:** the diary, heatmaps and timeline.
+- **What you're reading now** and when you last read.
+- **Streaks and quiet spells.**
+- **Highlights and notes.** These are hidden from the public by default.
+- **Prices and spending.**
+
+You can also mark books or whole genres as private. Visitors then see nothing of them, or see them as "A private book" with no title, author or cover. This is enforced on the server: the data files and API are filtered for each visitor, so hidden details never reach their browser. **Preview as a visitor** shows you exactly what they get. You, as the admin, always see everything.
+
 ## Sync straight from Moon+ (WebDAV)
 
 When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-domain/reading/dav/`. The admin page's **Data** section shows the exact address. Log in with any username, and use your `UPLOAD_TOKEN` as the password.
@@ -143,6 +155,18 @@ Give a book an ISBN with `"isbn": "978-0-14-143951-8"` (ISBN-13 or ISBN-10, with
 
 Copies of a book count as one book when they share a title and author, an ISBN, or a `"work_id"`: any id you give every edition of the same work (paperback, ebook, a translation), such as its Open Library work id (`"OL66562W"`).
 
+## What your books cost
+
+Moon+ doesn't know what you paid, so prices are kept in their own file, `library/prices.json`, and set in the admin area (**Admin → Prices**). For each book you can record the price, currency, date, how you got it (bought, free, library, subscription or gift), the store, a list price (what buying it would have cost, for library, gifted and subscription books), a bundle and private notes. Books you bought but never opened in Moon+ can be added too.
+
+- **CSV import:** upload a store's order history or a spreadsheet with a header row. It needs a `title` column and reads `author`, `isbn`, `price` (`£4.99` works), `currency`, `date` (`YYYY-MM-DD` or `DD/MM/YYYY`), `acquisition`, `store`, `subscription`, `list_price`, `bundle` and `notes`. Books are matched by ISBN, then by title and author. You see what matched before anything is saved, and books it can't find can be added as never opened. **Download all as CSV** gives the same columns back.
+- **Currencies:** everything is shown in one home currency. Prices keep the currency they were paid in and are converted with exchange rates you set yourself. Nothing is looked up online, and a price in a currency without a rate is left out until you add one.
+- **Bundles and box sets:** rows that share a bundle name split its price between the books by length (word count), or evenly when a book's length isn't known.
+- **Subscriptions:** add Kindle Unlimited, Kobo Plus and the like with their monthly fee and dates, then mark the books you read through them.
+- **Prices aren't looked up automatically.** No free, keyless source covers ebook stores, and what matters is what you actually paid after sales and vouchers, which only your order history knows.
+
+The page reads a copy, `data/prices.json`, converted to the home currency and without your notes.
+
 ## Book covers
 
 Moon+ only keeps covers for the books that are still on your device, so a backup usually has covers for a fraction of your history. On each rebuild the dashboard:
@@ -153,6 +177,21 @@ Moon+ only keeps covers for the books that are still on your device, so a backup
 Books without a cover show a tile with their first letter. Covers appear when you reload the page.
 
 Each cover is saved as `library/covers/<book id>.jpg` (or `.png`), and an existing file is never replaced. To fix a wrong cover or add a missing one, save your own image under that name. The book id is the title in lower case with dashes, such as `project-hail-mary`. Set `COVER_LOOKUP: "off"` to never contact Open Library.
+
+## Publication years, pages and authors
+
+After the covers, the dashboard looks up each book on [Open Library](https://openlibrary.org) (by ISBN when it has one, otherwise by title and author) for the year it was first published, its page count and an ISBN, and each author on [Wikidata](https://www.wikidata.org) for their country and gender. It goes one request a second, in the background, and stores what it finds in `library/metadata.json`; saving that file rebuilds the data, so the results appear on the next reload. Books and authors it can't find are tried again after 30 days (`library/.metadata-misses.json`). Delete an entry from `metadata.json` to look it up again.
+
+The country is the author's citizenship, or, for a country that no longer exists, the country their birthplace is in today. Lookups can be wrong, and what you put in `catalogue.json` always wins. Per book:
+
+```json
+"some new book - author.epub": {
+  "title": "Some New Book", "author": "Author Name",
+  "published_year": 1965, "pages": 412, "author_country": "GB", "author_gender": "female"
+}
+```
+
+or once per author, under `"authors"` next to `"books"`: `"authors": { "Author Name": { "country": "Ireland", "gender": "male" } }`. Countries can be an ISO code (`GB`) or an English name; genders are `female`, `male`, `non-binary` or `other`. Set `METADATA_LOOKUP: "off"` to never look anything up.
 
 ## TV and film (Netflix, Plex)
 
@@ -196,6 +235,7 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 | `POLL_SECONDS` | `30` | How often to check the inbox |
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
 | `COVER_LOOKUP` | `on` | Set to `off` to stop looking up missing covers on Open Library |
+| `METADATA_LOOKUP` | `on` | Set to `off` to stop looking up publication years, page counts and authors on Open Library and Wikidata |
 | `TMDB_API_KEY` | *(empty)* | A TMDB key (v3 key or v4 read token) for TV and film genres and posters |
 | `TAUTULLI_URL` / `TAUTULLI_API_KEY` | *(empty)* | Tautulli's address and API key, to read Plex watch history |
 | `MEDIA_POLL_MINUTES` | `60` | How often to pull new plays from Tautulli |
@@ -237,7 +277,7 @@ npm run demo -- site                            # COVER_LOOKUP=off to skip Open 
 npx http-server site -p 8000
 ```
 
-The [`demo` workflow](.github/workflows/pages.yml) does the same on every push to `main`, and weekly, and publishes it to GitHub Pages.
+The [`demo` workflow](.github/workflows/pages.yml) does the same on every push to `main`, and weekly, and publishes it to GitHub Pages. `npm run screenshots` retakes the screenshots above from it; see [docs/contributing.md](docs/contributing.md) for that, feature scripts and the checks to run.
 
 ### Layout
 
@@ -250,6 +290,7 @@ src/app.setup.ts            HTTP setup shared with the e2e tests (BASE_PATH, hea
 src/config/                 every setting, read and checked from environment variables
 src/library/                the library folder, update.log and the server's status
 src/access/                 sign-in, sessions, and whether the dashboard is public or needs the read password
+src/privacy/                what visitors may see, and the filter that enforces it on the data they get
 src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
   reading-history.ts        the rules: what counts as a read, finished, and so on
 src/covers/                 saves covers from the backup and looks up missing ones on Open Library

@@ -3,7 +3,7 @@
 // series, so several book calcs are reused as they are (dash.reuse); see docs/media-verticals.md.
 (() => {
   const { el, fmt, pDate, fDay, fShort, C, svgIn, showTip, hideTip, tipLines, axis, legend, ref, link, plural, barPath, grow, setTitle, mins } = rh;
-  const FILES = ['media_items', 'media_runs', 'media_daily', 'media_sessions', 'media_parts', 'media_meta'];
+  const FILES = ['media_items', 'media_runs', 'media_daily', 'media_sessions', 'media_parts', 'media_money'];
   FILES.forEach((f) => dash.file(f, `data/${f}.json`, { optional: true }));
 
   const arr = (x) => (Array.isArray(x) ? x : []);
@@ -114,10 +114,10 @@
   // which source a subscription pays for, by its name
   const sourceOf = (service) => (/netflix/i.test(service) ? 'netflix' : /plex/i.test(service) ? 'tautulli' : null);
   dash.calc('tv_cost', {
-    inputs: ['media_sessions', 'media_meta', 'tv_as_of'], title: 'Cost per hour watched',
+    inputs: ['media_sessions', 'media_money', 'tv_as_of'], title: 'Cost per hour watched',
     description: 'For each streaming subscription (set on the admin page) and year: what it cost, the hours watched on that service, and the cost per hour. Months with less than an hour watched are counted as idle.',
-    fn: (sessions, meta, asOf) => {
-      const subs = (meta && !Array.isArray(meta) && arr(meta.subscriptions)) || [];
+    fn: (sessions, money, asOf) => {
+      const subs = arr(money);
       const end = asOf[0] && asOf[0].date;
       if (!subs.length || !end) return [];
       const hours = new Map(); // source|month -> hours

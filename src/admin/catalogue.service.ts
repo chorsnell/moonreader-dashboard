@@ -7,6 +7,7 @@ import type {
   CatalogueEntry,
 } from '../backup-import/reading-history.types';
 import { CoverStore } from '../covers/cover-store.service';
+import { parseIsbn } from '../metadata/isbn';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LibraryService } from '../library/library.service';
 
@@ -19,6 +20,7 @@ export interface CatalogueBook {
   series_no: number | null;
   genre: string;
   subgenre: string;
+  isbn13: string | null;
   status: string;
   /** Its file names, as Moon+ has them. */
   files: string[];
@@ -27,15 +29,28 @@ export interface CatalogueBook {
   has_cover: boolean;
 }
 
+/** Fields the editor doesn't show; a save keeps whatever the entry has. */
+type KeptFields =
+  | 'isbn'
+  | 'work_id'
+  | 'isbn13'
+  | 'isbn10'
+  | 'published_year'
+  | 'pages'
+  | 'author_country'
+  | 'author_gender';
+
 /** A change to the catalogue entries of a book's files. */
 export interface CatalogueChange {
   files: string[];
   /** True to list the files as "not a book" instead. */
   exclude: boolean;
-  /** The fields the admin page edits; others in catalogue.json (ISBNs) are kept. */
-  entry: Required<
-    Pick<CatalogueEntry, 'title' | 'author' | 'series' | 'series_no' | 'genre' | 'subgenre'>
-  >;
+  /**
+   * isbn13/isbn10 are left as they were when the body has no isbn; work_id and the
+   * hand-entered metadata (published_year, pages, author_country, author_gender) always are.
+   */
+  entry: Required<Omit<CatalogueEntry, KeptFields>> &
+    Partial<Pick<CatalogueEntry, 'isbn13' | 'isbn10'>>;
 }
 
 const MAX_TEXT = 300;
@@ -67,6 +82,14 @@ export function toCatalogueChange(body: unknown): CatalogueChange {
     }
   }
   const series = text(b.series, 'series');
+  // an empty isbn clears it; a missing one keeps what the catalogue has
+  let isbns: Partial<Pick<CatalogueEntry, 'isbn13' | 'isbn10'>> = {};
+  if (b.isbn !== undefined && b.isbn !== null) {
+    const raw = text(b.isbn, 'ISBN');
+    const parsed = raw ? parseIsbn(raw) : { isbn13: null, isbn10: null };
+    if (!parsed) throw new BadRequestException({ error: 'That isn’t a valid ISBN.' });
+    isbns = parsed;
+  }
   return {
     files,
     exclude,
@@ -77,6 +100,7 @@ export function toCatalogueChange(body: unknown): CatalogueChange {
       series_no: series ? seriesNo : null,
       genre: text(b.genre, 'genre') || 'Untagged',
       subgenre: text(b.subgenre, 'subgenre') || 'Untagged',
+      ...isbns,
     },
   };
 }
@@ -126,6 +150,7 @@ export class CatalogueService {
         series_no: b.series_no,
         genre: b.genre,
         subgenre: b.subgenre,
+        isbn13: b.isbn13 ?? null,
         status: b.status,
         files: b.source_files,
         untagged:
@@ -147,7 +172,23 @@ export class CatalogueService {
           delete catalogue.books[key];
         } else {
           exclude.delete(key);
-          catalogue.books[key] = { ...catalogue.books[key], ...change.entry };
+          const prev = catalogue.books[key];
+          const kept = {
+            isbn13: prev?.isbn13 ?? null,
+            isbn10: prev?.isbn10 ?? null,
+            ...(prev?.isbn && !prev.isbn13 && !prev.isbn10 ? { isbn: prev.isbn } : {}),
+            ...(prev?.work_id ? { work_id: prev.work_id } : {}),
+            ...Object.fromEntries(
+              (['published_year', 'pages', 'author_country', 'author_gender'] as const)
+                .filter((k) => prev?.[k] != null)
+                .map((k) => [k, prev![k]]),
+            ),
+          };
+          const entry: CatalogueEntry = { ...kept, ...change.entry };
+          if (change.entry.isbn13 !== undefined) delete entry.isbn;
+          if (!entry.isbn13) delete entry.isbn13;
+          if (!entry.isbn10) delete entry.isbn10;
+          catalogue.books[key] = entry;
         }
       }
       catalogue.exclude = [...exclude].sort();

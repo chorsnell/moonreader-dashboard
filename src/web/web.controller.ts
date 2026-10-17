@@ -8,10 +8,11 @@ import {
   Inject,
   NotFoundException,
   Param,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import type { IncomingHttpHeaders } from 'node:http';
 import { AccessSettingsService } from '../access/access-settings.service';
 import { ReaderGuard } from '../access/reader.guard';
@@ -19,6 +20,8 @@ import { appConfig, type AppConfigType } from '../config/app.config';
 import { publicPrefix } from '../common/http/public-prefix';
 import { COVER_NAME } from '../covers/cover-store.service';
 import { LibraryService } from '../library/library.service';
+import { filterDataFile } from '../privacy/privacy';
+import { PrivacyService } from '../privacy/privacy.service';
 import { WEB_DIR } from '../paths';
 import { withFeatures } from './features';
 
@@ -36,6 +39,7 @@ export class WebController {
     @Inject(appConfig.KEY) private readonly config: AppConfigType,
     private readonly library: LibraryService,
     private readonly settings: AccessSettingsService,
+    private readonly privacy: PrivacyService,
   ) {}
 
   /**
@@ -51,18 +55,44 @@ export class WebController {
     return page.replace('<head>', `<head>\n<base href="${base}">`);
   }
 
+  /** The admin gets the files as written; everyone else a copy filtered by their policy. */
   @Get('data/:name')
   @UseGuards(ReaderGuard)
-  data(@Param('name') name: string, @Res() res: Response): Promise<void> {
+  async data(
+    @Param('name') name: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
     if (!DATA_FILE.test(name)) throw new NotFoundException();
-    return sendFile(res, join(this.library.data, name), 'no-cache');
+    res.setHeader('Vary', 'Cookie, X-Upload-Token');
+    const viewer = await this.privacy.viewer(req);
+    const ctx = await this.privacy.context(viewer);
+    const path = join(this.library.data, name);
+    if (!ctx) return sendFile(res, path, 'no-cache');
+    let data: unknown;
+    try {
+      data = JSON.parse(await readFile(path, 'utf8'));
+    } catch {
+      throw new NotFoundException();
+    }
+    const filtered = filterDataFile(name, data, ctx);
+    if (filtered === null) throw new NotFoundException();
+    res.setHeader('Cache-Control', 'private, no-cache');
+    res.json(filtered);
   }
 
   /** Cached for good (the URL changes with the file); privately when the dashboard is. */
   @Get('covers/:name')
   @UseGuards(ReaderGuard)
-  async cover(@Param('name') name: string, @Res() res: Response): Promise<void> {
-    if (!COVER_NAME.test(name)) throw new NotFoundException();
+  async cover(
+    @Param('name') name: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const m = COVER_NAME.exec(name);
+    if (!m) throw new NotFoundException();
+    const ctx = await this.privacy.context(await this.privacy.viewer(req));
+    if (ctx?.private.has(m[1])) throw new NotFoundException(); // a private book's cover
     const scope = (await this.settings.load()).access === 'public' ? 'public' : 'private';
     return sendFile(res, join(this.library.covers, name), `${scope}, max-age=31536000, immutable`);
   }

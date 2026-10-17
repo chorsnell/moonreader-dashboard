@@ -110,14 +110,12 @@ describe('TV & film calcs', () => {
       source,
     });
     const media_sessions = [s('2025-01-01', 300, 'netflix'), s('2025-02-01', 60, 'tautulli')];
-    const media_meta = {
-      subscriptions: [
-        { service: 'Netflix', monthly: 10, currency: 'GBP', from: '2025-01', to: '2025-03' },
-      ],
-    };
+    const media_money = [
+      { service: 'Netflix', monthly: 10, currency: 'GBP', from: '2025-01', to: '2025-03' },
+    ];
     // the history runs to March, so the open months are counted up to then
     const media_daily = [...daily, day('tv-a-s2', '2025-03-20', 30, 0)];
-    expect(run('tv_cost', { ...data, media_daily, media_sessions, media_meta })).toEqual([
+    expect(run('tv_cost', { ...data, media_daily, media_sessions, media_money })).toEqual([
       {
         service: 'Netflix',
         year: 2025,
@@ -129,6 +127,6 @@ describe('TV & film calcs', () => {
         per_hour: 6,
       },
     ]);
-    expect(run('tv_cost', { ...data, media_sessions, media_meta: [] })).toEqual([]);
+    expect(run('tv_cost', { ...data, media_sessions, media_money: [] })).toEqual([]);
   });
 });

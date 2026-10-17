@@ -13,7 +13,7 @@ export interface MediaSettings {
   tmdb: { api_key: string };
   /** Plex through Tautulli; user_id limits it to one Plex user (empty: everyone). */
   tautulli: { url: string; api_key: string; user_id: string };
-  /** Streaming subscriptions, for cost per hour watched; shown to readers in media_meta.json. */
+  /** Streaming subscriptions, for cost per hour watched; served as data/media_money.json. */
   subscriptions: StreamingSubscription[];
 }
 

@@ -24,6 +24,7 @@ export const MEDIA_FILES = [
   'media_parts.json',
 ] as const;
 export const MEDIA_META = 'media_meta.json';
+export const MEDIA_MONEY = 'media_money.json';
 /** See the book build: inputs changed while a build ran are still newer than its meta file. */
 const MTIME_MARGIN_MS = 2000;
 
@@ -212,6 +213,8 @@ export class MediaBuildService {
       'media_sessions.json': history.sessions,
       'media_parts.json': history.parts,
     };
+    // the subscriptions on their own, so the privacy settings treat them as money
+    await dump(join(data, MEDIA_MONEY), subscriptions);
     for (const name of MEDIA_FILES) {
       const path = join(data, name);
       // nothing to show (no profile chosen yet): no files, so the page doesn't offer an empty tab
@@ -222,7 +225,6 @@ export class MediaBuildService {
       generated: logTimestamp(),
       sources,
       counts: { items: history.items.length, sessions: history.sessions.length },
-      subscriptions,
     });
   }
 

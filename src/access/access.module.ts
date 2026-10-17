@@ -8,6 +8,7 @@ import { DavAuthGuard } from './dav-auth.guard';
 import { ReaderGuard } from './reader.guard';
 import { SessionService } from './session.service';
 import { UploadTokenService } from './upload-token.service';
+import { PrivacyService } from '../privacy/privacy.service';
 
 /** Who may see the dashboard and who may change it: sign-in, sessions and the guards. */
 @Module({
@@ -21,6 +22,7 @@ import { UploadTokenService } from './upload-token.service';
     AdminGuard,
     DavAuthGuard,
     ReaderGuard,
+    PrivacyService,
   ],
   exports: [
     UploadTokenService,
@@ -29,6 +31,7 @@ import { UploadTokenService } from './upload-token.service';
     AdminGuard,
     DavAuthGuard,
     ReaderGuard,
+    PrivacyService,
   ],
 })
 export class AccessModule {}

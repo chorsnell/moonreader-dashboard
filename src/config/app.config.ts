@@ -21,6 +21,9 @@ export interface AppConfig {
   coverLookup: boolean;
   openLibraryUrl: string;
   openLibraryCoversUrl: string;
+  /** Whether to look up publication years, page counts and authors on Open Library and Wikidata. */
+  metadataLookup: boolean;
+  wikidataUrl: string;
   /** Pause between Open Library lookups, to be polite. */
   coverPauseMs: number;
   /** TMDB, for TV and film posters, genres and runtimes; the admin can also set the key on the page. */
@@ -52,6 +55,10 @@ function decimal(env: NodeJS.ProcessEnv, name: string, fallback: number): number
   return n;
 }
 
+function onOff(env: NodeJS.ProcessEnv, name: string): boolean {
+  return !['off', 'no', 'false', '0'].includes((env[name] ?? 'on').trim().toLowerCase());
+}
+
 function url(env: NodeJS.ProcessEnv, name: string, fallback: string): string {
   return (env[name]?.trim() || fallback).replace(/\/+$/, '');
 }
@@ -66,11 +73,11 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     uploadToken: (env.UPLOAD_TOKEN ?? '').trim(),
     pollSeconds: Math.max(5, integer(env, 'POLL_SECONDS', 30)),
     keepBackups: Math.max(1, integer(env, 'KEEP_BACKUPS', 5)),
-    coverLookup: !['off', 'no', 'false', '0'].includes(
-      (env.COVER_LOOKUP ?? 'on').trim().toLowerCase(),
-    ),
+    coverLookup: onOff(env, 'COVER_LOOKUP'),
     openLibraryUrl: url(env, 'OPENLIBRARY_URL', 'https://openlibrary.org'),
     openLibraryCoversUrl: url(env, 'OPENLIBRARY_COVERS_URL', 'https://covers.openlibrary.org'),
+    metadataLookup: onOff(env, 'METADATA_LOOKUP'),
+    wikidataUrl: url(env, 'WIKIDATA_URL', 'https://www.wikidata.org'),
     coverPauseMs: decimal(env, 'COVER_PAUSE', 1) * 1000,
     tmdbApiKey: (env.TMDB_API_KEY ?? '').trim(),
     tmdbUrl: url(env, 'TMDB_URL', 'https://api.themoviedb.org/3'),

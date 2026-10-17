@@ -7,6 +7,8 @@ import { UploadTokenService } from '../access/upload-token.service';
 import { CoverStore } from '../covers/cover-store.service';
 import { LibraryService } from '../library/library.service';
 import { StatusService } from '../library/status.service';
+import { filterCovers, filterDataFile } from '../privacy/privacy';
+import { PrivacyService } from '../privacy/privacy.service';
 
 /** Small JSON endpoints for Docker's health check and for the page. */
 @Controller()
@@ -18,6 +20,7 @@ export class StatusController {
     private readonly tokens: UploadTokenService,
     private readonly access: AccessService,
     private readonly settings: AccessSettingsService,
+    private readonly privacy: PrivacyService,
   ) {}
 
   /** Says nothing private: anyone can reach it. */
@@ -44,6 +47,9 @@ export class StatusController {
     if (!who.can_read) return who;
     const { building, last_build, last_error } = this.status.snapshot();
     const admin = role === 'admin';
+    const viewer = await this.privacy.viewer(req);
+    const ctx = await this.privacy.context(viewer);
+    const meta = await this.library.meta();
     return {
       ...who,
       uploads: admin,
@@ -51,9 +57,12 @@ export class StatusController {
       has_data: await this.library.hasData(),
       has_books: await this.library.hasBooks(),
       has_media: await this.library.hasMedia(),
-      meta: await this.library.meta(),
+      meta: ctx ? filterDataFile('meta.json', meta, ctx) : meta,
+      // what's hidden from this viewer (null: nothing), and the role an admin is previewing as
+      privacy: await this.privacy.summary(viewer, ctx),
+      preview: viewer.preview,
       building,
-      last_build,
+      last_build: admin ? last_build : null, // its time of day is the last sync's
       last_error: admin ? last_error : null,
     };
   }
@@ -62,7 +71,9 @@ export class StatusController {
   @Get('api/covers')
   @Header('Cache-Control', 'no-cache')
   @UseGuards(ReaderGuard)
-  coverUrls() {
-    return this.covers.urls();
+  async coverUrls(@Req() req: Request) {
+    const ctx = await this.privacy.context(await this.privacy.viewer(req));
+    const urls = await this.covers.urls();
+    return ctx ? filterCovers(urls, ctx) : urls;
   }
 }

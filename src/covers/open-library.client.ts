@@ -9,6 +9,31 @@ interface SearchDoc {
   cover_i?: number;
 }
 
+/** A work as Open Library's search returns it, with the fields the metadata lookup asks for. */
+export interface WorkDoc {
+  key?: string;
+  title?: string;
+  author_name?: string[];
+  author_key?: string[];
+  first_publish_year?: number;
+  number_of_pages_median?: number;
+  isbn?: string[];
+}
+
+const WORK_FIELDS =
+  'key,title,author_name,author_key,first_publish_year,number_of_pages_median,isbn';
+
+/** GETs a URL as this app (as the APIs ask), with a timeout. Throws on a failed request. */
+export async function httpGet(url: string, signal?: AbortSignal): Promise<Buffer> {
+  const timeout = AbortSignal.timeout(TIMEOUT_MS);
+  const res = await fetch(url, {
+    headers: { 'User-Agent': AGENT },
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).host}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
 /** Lower-case ASCII words only, and only the part before any subtitle or bracket. */
 export function normaliseTitle(s: string | undefined): string {
   const ascii = (s ?? '')
@@ -38,15 +63,53 @@ export class OpenLibraryClient {
   async findCover(title: string, author: string, signal?: AbortSignal): Promise<number | null> {
     const short = title.split(/\s*[:([]/)[0].trim() || title;
     if (author) {
-      for (const d of await this.search({ title: short, author: firstSurname(author) }, signal)) {
+      const q = { title: short, author: firstSurname(author) };
+      for (const d of await this.search<SearchDoc>(q, 'cover_i,title', signal)) {
         if (d.cover_i) return d.cover_i;
       }
     }
     // without an author, only trust an exact title match
-    for (const d of await this.search({ title: short }, signal)) {
+    for (const d of await this.search<SearchDoc>({ title: short }, 'cover_i,title', signal)) {
       if (d.cover_i && normaliseTitle(d.title) === normaliseTitle(short)) return d.cover_i;
     }
     return null;
+  }
+
+  /**
+   * The work a book belongs to: by ISBN when there is one, otherwise by title and the first
+   * author's surname (or, without an author, an exact title match). Null if not found.
+   */
+  async findWork(
+    title: string,
+    author: string,
+    isbn13: string | null,
+    signal?: AbortSignal,
+  ): Promise<WorkDoc | null> {
+    if (isbn13) {
+      const [doc] = await this.search<WorkDoc>({ isbn: isbn13 }, WORK_FIELDS, signal);
+      if (doc?.key) return doc;
+    }
+    const short = title.split(/\s*[:([]/)[0].trim() || title;
+    if (author) {
+      const docs = await this.search<WorkDoc>(
+        { title: short, author: firstSurname(author) },
+        WORK_FIELDS,
+        signal,
+      );
+      return docs.find((d) => d.key) ?? null;
+    }
+    const docs = await this.search<WorkDoc>({ title: short }, WORK_FIELDS, signal);
+    return docs.find((d) => d.key && normaliseTitle(d.title) === normaliseTitle(short)) ?? null;
+  }
+
+  /** The Wikidata item an Open Library author record links to, or null. */
+  async authorWikidata(authorKey: string, signal?: AbortSignal): Promise<string | null> {
+    const key = authorKey.replace(/^\/?authors\//, '');
+    if (!/^OL\d+A$/.test(key)) return null;
+    const body = await this.get(`${this.config.openLibraryUrl}/authors/${key}.json`, signal);
+    const id = (JSON.parse(body.toString('utf8')) as { remote_ids?: { wikidata?: string } })
+      .remote_ids?.wikidata;
+    return id && /^Q\d+$/.test(id) ? id : null;
   }
 
   /** The medium-size image for a cover id. */
@@ -57,19 +120,17 @@ export class OpenLibraryClient {
     );
   }
 
-  private async search(q: Record<string, string>, signal?: AbortSignal): Promise<SearchDoc[]> {
-    const query = new URLSearchParams({ ...q, fields: 'cover_i,title', limit: '5' });
+  private async search<T>(
+    q: Record<string, string>,
+    fields: string,
+    signal?: AbortSignal,
+  ): Promise<T[]> {
+    const query = new URLSearchParams({ ...q, fields, limit: '5' });
     const body = await this.get(`${this.config.openLibraryUrl}/search.json?${query}`, signal);
-    return (JSON.parse(body.toString('utf8')) as { docs?: SearchDoc[] }).docs ?? [];
+    return (JSON.parse(body.toString('utf8')) as { docs?: T[] }).docs ?? [];
   }
 
-  private async get(url: string, signal?: AbortSignal): Promise<Buffer> {
-    const timeout = AbortSignal.timeout(TIMEOUT_MS);
-    const res = await fetch(url, {
-      headers: { 'User-Agent': AGENT },
-      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status} from ${new URL(url).host}`);
-    return Buffer.from(await res.arrayBuffer());
+  private get(url: string, signal?: AbortSignal): Promise<Buffer> {
+    return httpGet(url, signal);
   }
 }
