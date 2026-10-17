@@ -10,4 +10,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Docker image builds
-        run: docker build -t moonreader-dashboard .
+        run: docker build --build-arg GIT_COMMIT=${{ github.sha }} -t moonreader-dashboard .

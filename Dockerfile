@@ -10,6 +10,10 @@ RUN npm run build && npm prune --omit=dev
 # ---- run: only the compiled app, production dependencies, the page and the seed catalogue
 FROM node:24-alpine
 WORKDIR /app
+# the commit being built, shown in the page's footer (the image has no .git to read it from):
+# docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) .
+ARG GIT_COMMIT=""
+ENV GIT_COMMIT=$GIT_COMMIT
 ENV NODE_ENV=production \
     PORT=8080 \
     LIBRARY=/library \

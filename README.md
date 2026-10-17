@@ -89,7 +89,8 @@ git clone https://github.com/chorsnell/moonreader-dashboard.git
 cd moonreader-dashboard
 cp .env.example .env
 # set UPLOAD_TOKEN in .env first (openssl rand -hex 16)
-docker compose up -d --build
+# GIT_COMMIT puts the commit you're running in the page's footer, next to the version
+GIT_COMMIT=$(git rev-parse HEAD) docker compose up -d --build
 ```
 
 Open `http://SERVER_IP:9080/` (the port is set in `docker-compose.yml`), click **Admin**, sign in with your `UPLOAD_TOKEN`, and upload a Moon+ backup in the **Data** section. To make one in Moon+, go to **Options → Backup & Restore → Backup**; it produces a `.mrpro` file. The dashboard builds itself in a few seconds.

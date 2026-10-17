@@ -4,6 +4,7 @@ import { AccessSettingsService } from '../access/access-settings.service';
 import { AccessService } from '../access/access.service';
 import { ReaderGuard } from '../access/reader.guard';
 import { UploadTokenService } from '../access/upload-token.service';
+import { buildInfo } from '../common/build-info';
 import { appConfig, type AppConfigType } from '../config/app.config';
 import { CoverStore } from '../covers/cover-store.service';
 import { LibraryService } from '../library/library.service';
@@ -28,13 +29,14 @@ export class StatusController {
   /** Says nothing private: anyone can reach it. */
   @Get('healthz')
   health() {
-    return { ok: true, building: this.status.snapshot().building };
+    return { ok: true, building: this.status.snapshot().building, ...buildInfo() };
   }
 
   /**
    * Who you're signed in as and whether you can read the dashboard; then, if you can, the
    * last rebuild. Only the admin sees the upload button and build errors. `analytics` is
-   * there only when MIXPANEL_TOKEN is set, so the sign-in screen is counted too.
+   * there only when MIXPANEL_TOKEN is set, so the sign-in screen is counted too. `version`
+   * and `commit` say which build is running, for the page's footer.
    */
   @Get('api/config')
   @Header('Cache-Control', 'no-store')
@@ -46,6 +48,7 @@ export class StatusController {
       role,
       admin: this.tokens.enabled,
       can_read: access === 'public' || role !== null,
+      ...buildInfo(),
       ...this.analytics(),
     };
     if (!who.can_read) return who;

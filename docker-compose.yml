@@ -1,6 +1,10 @@
 services:
   moonreader-dashboard:
-    build: .
+    build:
+      context: .
+      args:
+        # shown in the page's footer: GIT_COMMIT=$(git rev-parse HEAD) docker compose build
+        GIT_COMMIT: ${GIT_COMMIT:-}
     image: moonreader-dashboard
     container_name: moonreader-dashboard
     restart: unless-stopped
