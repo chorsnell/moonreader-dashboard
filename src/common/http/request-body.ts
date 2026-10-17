@@ -65,6 +65,21 @@ export async function saveRequestBody(
   }
 }
 
+/** Reads a whole (smallish) request body into memory, or throws a RequestBodyError. */
+export async function readRequestBody(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
+  const length = req.headers['content-length'];
+  if (length !== undefined && Number(length) > maxBytes) throw drained(req, 'too-large');
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req.iterator({ destroyOnReturn: false }) as AsyncIterable<Buffer>) {
+    total += chunk.length;
+    if (total > maxBytes) throw drained(req, 'too-large');
+    chunks.push(chunk);
+  }
+  if (length !== undefined && total < Number(length)) throw new RequestBodyError('cut-short');
+  return Buffer.concat(chunks);
+}
+
 function drained(req: IncomingMessage, problem: RequestBodyProblem): RequestBodyError {
   req.resume();
   return new RequestBodyError(problem);

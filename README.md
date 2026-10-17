@@ -110,6 +110,10 @@ Setting a new read password signs out everyone who used the old one. Changing `U
 
 You can also mark books or whole genres as private. Visitors then see nothing of them, or see them as "A private book" with no title, author or cover. This is enforced on the server: the data files and API are filtered for each visitor, so hidden details never reach their browser. **Preview as a visitor** shows you exactly what they get. You, as the admin, always see everything.
 
+## Friends
+
+Add friends' reading to your dashboard to compare notes. A friend's data comes from a **share file** they export from their own dashboard (admin page → **Friends** → **Download your share file**) and you add under **Add a friend's reading**. What a share file holds is chosen by the **Friends you share with** policy under Access & privacy (by default everything except prices and highlights), and your private books are never in it. Friends then appear on a **Friends** tab. Their reading is theirs: by default only you, the admin, see it, and you can let people with the read password or everyone see it too. The file format is described in [docs/friends.md](docs/friends.md).
+
 ## Sync straight from Moon+ (WebDAV)
 
 When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-domain/reading/dav/`. The admin page's **Data** section shows the exact address. Log in with any username, and use your `UPLOAD_TOKEN` as the password.

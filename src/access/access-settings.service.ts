@@ -3,6 +3,7 @@ import { readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Inject, Injectable } from '@nestjs/common';
 import { appConfig, type AppConfigType } from '../config/app.config';
+import { toFriendsSettings, type FriendsSettings } from '../friends/friends-settings';
 import { toPrivacySettings, type PrivacySettings } from '../privacy/privacy';
 
 export type Access = 'public' | 'password';
@@ -14,6 +15,8 @@ export interface AccessSettings {
   read_password: string;
   /** What visitors who aren't the admin may see. */
   privacy: PrivacySettings;
+  /** Sharing with friends, and who sees friends' data here. */
+  friends: FriendsSettings;
 }
 
 const ROUNDS = 200_000;
@@ -57,7 +60,12 @@ export class AccessSettingsService {
     const readPassword = typeof raw.read_password === 'string' ? raw.read_password : '';
     let access: Access = raw.access === 'password' ? 'password' : 'public';
     if (access === 'password' && !readPassword) access = 'public'; // nothing anyone typed would open it
-    return { access, read_password: readPassword, privacy: toPrivacySettings(raw.privacy) };
+    return {
+      access,
+      read_password: readPassword,
+      privacy: toPrivacySettings(raw.privacy),
+      friends: toFriendsSettings(raw.friends),
+    };
   }
 
   /** Saves one at a time, through a .part file. */

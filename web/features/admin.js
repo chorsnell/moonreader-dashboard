@@ -250,7 +250,7 @@
   // What visitors may see (enforced on the server, src/privacy): a policy per role, private
   // books and genres, and previewing the dashboard as a visitor.
   function privacyBlock(a) {
-    const ROLES = [['public', 'Anyone with the link'], ['reader', 'People with the read password']];
+    const ROLES = [['public', 'Anyone with the link'], ['reader', 'People with the read password'], ['friends', 'Friends you share with']];
     const PRESET_NAMES = { everything: 'Everything', no_dates: 'Everything but exact dates', taste: 'Taste only' };
     const FLAGS = [
       ['diary', 'Day-by-day reading: the diary, heatmaps and timeline'],
@@ -348,7 +348,7 @@
           h('p', { class: 'up-note' }, 'Only you see these. Choose whether visitors see nothing of them, or see them counted as "A private book" with no title, author or cover.'),
           privateBooks(), privateGenres(),
           mode('hide', 'Leave them out'), mode('anonymise', 'Show them as "A private book"')),
-        h('div', { class: 'ad-actions' }, save, preview('public', 'Preview as a public visitor'), preview('reader', 'Preview with the read password')),
+        h('div', { class: 'ad-actions' }, save, preview('public', 'Preview as a public visitor'), preview('reader', 'Preview with the read password'), preview('friends', 'Preview as a friend')),
         msg);
     }
     load();

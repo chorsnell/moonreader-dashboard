@@ -1,12 +1,14 @@
 /**
  * What visitors who aren't the admin may see, and the filtering that enforces it on the data
  * files the page reads. The admin always gets the files untouched; everyone else gets a copy
- * filtered by the policy for their role (public, or signed in with the read password).
+ * filtered by the policy for their role (public, or signed in with the read password). The
+ * friends policy filters what you share with friends: the bundle you export and what
+ * followers' installations pull (src/friends).
  */
 
 export type DateGranularity = 'day' | 'week' | 'month';
-export type ViewerRole = 'public' | 'reader';
-export const VIEWER_ROLES: ViewerRole[] = ['public', 'reader'];
+export type ViewerRole = 'public' | 'reader' | 'friends';
+export const VIEWER_ROLES: ViewerRole[] = ['public', 'reader', 'friends'];
 
 /** One role's policy. true means shown. */
 export interface Policy {
@@ -37,6 +39,8 @@ export const CATEGORIES: Category[] = [
 export interface PrivacySettings {
   public: Policy;
   reader: Policy;
+  /** What friends get: your share bundle and followers' installations. */
+  friends: Policy;
   /** Book ids only the admin sees in full. */
   private_books: string[];
   /** Genres (or subgenres) whose books only the admin sees in full. */
@@ -74,10 +78,14 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
   },
 };
 
-/** Before the admin chooses: everything as before, except highlights for the public. */
+/**
+ * Before the admin chooses: everything as before, except highlights for the public. Friends
+ * get everything but money and highlights.
+ */
 export const DEFAULT_PRIVACY: PrivacySettings = {
   public: { ...PRESETS.everything, highlights: false },
   reader: { ...PRESETS.everything },
+  friends: { ...PRESETS.everything, money: false, highlights: false },
   private_books: [],
   private_genres: [],
   private_mode: 'hide',
@@ -115,6 +123,7 @@ export function toPrivacySettings(raw: unknown): PrivacySettings {
   return {
     public: toPolicy(o.public, DEFAULT_PRIVACY.public),
     reader: toPolicy(o.reader, DEFAULT_PRIVACY.reader),
+    friends: toPolicy(o.friends, DEFAULT_PRIVACY.friends),
     private_books: strings(o.private_books),
     private_genres: strings(o.private_genres, 200),
     private_mode: o.private_mode === 'anonymise' ? 'anonymise' : 'hide',

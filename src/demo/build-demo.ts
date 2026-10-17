@@ -23,7 +23,8 @@ import { withFeatures } from '../web/features';
 import { writeDemoBackup } from './demo-backup';
 import { simulateHighlights } from './demo-highlights';
 import { DemoModule } from './demo.module';
-import { BOOKS, fileName, ISBN } from './demo-books';
+import { BOOKS, CURRENT, fileName, ISBN } from './demo-books';
+import { writeDemoFriends } from './demo-friends-site';
 import { demoMetadata } from './demo-metadata';
 import { Random } from './random';
 import { simulate } from './simulate';
@@ -96,11 +97,12 @@ async function main(): Promise<void> {
       JSON.stringify({ uploads: false, webdav: false, has_data: true, demo: true, meta }),
     );
     await writeFile(join(out, 'api', 'covers'), JSON.stringify(coverUrls));
+    const friends = await writeDemoFriends(out, firstDay, lastDay, CURRENT);
     await writeFile(join(out, '.nojekyll'), '');
     const iso = (d: number) => new Date(d * DAY_MS).toISOString().slice(0, 10);
     console.log(
       `Demo site in ${out}: ${log.size} books, ${Object.keys(coverUrls).length} covers, ` +
-        `${iso(firstDay)} to ${iso(lastDay)}`,
+        `${iso(firstDay)} to ${iso(lastDay)}, friends ${friends.join(', ')}`,
     );
   } finally {
     await rm(lib, { recursive: true, force: true });

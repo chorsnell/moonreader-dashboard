@@ -168,6 +168,7 @@ export class AdminController {
       details: {
         public_hides: hiddenCategories(privacy.public),
         reader_hides: hiddenCategories(privacy.reader),
+        friends_hides: hiddenCategories(privacy.friends),
         private_books: privacy.private_books.length,
         private_genres: privacy.private_genres,
         private_mode: privacy.private_mode,
@@ -176,12 +177,12 @@ export class AdminController {
     return { ok: true, privacy };
   }
 
-  /** Preview the dashboard as a visitor would see it ({as: 'public' | 'reader'}), or stop ({}). */
+  /** Preview the dashboard as a visitor would see it ({as: 'public' | 'reader' | 'friends'}), or stop ({}). */
   @Post('preview')
   @HttpCode(200)
   preview(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const as = (body as { as?: unknown } | null)?.as;
-    const role = as === 'public' || as === 'reader' ? as : null;
+    const role = as === 'public' || as === 'reader' || as === 'friends' ? as : null;
     const secure =
       String(req.headers['x-forwarded-proto'] ?? '').toLowerCase() === 'https' ? '; Secure' : '';
     const path = `${publicPrefix(req.headers, this.config.basePath)}/`;
