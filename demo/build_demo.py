@@ -91,6 +91,9 @@ SPEED = {'Science Fiction': 270, 'Mystery': 300, 'Classics': 225, 'Adventure': 2
 ABANDON = {'Middlemarch': 23.0, 'On the Origin of Species': 17.0, 'The Princess and the Goblin': 41.0}
 REREAD = 'Pride and Prejudice'       # read again near the end
 CURRENT = 'The Count of Monte Cristo'  # the book on the go, left part way through
+# a few quirks real logs have, so the Data checks tab has something to show
+STRAY = {'Jane Eyre': 52, 'The Moonstone': 41, 'Dracula': 64}   # opened once, this many days before starting
+PAUSE = {'Anna Karenina': 50.0, 'The Three Musketeers': 60.0}   # put down for a couple of months at this %
 
 
 def file_name(title, author):
@@ -127,6 +130,9 @@ def simulate(rng):
         wpm = SPEED[genre] * rng.uniform(0.85, 1.18)
         done = 0
         entries = log.setdefault(f, [])
+        if title in STRAY and day > STRAY[title]:
+            entries.append((day - STRAY[title], 4.0, int(4 * wpm), 0.3))
+        paused = title not in PAUSE
         while True:
             date = day
             day += 1
@@ -139,6 +145,9 @@ def simulate(rng):
             w = int(minutes * wpm * rng.uniform(0.85, 1.15))
             done = min(words, done + w)
             progress = round(done / words * 100, 1)
+            if not paused and progress >= PAUSE[title]:
+                paused = True
+                day += rng.randint(65, 80)
             if progress >= stop:
                 progress = 100.0 if stop >= 100 else stop
                 entries.append((date, round(minutes, 1), w, progress))
@@ -190,10 +199,15 @@ def main():
     first_day -= first_day % 7    # keep simulated weekends on real weekends (day 0 is a Thursday)
     last = EPOCH + dt.timedelta(first_day + days - 1)
 
+    work = tempfile.mkdtemp()
+    covers_dir = os.path.join(out, 'covers')
+    if os.path.isdir(covers_dir):     # keep covers from an earlier build: the lookup is slow
+        shutil.move(covers_dir, os.path.join(work, 'covers'))
     if os.path.isdir(out):
         shutil.rmtree(out)
     shutil.copytree(os.path.join(APP, 'web'), out)
-    work = tempfile.mkdtemp()
+    if os.path.isdir(os.path.join(work, 'covers')):
+        shutil.move(os.path.join(work, 'covers'), covers_dir)
     try:
         backup = os.path.join(work, 'demo-library.mrpro')
         make_backup(backup, log, first_day)
@@ -202,7 +216,6 @@ def main():
                                             for t, a, g, sg, s, n, _ in BOOKS})
         cat_path = os.path.join(work, 'catalogue.json')
         json.dump(catalogue, open(cat_path, 'w', encoding='utf-8'), ensure_ascii=False)
-        covers_dir = os.path.join(out, 'covers')
         env = dict(os.environ, CATALOGUE=cat_path, DATA_DIR=os.path.join(out, 'data'), COVERS_DIR=covers_dir)
         subprocess.run([sys.executable, os.path.join(APP, 'update.py'), backup], env=env, check=True)
         if os.environ.get('COVER_LOOKUP', 'on').lower() != 'off':

@@ -36,7 +36,10 @@ It's one small container with no dependencies beyond the Python standard library
   </tr>
   <tr>
     <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#library"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/library-dark.png"><img src="docs/screenshots/library.png" alt="Library"></picture></a><br><b>Library</b></td>
-    <td width="50%" valign="top" align="center"><a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mobile-dark.png"><img src="docs/screenshots/mobile.png" alt="On a phone" width="240"></picture></a><br><b>On a phone</b></td>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#checks"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/checks-dark.png"><img src="docs/screenshots/checks.png" alt="Data checks"></picture></a><br><b>Data checks</b></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mobile-dark.png"><img src="docs/screenshots/mobile.png" alt="On a phone" width="240"></picture></a><br><b>On a phone</b></td>
   </tr>
 </table>
 
@@ -163,7 +166,7 @@ LIBRARY=./library UPLOAD_TOKEN=dev python3 app/server.py   # run without Docker 
 
 ### The demo
 
-`demo/build_demo.py` makes up three years of reading (65 public-domain books, with series, re-reads, abandoned books and one on the go), writes it as a fake Moon+ backup, and runs it through the real `update.py`. The result is a static copy of the page that works on any static host:
+`demo/build_demo.py` makes up three years of reading (65 public-domain books, with series, a re-read, abandoned books, one on the go, and a few of the oddities the Data checks tab looks for), writes it as a fake Moon+ backup, and runs it through the real `update.py`. The result is a static copy of the page that works on any static host:
 
 ```sh
 python3 demo/build_demo.py site              # COVER_LOOKUP=off to skip Open Library
