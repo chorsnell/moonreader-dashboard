@@ -9,9 +9,12 @@ import {
   NotFoundException,
   Param,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type { IncomingHttpHeaders } from 'node:http';
+import { AccessSettingsService } from '../access/access-settings.service';
+import { ReaderGuard } from '../access/reader.guard';
 import { appConfig, type AppConfigType } from '../config/app.config';
 import { publicPrefix } from '../common/http/public-prefix';
 import { COVER_NAME } from '../covers/cover-store.service';
@@ -31,6 +34,7 @@ export class WebController {
   constructor(
     @Inject(appConfig.KEY) private readonly config: AppConfigType,
     private readonly library: LibraryService,
+    private readonly settings: AccessSettingsService,
   ) {}
 
   /**
@@ -47,15 +51,19 @@ export class WebController {
   }
 
   @Get('data/:name')
+  @UseGuards(ReaderGuard)
   data(@Param('name') name: string, @Res() res: Response): Promise<void> {
     if (!DATA_FILE.test(name)) throw new NotFoundException();
     return sendFile(res, join(this.library.data, name), 'no-cache');
   }
 
+  /** Cached for good (the URL changes with the file); privately when the dashboard is. */
   @Get('covers/:name')
-  cover(@Param('name') name: string, @Res() res: Response): Promise<void> {
+  @UseGuards(ReaderGuard)
+  async cover(@Param('name') name: string, @Res() res: Response): Promise<void> {
     if (!COVER_NAME.test(name)) throw new NotFoundException();
-    return sendFile(res, join(this.library.covers, name), 'public, max-age=31536000, immutable');
+    const scope = (await this.settings.load()).access === 'public' ? 'public' : 'private';
+    return sendFile(res, join(this.library.covers, name), `${scope}, max-age=31536000, immutable`);
   }
 
   @Get('*path')

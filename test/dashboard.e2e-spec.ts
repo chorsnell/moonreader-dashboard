@@ -52,7 +52,10 @@ describe('rebuilding', () => {
     dash = await TestDashboard.start();
     const res = await request(dash.server).get('/api/config').expect(200);
     expect(res.body.has_data).toBe(false);
-    expect(res.body.uploads).toBe(true);
+    expect(res.body.uploads).toBe(false); // only the admin sees the upload button
+    expect(res.body).toMatchObject({ access: 'public', role: null, can_read: true, admin: true });
+    const admin = await request(dash.server).get('/api/config').set('X-Upload-Token', TOKEN);
+    expect(admin.body.uploads).toBe(true);
   });
 
   it('builds the data from an upload', async () => {
@@ -143,7 +146,7 @@ describe('uploads', () => {
         .type('application/octet-stream')
         .send(Buffer.from(body));
     const wrong = await put('a.mrpro', 'PK..', 'nope').expect(403);
-    expect(wrong.body).toEqual({ error: 'Wrong upload token.' });
+    expect(wrong.body).toEqual({ error: 'Sign in as the admin to upload.' });
     await put('a.mrpro', 'hello', TOKEN).expect(400);
     await put('a.zip', 'PK..', TOKEN).expect(400);
   });
@@ -196,6 +199,109 @@ describe('serving', () => {
     expect(page.text).toContain('<base href="/books/">');
     await request(dash.server).get('/books/runtime.js').expect(200);
     await request(dash.server).get('/books/api/config').expect(200);
+  });
+});
+
+describe('signing in', () => {
+  const signIn = async (d: TestDashboard, password: string) => {
+    const res = await request(d.server).post('/api/login').send({ password });
+    const cookie = String(res.headers['set-cookie']?.[0] ?? '').split(';')[0];
+    return { status: res.status, body: res.body as { role?: string }, cookie };
+  };
+  const setAccess = (d: TestDashboard, cookie: string, access: string, password = '') => {
+    const req = request(d.server).post('/api/access');
+    if (cookie) req.set('Cookie', cookie);
+    return req.send({ access, password });
+  };
+  const get = (d: TestDashboard, path: string, cookie = '') => {
+    const req = request(d.server).get(path);
+    return cookie ? req.set('Cookie', cookie) : req;
+  };
+
+  it('lets the admin sign in to upload', async () => {
+    dash = await TestDashboard.start();
+    expect((await signIn(dash, 'wrong')).status).toBe(403);
+    const admin = await signIn(dash, TOKEN);
+    expect([admin.status, admin.body.role]).toEqual([200, 'admin']);
+    const cfg = (await get(dash, '/api/config', admin.cookie)).body;
+    expect([cfg.role, cfg.uploads]).toEqual(['admin', true]);
+    await request(dash.server)
+      .put('/upload?name=test.mrpro')
+      .set('Cookie', admin.cookie)
+      .type('application/octet-stream')
+      .send(backup)
+      .expect(200);
+    await request(dash.server)
+      .put('/upload?name=test.mrpro')
+      .set('Cookie', 'mrd_session=admin.9999999999.forged')
+      .type('application/octet-stream')
+      .send(Buffer.from('PK..'))
+      .expect(403);
+    const out = await request(dash.server).post('/api/logout').set('Cookie', admin.cookie);
+    expect(String(out.headers['set-cookie'])).toContain('Max-Age=0');
+  });
+
+  it('keeps a private dashboard behind the read password', async () => {
+    dash = await TestDashboard.start();
+    await upload(dash);
+    expect(await waitFor(fileExists(dash.path('data', 'books.json')))).toBe(true);
+    const { cookie: admin } = await signIn(dash, TOKEN);
+
+    // only the admin can change it, and only with a JSON body (so other sites can't)
+    expect((await setAccess(dash, '', 'password', 'friends')).status).toBe(403);
+    await request(dash.server)
+      .post('/api/access')
+      .set('Cookie', admin)
+      .type('form')
+      .send('access=public')
+      .expect(400);
+    expect((await setAccess(dash, admin, 'password')).status).toBe(400); // no read password yet
+    expect((await setAccess(dash, admin, 'password', TOKEN)).status).toBe(400); // must differ
+    expect((await setAccess(dash, admin, 'password', 'friends')).status).toBe(200);
+    expect(await readFile(dash.path('settings.json'), 'utf8')).not.toContain('friends');
+
+    expect((await get(dash, '/api/config')).body).toEqual({
+      access: 'password',
+      role: null,
+      admin: true,
+      can_read: false,
+    });
+    for (const path of [
+      '/data/books.json',
+      '/data/meta.json',
+      '/api/covers',
+      '/covers/alpha.png',
+    ]) {
+      expect([path, (await get(dash, path)).status]).toEqual([path, 401]);
+    }
+    await get(dash, '/').expect(200); // the page itself shows the password box
+    await get(dash, '/data/books.json', admin).expect(200);
+
+    expect((await signIn(dash, 'wrong')).status).toBe(403);
+    const reader = await signIn(dash, 'friends');
+    expect([reader.status, reader.body.role]).toEqual([200, 'reader']);
+    await get(dash, '/data/books.json', reader.cookie).expect(200);
+    const cover = await get(dash, '/covers/alpha.png', reader.cookie).expect(200);
+    expect(cover.headers['cache-control']).toMatch(/^private/);
+    const cfg = (await get(dash, '/api/config', reader.cookie)).body;
+    expect([cfg.role, cfg.can_read, cfg.uploads]).toEqual(['reader', true, false]);
+    // readers can't upload or change the setting
+    await request(dash.server)
+      .put('/upload?name=test.mrpro')
+      .set('Cookie', reader.cookie)
+      .type('application/octet-stream')
+      .send(Buffer.from('PK..'))
+      .expect(403);
+    expect((await setAccess(dash, reader.cookie, 'public')).status).toBe(403);
+
+    // a new read password signs out everyone using the old one; keeping it doesn't
+    expect((await setAccess(dash, admin, 'password')).status).toBe(200);
+    await get(dash, '/data/books.json', reader.cookie).expect(200);
+    expect((await setAccess(dash, admin, 'password', 'new friends')).status).toBe(200);
+    await get(dash, '/data/books.json', reader.cookie).expect(401);
+
+    expect((await setAccess(dash, admin, 'public')).status).toBe(200);
+    await get(dash, '/data/books.json').expect(200);
   });
 });
 
@@ -276,7 +382,9 @@ describe('WebDAV', () => {
       true,
     );
     expect((await booksByTitle(dash)).Beta.last_read).toBe('2026-04-02');
-    const meta = await dash.json<{ synced_positions: number }>('data', 'meta.json');
-    expect(meta.synced_positions).toBe(1);
+    // meta.json is written after books.json, so it can briefly still be the previous build's
+    const synced = async () =>
+      (await dash!.json<{ synced_positions: number }>('data', 'meta.json')).synced_positions;
+    expect(await waitFor(async () => (await synced()) === 1)).toBe(true);
   });
 });

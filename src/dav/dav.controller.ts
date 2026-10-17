@@ -1,6 +1,6 @@
 import { All, Controller, Req, Res, UseFilters, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { DavAuthGuard } from '../auth/dav-auth.guard';
+import { DavAuthGuard } from '../access/dav-auth.guard';
 import { DavExceptionFilter } from './dav-exception.filter';
 import { DavService } from './dav.service';
 

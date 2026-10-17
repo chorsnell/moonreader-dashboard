@@ -11,11 +11,10 @@ import {
   Query,
   Redirect,
   Req,
-  UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import type { IncomingHttpHeaders } from 'node:http';
-import { UploadTokenGuard } from '../auth/upload-token.guard';
+import { AdminOnly } from '../access/admin.guard';
 import { appConfig, type AppConfigType } from '../config/app.config';
 import { publicPrefix } from '../common/http/public-prefix';
 import { RequestBodyError, saveRequestBody } from '../common/http/request-body';
@@ -43,7 +42,11 @@ export class UploadController {
 
   @Put()
   @HttpCode(200)
-  @UseGuards(UploadTokenGuard)
+  @AdminOnly({
+    denied: 'Sign in as the admin to upload.',
+    off: 'Uploads are turned off on this server.',
+    slow: true,
+  })
   async upload(@Req() req: Request, @Query('name') name = 'backup.mrpro') {
     const file = safeFileName(basename(name));
     if (!file.toLowerCase().endsWith('.mrpro')) {

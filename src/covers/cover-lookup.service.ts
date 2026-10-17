@@ -39,12 +39,18 @@ export class CoverLookupService implements OnApplicationShutdown {
 
   /** Starts a lookup unless one is already running or lookups are off. Doesn't wait for it. */
   start(): void {
-    if (!this.config.coverLookup || this.running || this.stop.signal.aborted) return;
-    this.running = this.lookUpMissing()
+    void this.run();
+  }
+
+  /** Looks up the missing covers and resolves when done (or joins a lookup already running). */
+  run(): Promise<void> {
+    if (!this.config.coverLookup || this.stop.signal.aborted) return Promise.resolve();
+    this.running ??= this.lookUpMissing()
       .catch((e: unknown) => {
         if (!this.stop.signal.aborted) this.activity.log(`Cover lookup failed: ${String(e)}`);
       })
       .finally(() => (this.running = null));
+    return this.running;
   }
 
   async onApplicationShutdown(): Promise<void> {

@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { AccessSettingsService } from './access/access-settings.service';
 import { AppModule } from './app.module';
 import { configureApp } from './app.setup';
 import { loadAppConfig } from './config/app.config';
@@ -13,11 +14,13 @@ async function bootstrap() {
   configureApp(app);
   app.enableShutdownHooks();
   await app.listen(config.port);
+  const { access } = await app.get(AccessSettingsService).load();
   app
     .get(ActivityLogService)
     .log(
       `Serving on port ${config.port}${config.basePath ? ` under ${config.basePath}` : ''}; ` +
-        `uploads and WebDAV ${config.uploadToken ? 'on' : 'off (set UPLOAD_TOKEN to turn them on)'}`,
+        `uploads and WebDAV ${config.uploadToken ? 'on' : 'off (set UPLOAD_TOKEN to turn them on)'}; ` +
+        `the dashboard is ${access}`,
     );
 }
 
