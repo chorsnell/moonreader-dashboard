@@ -1,0 +1,13 @@
+name: docker
+# Builds the Docker image. Manual only for now: building it on every push
+# burned Actions minutes for little signal. Run it from the Actions tab, or
+# add `push: branches: [main]` back under `on:` when it is worth it again.
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker image builds
+        run: docker build -t moonreader-dashboard .

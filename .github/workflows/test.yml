@@ -1,6 +1,8 @@
 name: test
 on:
+  # Branch pushes are covered by their PR; only main runs on push.
   push:
+    branches: [main]
   pull_request:
 jobs:
   test:
@@ -18,5 +20,3 @@ jobs:
         run: npm test
       - name: End-to-end tests
         run: npm run test:e2e
-      - name: Docker image builds
-        run: docker build -t moonreader-dashboard .
