@@ -221,6 +221,10 @@ export const ABANDON: Record<string, number> = {
   Middlemarch: 23.0,
   'On the Origin of Species': 17.0,
   'The Princess and the Goblin': 41.0,
+  'The Autobiography of Benjamin Franklin': 8.0,
+  'The Phantom of the Opera': 12.0,
+  'Little Women': 31.0,
+  'Crime and Punishment': 64.0,
 };
 /** Read early on and again years later (a little faster the second time). */
 export const REREADS = [
