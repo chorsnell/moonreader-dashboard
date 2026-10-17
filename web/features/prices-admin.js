@@ -5,7 +5,10 @@
   if (!rh.adminSection) return; // a page without the admin area
 
   const ACQ = { bought: 'Bought', free: 'Free', library: 'Library loan', subscription: 'Subscription', gift: 'Gift' };
-  const money = (n, cur) => (n == null ? '' : (cur ? cur + ' ' : '') + Number(n).toFixed(2));
+  const money = (n, cur) => {
+    if (n == null) return '';
+    try { return new Intl.NumberFormat('en-GB', { style: 'currency', currency: cur }).format(n); } catch (e) { return `${cur} ${Number(n).toFixed(2)}`; }
+  };
 
   rh.adminSection({ id: 'prices', title: 'Prices', order: 45, draw(box, a) {
     const { h } = a;

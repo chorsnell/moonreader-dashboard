@@ -134,6 +134,18 @@ Moon+ doesn't store genres, so they come from `catalogue.json`, keyed by the low
 
 You can also paste the untagged list into Claude and ask for the entries. To hide something that isn't a book, add its lower-case file name to `"exclude"`.
 
+## What your books cost
+
+Moon+ doesn't know what you paid, so prices are kept in their own file, `library/prices.json`, and set in the admin area (**Admin → Prices**). For each book you can record the price, currency, date, how you got it (bought, free, library, subscription or gift), the store, a list price (what buying it would have cost, for library, gifted and subscription books), a bundle and private notes. Books you bought but never opened in Moon+ can be added too.
+
+- **CSV import:** upload a store's order history or a spreadsheet with a header row. It needs a `title` column and reads `author`, `isbn`, `price` (`£4.99` works), `currency`, `date` (`YYYY-MM-DD` or `DD/MM/YYYY`), `acquisition`, `store`, `subscription`, `list_price`, `bundle` and `notes`. Books are matched by ISBN, then by title and author. You see what matched before anything is saved, and books it can't find can be added as never opened. **Download all as CSV** gives the same columns back.
+- **Currencies:** everything is shown in one home currency. Prices keep the currency they were paid in and are converted with exchange rates you set yourself. Nothing is looked up online, and a price in a currency without a rate is left out until you add one.
+- **Bundles and box sets:** rows that share a bundle name split its price between the books by length (word count), or evenly when a book's length isn't known.
+- **Subscriptions:** add Kindle Unlimited, Kobo Plus and the like with their monthly fee and dates, then mark the books you read through them.
+- **Prices aren't looked up automatically.** No free, keyless source covers ebook stores, and what matters is what you actually paid after sales and vouchers, which only your order history knows.
+
+The page reads a copy, `data/prices.json`, converted to the home currency and without your notes.
+
 ## Book covers
 
 Moon+ only keeps covers for the books that are still on your device, so a backup usually has covers for a fraction of your history. On each rebuild the dashboard:
