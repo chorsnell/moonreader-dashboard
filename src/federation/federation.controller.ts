@@ -337,6 +337,19 @@ export class FederationController {
     return this.overview();
   }
 
+  /** {position, text}: your comment in a club a friend hosts, sent on to their dashboard. */
+  @Post('api/admin/federation/following/:slug/clubs/:id/comments')
+  @HttpCode(200)
+  @AdminOnly({ denied: 'Only the admin can do this.' })
+  async clubComment(@Param('slug') slug: string, @Param('id') id: string, @Body() body: unknown) {
+    try {
+      return await this.federation.postClubComment(slug, id, body);
+    } catch (e) {
+      if (e instanceof FollowError) throw new BadRequestException({ error: e.message });
+      throw e;
+    }
+  }
+
   @Delete('api/admin/federation/following/:slug')
   @HttpCode(200)
   @AdminOnly({ denied: 'Only the admin can do this.' })

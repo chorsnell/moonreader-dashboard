@@ -102,3 +102,27 @@ Decisions:
 - The host's stats API (`docs/api.md`) is for the host's own visitors; friends get the share
   file, which carries the rows the friends views need. Server-side stats could later sit
   behind `/api/federation/share` without changing it.
+
+## Book clubs
+
+A club lives on the dashboard that started it (the *host*), in `library/clubs.json`: the
+book, the members, a start date, an optional schedule (% of the book a week) and comments
+pinned to a position (0–100%). Members are the host's owner and any of the host's friends
+(their shared reading draws their progress lane); a friend whose dashboard also follows the
+host's can read the club and comment from their own dashboard.
+
+Comments are **spoiler-safe on the server**: in every response a comment pinned past the
+reader's position keeps only its position and author (`"text": null, "hidden": true`).
+
+| Method and path | Who | What |
+| --- | --- | --- |
+| `GET /api/clubs` | whoever may see friends | The clubs, at the owner's progress in each book |
+| `POST /api/admin/clubs` | admin | `{book: {title, author, isbn13, work_id, book_id}, start, pct_per_week, members: [{friend, follower, name}]}` |
+| `DELETE /api/admin/clubs/:id` | admin | Ends a club |
+| `POST /api/admin/clubs/:id/comments` | admin | `{position, text}` |
+| `GET /api/federation/clubs?progress={"<id>": pct}` | a member's dashboard (Bearer) | The clubs it's in, hidden past the progress it reports (its own spoiler protection, so its word is enough); members are marked `host` and `you` |
+| `POST /api/federation/clubs/:id/comments` | a member's dashboard (Bearer) | `{position, text}` |
+| `POST /api/admin/federation/following/:slug/clubs/:id/comments` | admin | Your comment in a club a friend hosts, sent on to their dashboard |
+
+A member's dashboard fetches the clubs with every refresh of that friend (first to learn the
+books, then with its owner's progress in each) and keeps them in `friends/<slug>/clubs.json`.

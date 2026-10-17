@@ -43,7 +43,7 @@
   const { el, fmt, plural, fShort, pDate } = rh;
   const st = { status: 'loading', me: { name: 'You', leaderboards: [] }, list: [], data: {} };
   const memo = new Map();
-  const PARTS = ['books', 'reads', 'daily', 'highlights'];
+  const PARTS = ['books', 'reads', 'daily', 'highlights', 'clubs'];
 
   async function load() {
     let index;
@@ -62,7 +62,7 @@
       const d = { ...f };
       await Promise.all(PARTS.map(async (p) => {
         d[p] = [];
-        if (f.parts && !f.parts.includes(p)) return;
+        if (p === 'clubs' ? !f.clubs : f.parts && !f.parts.includes(p)) return;
         try { const r = await fetch(`friends/${encodeURIComponent(f.slug)}/${p}.json`); if (r.ok) d[p] = await r.json(); } catch (e) { /* left empty */ }
       }));
       data[f.slug] = d;

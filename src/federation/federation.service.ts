@@ -8,6 +8,10 @@ import {
 import { appConfig, type AppConfigType } from '../config/app.config';
 import { localDateTime } from '../common/time';
 import { ActivityLogService } from '../library/activity-log.service';
+import { LibraryService } from '../library/library.service';
+import { progressOf, sameBook, type ClubBook } from '../clubs/clubs';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { FriendStore } from '../friends/friend-store.service';
 import { MAX_BUNDLE_BYTES } from '../friends/friends.controller';
 import { BundleError, cleanName, parseBundle, slugify } from '../friends/share';
@@ -43,6 +47,7 @@ export class FederationService implements OnModuleInit, OnModuleDestroy {
     private readonly store: FederationStore,
     private readonly friends: FriendStore,
     private readonly activity: ActivityLogService,
+    private readonly library: LibraryService,
   ) {}
 
   onModuleInit(): void {
@@ -246,6 +251,9 @@ export class FederationService implements OnModuleInit, OnModuleDestroy {
           last_error: null,
         });
         if (bundle.profile.name !== f.name) await this.set(f.slug, { name: bundle.profile.name });
+        await this.pullClubs(f).catch((e: unknown) =>
+          this.log.warn(`clubs from ${f.url}: ${String(e)}`),
+        );
         return;
       } catch (e) {
         failure = why(e);
@@ -265,5 +273,67 @@ export class FederationService implements OnModuleInit, OnModuleDestroy {
       error: failure,
       details: { url: f.url },
     });
+  }
+
+  /**
+   * The book clubs they host that you're in, with comments shown up to how far you are in
+   * each book: asked once to learn the books, then again with your progress.
+   */
+  private async pullClubs(f: Following): Promise<void> {
+    const get = async (progress?: Record<string, number>) => {
+      const q = progress ? `?progress=${encodeURIComponent(JSON.stringify(progress))}` : '';
+      const res = await fetch(`${f.url}/api/federation/clubs${q}`, {
+        headers: { Authorization: `Bearer ${f.token}` },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        redirect: 'error',
+      });
+      if (!res.ok) return null; // an older dashboard without clubs
+      const body = (await res.json()) as { clubs?: { id: string; book: ClubBook }[] };
+      return Array.isArray(body.clubs) ? body.clubs : null;
+    };
+    const first = await get();
+    if (!first) return;
+    let clubs = first;
+    if (first.length) {
+      let books: Record<string, unknown>[] = [];
+      try {
+        books = JSON.parse(await readFile(join(this.library.data, 'books.json'), 'utf8')) as Record<
+          string,
+          unknown
+        >[];
+      } catch {
+        // no data of your own yet
+      }
+      const progress = Object.fromEntries(
+        first.map((c) => [c.id, progressOf(sameBook(books, c.book))]),
+      );
+      clubs = (await get(progress)) ?? first;
+    }
+    await this.friends.writeFile(f.slug, 'clubs.json', clubs);
+    await this.friends.patch(f.slug, { clubs: clubs.length });
+  }
+
+  /** Posts your comment to a club a friend hosts, then fetches the club again. */
+  async postClubComment(slug: string, clubId: string, body: unknown): Promise<unknown> {
+    const f = (await this.store.read()).following.find((x) => x.slug === slug);
+    if (!f?.token) throw new FollowError('You don’t follow that dashboard.');
+    let res: Response;
+    try {
+      res = await fetch(`${f.url}/api/federation/clubs/${encodeURIComponent(clubId)}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${f.token}` },
+        body: JSON.stringify(body ?? {}),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        redirect: 'error',
+      });
+    } catch (e) {
+      throw new FollowError(`Their dashboard didn't answer: ${why(e)}.`);
+    }
+    const out = (await res.json().catch(() => ({}))) as { error?: unknown };
+    if (!res.ok) {
+      throw new FollowError(typeof out.error === 'string' ? out.error : `HTTP ${res.status}`);
+    }
+    await this.pullClubs(f).catch(() => undefined);
+    return out;
   }
 }

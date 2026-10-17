@@ -39,6 +39,7 @@ export function publicProfile(p: FriendProfile) {
     privacy: p.privacy,
     parts: p.parts,
     books: p.books,
+    clubs: p.clubs ?? 0,
     status: p.status ?? 'ok',
     last_checked: p.last_checked ?? null,
   };
