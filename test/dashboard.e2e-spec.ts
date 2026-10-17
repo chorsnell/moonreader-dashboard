@@ -68,6 +68,7 @@ describe('rebuilding', () => {
     const books = await booksByTitle(dash);
     expect(books.Alpha.status).toBe('finished');
     expect(books.Beta.progress).toBe(50);
+    expect(books.Alpha).toMatchObject({ isbn13: null, isbn10: null, work_id: null });
     const daily = await dash.json<{ minutes: number; progress: number }[]>('data', 'daily.json');
     expect(daily).toHaveLength(5);
     expect(daily[0].minutes).toBe(30);
