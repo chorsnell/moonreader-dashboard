@@ -114,6 +114,7 @@ library/
   friends/         friends' reading, from share files or followed dashboards
   clubs.json       book clubs you host
   federation.json  follow tokens (owner-readable only, never served)
+  feeds.json       hashes of the feeds' secret addresses (owner-readable only, never served)
   update.log       what happened on each rebuild, upload and sync
   activity.jsonl   the same as JSON lines, for Sync & logs
 ```
@@ -221,6 +222,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Catalogue** | Titles, authors, series, genres and ISBNs; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
 | **Covers** | Books without a cover: look them up again or upload your own |
+| **Feeds** | Atom and iCal feeds at secret addresses: make, give a new address, revoke |
 | **Book manager** | Your *arr book manager's URL and API key |
 
 ## Who can see it
@@ -260,6 +262,17 @@ Either way, what you share is set by the **friends** audience under Access & pri
 - **Book clubs:** a book, friends, a start date and an optional schedule, with everyone's progress against it and comments pinned to a position in the book. A comment stays hidden from anyone who hasn't read that far, and this is enforced on the server. Friends who follow your dashboard can comment from theirs.
 
 Their reading is theirs: by default only you, the admin, see it; you can let people with the read password, or everyone, see it too. The share file format, the follow protocol and the book club API are in [docs/friends.md](docs/friends.md).
+
+## Feeds
+
+Follow your reading from a feed reader or a calendar app. In **Admin → Feeds**, make:
+
+- an **Atom feed** of finished books, the newest 50, each with its cover, your rating (when ratings are visible), author, hours and a link to its page, or
+- an **iCal calendar** (subscribe to it in Google Calendar, Apple Calendar or Outlook) with all-day events for each reading day of the last 400 days (with the minutes and titles), each finish, and your book clubs: the start, each week's target on the schedule and the planned finish.
+
+Each feed has its own secret address (`/feeds/<secret>.atom` or `.ics`), shown once when it's made. Feed readers and calendars can't sign in, so the address works even when the dashboard needs the read password; give it a new address if it gets out, or revoke it. Only a hash of each secret is kept, in `library/feeds.json`.
+
+A feed is built from what one audience may see (the public, people with the read password, or friends; never everything), exactly as their own copy of the data is filtered. Private books never appear, and dates are rounded as theirs are (a finish then spans its week or month). Reading days are only in the calendar when that audience sees exact days, day-by-day reading and streaks. Book clubs are only in it when that audience may see friends' reading and what you're reading now.
 
 ## Behind a reverse proxy
 
@@ -309,6 +322,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/api/config`: who you're signed in as and the last rebuild.
 - `/api/covers`: the saved covers.
 - `/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`: every number the page shows, worked out on the server for each viewer from only what they may see. See [docs/api.md](docs/api.md).
+- `/feeds/<secret>.atom` and `/feeds/<secret>.ics`: the feeds made under **Admin → Feeds**; see [docs/api.md](docs/api.md#feeds).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 
 ## How the numbers are worked out
@@ -363,6 +377,7 @@ src/prices/          prices, currencies, bundles and subscriptions
 src/friends/         share files and friends' data
 src/federation/      following friends' dashboards, and approving the ones that follow yours
 src/clubs/           book clubs and their spoiler-safe comments
+src/feeds/           Atom and iCal feeds at secret addresses
 src/arr/             requests to the admin's own *arr book manager
 src/rebuild/         watches for new backups, edits and syncs, and rebuilds
 src/upload/, src/admin/, src/dav/, src/status/   uploads, the admin API, WebDAV, /healthz and /api/config

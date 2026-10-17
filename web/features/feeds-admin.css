@@ -1,0 +1,5 @@
+/* Admin → Feeds (feeds-admin.js) */
+.fd-fresh{margin-top:var(--cds-gap-md);padding:var(--cds-gap-sm) var(--cds-gap-md);border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-panel)}
+.fd-fresh[hidden]{display:none}
+.fd-say{margin:0 0 var(--cds-gap-xs);font-size:14px}
+.fd-fresh input{font-family:var(--font-mono, ui-monospace, monospace);font-size:12px}

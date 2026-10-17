@@ -80,3 +80,34 @@ writes `api/stats/page`, `api/stats/all` and `api/stats/<calc>` as files at buil
 `test/web/server-stats.spec.ts` checks that the server and the page's own `runtime.js` give
 identical rows for every calc on the demo history and the fake backup, for the admin and for
 filtered visitors; `test/stats.e2e-spec.ts` checks the API's privacy.
+
+## Feeds
+
+Atom and iCal feeds (BOO-74), made by the admin under **Admin → Feeds**. They're not part of
+the stats API, but they follow the same rule: nothing in them says more than the data files
+their audience could fetch.
+
+| Path | Returns |
+| --- | --- |
+| `/feeds/<secret>.atom` | `application/atom+xml`: the 50 most recent finished reads, newest first. Each entry has the title and author, a link to `#book/<id>`, and HTML content with the cover, rating, series, genre, hours and days |
+| `/feeds/<secret>.ics` | `text/calendar`: all-day events. These are `day-<date>` (reading days, last 400), `finish-<read id>` (finishes) and `club-<id>-start`, `-week-<n>` (book club schedule) |
+| `/feeds/<secret>/covers/<book id>.(jpg\|png)` | A cover the Atom feed links to, through the same secret |
+
+- **The secret** is 32 random bytes (base64url). A wrong one gets a `404` after a short pause, the same as no feed. Only its sha256 is stored (`library/feeds.json`, mode 0600), compared in constant time, like federation tokens.
+- **The audience** is `public`, `reader` or `friends`. The feed is filtered by that audience's privacy policy from Access & privacy, as `/data/*` is for them, whatever the dashboard's access setting.
+  - Private books are left out (also when anonymised).
+  - Dates are rounded to the week or month.
+  - Reading days need exact days, the diary and streaks.
+  - Book clubs need the audience to see friends' reading (`visible_to`) and current reading; friends never get them.
+- Responses are `Cache-Control: private, max-age=300` with `X-Robots-Tag: noindex`. The calendar asks to be refreshed every 6 hours.
+
+Admin endpoints (`@AdminOnly`):
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/feeds` | `{feeds: [{id, kind, audience, name, created, rotated, last_used}]}`, without secrets |
+| `POST /api/admin/feeds` | `{kind: "atom" \| "ical", audience?, name?}` → `{feed, url}`. The only time the URL is given |
+| `POST /api/admin/feeds/<id>/rotate` | A new secret → `{feed, url}`; the old URL stops working |
+| `DELETE /api/admin/feeds/<id>` | Revokes it |
+
+The URL is built from `PUBLIC_URL`, else the request's host (as for link previews).
