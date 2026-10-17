@@ -7,10 +7,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
-      - name: Unit and end-to-end tests
-        run: python -m unittest discover -s tests -v
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - name: Lint and type-check
+        run: npm run lint && npx tsc --noEmit
+      - name: Unit tests
+        run: npm test
+      - name: End-to-end tests
+        run: npm run test:e2e
       - name: Docker image builds
         run: docker build -t moonreader-dashboard .

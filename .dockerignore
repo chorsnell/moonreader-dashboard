@@ -1,8 +1,10 @@
-library/
+/library/
 *.mrpro
-**/__pycache__
+node_modules/
+dist/
+coverage/
 .git
 .github
-tests
+test
 examples
 .env

@@ -1,0 +1,267 @@
+import { mkdir, mkdtemp, readFile, rename, rm, utimes, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { Injectable } from '@nestjs/common';
+import { findFiles, mtimeMs } from '../common/files';
+import { localDateTime, round1 } from '../common/time';
+import { CoverStore } from '../covers/cover-store.service';
+import { LibraryService } from '../library/library.service';
+import { readBackup } from './backup-archive';
+import { buildReadingHistory } from './reading-history';
+import type {
+  BookHistory,
+  Catalogue,
+  StatisticsRow,
+  SyncedPositionFile,
+} from './reading-history.types';
+
+/** What an import did, as lines for update.log. */
+export interface ImportSummary {
+  books: number;
+  reads: number;
+  readingDays: number;
+  lines: string[];
+}
+
+/** Only this much of a .po file is read; a position is a few dozen characters. */
+const PO_READ_LIMIT = 2000;
+
+/**
+ * How far before a build's start meta.json is dated, to allow for file systems that keep
+ * modification times to the second (or two). At worst this costs one extra rebuild.
+ */
+const MTIME_MARGIN_MS = 2000;
+
+/**
+ * Turns a Moon+ backup (plus any positions synced over WebDAV) into the data/*.json files
+ * the page reads, and saves the covers it finds in the backup.
+ */
+@Injectable()
+export class BackupImportService {
+  constructor(
+    private readonly library: LibraryService,
+    private readonly covers: CoverStore,
+  ) {}
+
+  async importBackup(backup: string): Promise<ImportSummary> {
+    const started = new Date();
+    const catalogue = JSON.parse(await readFile(this.library.catalogue, 'utf8')) as Catalogue;
+    const tmp = await mkdtemp(join(tmpdir(), 'moonreader-'));
+    try {
+      const contents = await readBackup(backup, tmp);
+      if (!contents.databasePath) throw new Error('This backup has no mrbooks.db database.');
+      const { bookMeta, statistics } = readDatabase(contents.databasePath);
+      const result = buildReadingHistory({
+        catalogue,
+        bookMeta,
+        statistics,
+        positions: parsePositions(contents.positionsXml),
+        synced: await this.readSyncedPositions(),
+      });
+
+      let newCovers = 0;
+      for (const book of result.books) {
+        for (const file of book.source_files) {
+          const image = contents.covers.get(file.toLowerCase());
+          if (image && (await this.covers.save(book.id, image))) {
+            newCovers++;
+            break;
+          }
+        }
+      }
+
+      const counts = await this.writeData(
+        backup,
+        result.books,
+        result.untagged.length,
+        result.syncedApplied,
+      );
+      // The watcher rebuilds when an input is newer than meta.json. Date it to when this
+      // build started reading its inputs, so a position synced (or a catalogue saved) while
+      // it ran is still newer, and gets its own rebuild.
+      const builtFrom = new Date(started.getTime() - MTIME_MARGIN_MS);
+      await utimes(join(this.library.data, 'meta.json'), builtFrom, builtFrom);
+      const lines = [
+        `${basename(backup)}: ${counts.books} books, ${counts.reads} reads, ${counts.readingDays} reading days` +
+          (result.syncedApplied ? `, ${result.syncedApplied} synced position(s) applied` : '') +
+          (newCovers ? `, ${newCovers} new cover(s) from the backup` : ''),
+      ];
+      if (result.unreadableSyncs.length) {
+        lines.push(
+          `${result.unreadableSyncs.length} synced .po file(s) not understood (please report):`,
+        );
+        lines.push(...result.unreadableSyncs.slice(0, 10).map((u) => `  ${u}`));
+      }
+      if (result.untagged.length) {
+        lines.push(
+          `${result.untagged.length} file(s) not in catalogue.json (shown as "Untagged"):`,
+        );
+        lines.push(...result.untagged.map((u) => `  ${u}`));
+      }
+      return { ...counts, lines };
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  }
+
+  /** The .po files Moon+ synced over WebDAV. */
+  private async readSyncedPositions(): Promise<SyncedPositionFile[]> {
+    const out: SyncedPositionFile[] = [];
+    for (const path of await findFiles(this.library.dav, '.po')) {
+      try {
+        const text = (await readFile(path, 'utf8')).slice(0, PO_READ_LIMIT);
+        out.push({ name: basename(path), text, mtimeMs: await mtimeMs(path) });
+      } catch {
+        // removed while we were looking
+      }
+    }
+    return out;
+  }
+
+  private async writeData(
+    backup: string,
+    books: BookHistory[],
+    untagged: number,
+    synced: number,
+  ): Promise<Omit<ImportSummary, 'lines'>> {
+    const booksRows = [];
+    const readsRows = [];
+    const dailyRows = [];
+    for (const b of books) {
+      booksRows.push({
+        id: b.id,
+        title: b.title,
+        author: b.author,
+        series: b.series,
+        series_no: b.series_no,
+        genre: b.genre,
+        subgenre: b.subgenre,
+        status: b.status,
+        progress: b.progress,
+        hours: round1(b.total_minutes / 60),
+        words: b.total_words,
+        times_read: b.times_read,
+        first_read: b.first_read,
+        last_read: b.last_read,
+      });
+      for (const r of b.reads) {
+        readsRows.push({
+          read_id: `${b.id}#${r.read_no}`,
+          book_id: b.id,
+          title: b.title,
+          author: b.author,
+          genre: b.genre,
+          subgenre: b.subgenre,
+          series: b.series,
+          read_no: r.read_no,
+          times_read: b.times_read,
+          start: r.start,
+          end: r.end,
+          days_read: r.days_read,
+          hours: r.minutes ? round1(r.minutes / 60) : null,
+          progress: r.progress,
+          finished: r.finished,
+        });
+      }
+      for (const d of b.daily) {
+        dailyRows.push({
+          date: d.date,
+          book_id: b.id,
+          title: b.title,
+          author: b.author,
+          genre: b.genre,
+          minutes: d.minutes,
+          words: d.words,
+          progress: d.progress,
+        });
+      }
+    }
+    readsRows.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+    dailyRows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+    const generated = localDateTime();
+    const backupFile = basename(backup);
+    await mkdir(this.library.data, { recursive: true });
+    await this.dump('books.json', booksRows);
+    await this.dump('reads.json', readsRows);
+    await this.dump('daily.json', dailyRows);
+    await this.dump(
+      'reading_history.json',
+      {
+        schema_version: 1,
+        source: { app: 'Moon+ Reader Pro', backup_file: backupFile, generated },
+        books,
+      },
+      true,
+    );
+    // written last; its time is what the watcher compares against (see importBackup)
+    await this.dump('meta.json', {
+      backup_file: backupFile,
+      generated,
+      untagged,
+      synced_positions: synced,
+    });
+    return { books: books.length, reads: readsRows.length, readingDays: dailyRows.length };
+  }
+
+  /** Writes through a .tmp file so the page never reads a half-written one. */
+  private async dump(name: string, value: unknown, pretty = false): Promise<void> {
+    const path = join(this.library.data, name);
+    await writeFile(`${path}.tmp`, JSON.stringify(value, null, pretty ? 1 : undefined), 'utf8');
+    await rename(`${path}.tmp`, path);
+  }
+}
+
+/** Book titles and authors, and the reading log, from Moon+'s database. */
+function readDatabase(path: string): {
+  bookMeta: Map<string, [string, string]>;
+  statistics: StatisticsRow[];
+} {
+  const db = new DatabaseSync(path, { readOnly: true });
+  try {
+    const bookMeta = new Map<string, [string, string]>();
+    for (const table of ['tmpbooks', 'books']) {
+      const rows = db.prepare(`select book, filename, author from ${table}`).all();
+      for (const { book, filename, author } of rows) {
+        if (filename)
+          bookMeta.set(String(filename).toLowerCase(), [String(book ?? ''), String(author ?? '')]);
+      }
+    }
+    const statistics = db
+      .prepare('select filename, usedTime, readWords, dates from statistics')
+      .all()
+      .map((r) => ({
+        filename: r.filename == null ? null : String(r.filename),
+        usedTime: r.usedTime == null ? null : Number(r.usedTime),
+        readWords: r.readWords == null ? null : Number(r.readWords),
+        dates: r.dates == null ? null : String(r.dates),
+      }));
+    return { bookMeta, statistics };
+  } finally {
+    db.close();
+  }
+}
+
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+function unescapeXml(s: string): string {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, e: string) => {
+    if (e[0] === '#') {
+      const code =
+        e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : whole;
+    }
+    return ENTITIES[e.toLowerCase()] ?? whole;
+  });
+}
+
+/** Lower-case file path -> last position (%), from positions10.xml. */
+function parsePositions(xml: string | null): Map<string, number> {
+  const positions = new Map<string, number>();
+  for (const [, key, value] of (xml ?? '').matchAll(/<string name="(.*?)">(.*?)<\/string>/g)) {
+    const m = /:([\d.]+)%/.exec(value);
+    if (m) positions.set(unescapeXml(key).toLowerCase(), Number(m[1]));
+  }
+  return positions;
+}

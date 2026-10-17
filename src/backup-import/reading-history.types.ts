@@ -1,0 +1,93 @@
+/** What catalogue.json says about one book. */
+export interface CatalogueEntry {
+  title: string;
+  author: string;
+  series?: string | null;
+  series_no?: number | null;
+  genre?: string;
+  subgenre?: string;
+}
+
+export interface Catalogue {
+  /** Keyed by the lower-case book file name. */
+  books: Record<string, CatalogueEntry>;
+  /** Lower-case file names that aren't books. */
+  exclude: string[];
+}
+
+/** One row of Moon+'s statistics table. */
+export interface StatisticsRow {
+  filename: string | null;
+  usedTime: number | null;
+  readWords: number | null;
+  /** Day tokens: "<day>|<ms>@<words>" followed by "#<progress>%". */
+  dates: string | null;
+}
+
+/** A reading-position file Moon+ synced over WebDAV (<book file>.po). */
+export interface SyncedPositionFile {
+  name: string;
+  text: string;
+  mtimeMs: number;
+}
+
+export interface DayEntry {
+  date: string;
+  minutes: number | null;
+  words: number | null;
+  progress: number | null;
+}
+
+export interface ReadEntry {
+  read_no: number;
+  start: string;
+  end: string;
+  days_read: number;
+  minutes: number | null;
+  progress: number | null;
+  finished: boolean | null;
+}
+
+export type BookStatus = 'finished' | 'in_progress' | 'not_started' | 'unknown';
+
+/** One book in reading_history.json. */
+export interface BookHistory {
+  id: string;
+  title: string;
+  author: string;
+  series: string | null;
+  series_no: number | null;
+  genre: string;
+  subgenre: string;
+  status: BookStatus;
+  progress: number | null;
+  total_minutes: number;
+  total_words: number;
+  times_read: number;
+  first_read: string | null;
+  last_read: string | null;
+  reads: ReadEntry[];
+  daily: DayEntry[];
+  synced: string | null;
+  source_files: string[];
+}
+
+export interface HistoryInput {
+  catalogue: Catalogue;
+  /** Lower-case file path -> [title, author], from Moon+'s books tables. */
+  bookMeta: Map<string, [string, string]>;
+  statistics: StatisticsRow[];
+  /** Lower-case file path -> last position (%), from positions10.xml. */
+  positions: Map<string, number>;
+  synced: SyncedPositionFile[];
+}
+
+export interface HistoryResult {
+  books: BookHistory[];
+  /** "<file>  ->  <title>" for every file not in the catalogue. */
+  untagged: string[];
+  /** How many synced positions were applied. */
+  syncedApplied: number;
+  /** .po files whose contents weren't understood. */
+  unreadableSyncs: string[];
+}

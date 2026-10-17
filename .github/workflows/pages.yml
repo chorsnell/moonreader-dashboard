@@ -19,11 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
+          node-version: "24"
+          cache: npm
+      - run: npm ci
       - name: Build the demo site
-        run: python demo/build_demo.py site
+        run: npm run demo -- site
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
