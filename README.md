@@ -76,6 +76,7 @@ library/
   covers/          book covers, one <book id>.jpg or .png each
   catalogue.json   titles, authors, series and genres for your books
   update.log       what happened on each rebuild, upload and sync
+  activity.jsonl   the same as JSON lines, for the admin page's Sync & logs
 ```
 
 ## Getting new data in
@@ -107,6 +108,8 @@ When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-
 **Backups.** If your version of Moon+ offers WebDAV as a backup destination, use the same details. Any `.mrpro` file written to the WebDAV folder is treated exactly like an upload.
 
 > This WebDAV support is built from Moon+'s documented behaviour and tested with standard WebDAV clients, but not yet against the app itself. Every file Moon+ writes is listed in `library/update.log`. If something isn't picked up, that log shows what arrived. Position files the server can't read are listed there too.
+
+The admin page's **Sync & logs** section shows the same activity without opening the box: every sync (with the app that sent it), rebuild (what triggered it, how long it took, any error and the untagged files), upload, cover lookup and removed backup. You can filter it by type, date and outcome, search it, and download it. At the top it says when Moon+ last synced, and warns when syncing seems to have stopped or a login used the wrong password. The structured log is `library/activity.jsonl`, one JSON object per line, next to `update.log`.
 
 ## Behind a reverse proxy (Traefik, Nginx Proxy Manager, Caddy…)
 
