@@ -21,6 +21,10 @@ export interface ImportSummary {
   books: number;
   reads: number;
   readingDays: number;
+  syncedApplied: number;
+  newCovers: number;
+  /** "<file>  ->  <title>" for every file not in catalogue.json. */
+  untagged: string[];
   lines: string[];
 }
 
@@ -99,7 +103,13 @@ export class BackupImportService {
         );
         lines.push(...result.untagged.map((u) => `  ${u}`));
       }
-      return { ...counts, lines };
+      return {
+        ...counts,
+        syncedApplied: result.syncedApplied,
+        newCovers,
+        untagged: result.untagged,
+        lines,
+      };
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
@@ -124,7 +134,7 @@ export class BackupImportService {
     books: BookHistory[],
     untagged: number,
     synced: number,
-  ): Promise<Omit<ImportSummary, 'lines'>> {
+  ): Promise<Pick<ImportSummary, 'books' | 'reads' | 'readingDays'>> {
     const booksRows = [];
     const readsRows = [];
     const dailyRows = [];

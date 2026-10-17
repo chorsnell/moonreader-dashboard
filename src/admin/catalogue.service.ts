@@ -151,13 +151,20 @@ export class CatalogueService {
       const file = this.library.catalogue;
       await writeFile(`${file}.part`, `${JSON.stringify(catalogue, null, 1)}\n`, 'utf8');
       await rename(`${file}.part`, file);
-      this.activity.log(
-        change.exclude
+      this.activity.record({
+        type: 'settings',
+        message: change.exclude
           ? `Catalogue: marked ${keys.length} file(s) as not a book`
           : `Catalogue: saved "${change.entry.title}" (${keys.length} file(s))`,
-      );
+        trigger: 'admin',
+        details: {
+          files: change.files,
+          exclude: change.exclude,
+          ...(change.exclude ? {} : change.entry),
+        },
+      });
     });
     this.saving = run.catch(() => undefined);
-    return run.then(() => this.library.changed());
+    return run.then(() => this.library.changed('catalogue'));
   }
 }
