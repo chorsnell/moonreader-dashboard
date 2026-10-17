@@ -231,7 +231,10 @@ const DATE_VALUE = /^\d{4}-\d{2}-\d{2}/;
 const DROP = Symbol('drop');
 
 const HIGHLIGHT_FILE = /^highlights?(_[a-z_]+)?\.json$/;
-const MONEY_FILE = /^(prices|money|spending|purchases)(_[a-z_]+)?\.json$/;
+// media_money.json: streaming subscriptions (features/tv.js)
+const MONEY_FILE = /^(prices|money|spending|purchases|media_money)(_[a-z_]+)?\.json$/;
+
+const DIARY_FILES = new Set(['daily.json', 'media_daily.json', 'media_sessions.json']);
 
 /** Files never served to anyone but the admin. */
 export const ADMIN_ONLY_FILES = new Set(['reading_history.json']);
@@ -254,7 +257,8 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   const highlights = HIGHLIGHT_FILE.test(name);
   if (highlights && !p.highlights) return [];
   if (MONEY_FILE.test(name) && !p.money) return [];
-  if (name === 'daily.json' && !p.diary) return [];
+  // the day-by-day log; for TV and film, the per-day file and the sittings with their clock times
+  if (DIARY_FILES.has(name) && !p.diary) return [];
   const dates = effectiveDates(name, p);
   const isBooks = name === 'books.json';
 

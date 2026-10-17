@@ -64,7 +64,15 @@ async function main(): Promise<void> {
     await mkdir(join(out, 'api'), { recursive: true });
     await writeFile(
       join(out, 'api', 'config'),
-      JSON.stringify({ uploads: false, webdav: false, has_data: true, demo: true, meta }),
+      JSON.stringify({
+        uploads: false,
+        webdav: false,
+        has_data: true,
+        has_books: true,
+        has_media: true,
+        demo: true,
+        meta,
+      }),
     );
     await writeFile(join(out, 'api', 'covers'), JSON.stringify(coverUrls));
     // the stats the server would work out, so the demo page takes the same path

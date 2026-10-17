@@ -1,0 +1,43 @@
+/* TV & film tab and the show and film pages (features/tv.js) */
+
+/* the tab: half-width cards side by side, wide ones across */
+#tv:not([hidden]){display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,26rem),1fr));align-items:start}
+#tv>.rh-card.wide{grid-column:1/-1}
+.chart.tv-auto{min-height:0}
+
+/* made-up posters: the title on a tile in the genre's colour */
+.cv.tvp.blank{background:linear-gradient(160deg,color-mix(in srgb,var(--cv) 55%,var(--color-panel)),color-mix(in srgb,var(--cv) 20%,var(--color-panel)))}
+.cv.tvp.lg.blank{display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:4px;padding:10px;text-align:left}
+.cv.tvp.lg.blank b{font-family:var(--font-anthropic-serif);font-weight:400;font-size:16px;line-height:1.15;color:var(--color-fg);overflow-wrap:anywhere}
+.cv.tvp.lg.blank small{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+
+/* season completion */
+.tv-shows{display:flex;flex-direction:column;gap:var(--cds-gap-sm);margin-top:var(--cds-gap-sm)}
+.tv-show{display:grid;grid-template-columns:minmax(8rem,14rem) 1fr;gap:var(--cds-gap-md);align-items:center;padding-bottom:var(--cds-gap-sm);border-bottom:1px solid var(--color-border-line);cursor:pointer}
+.tv-show:last-child{border-bottom:0}
+.tv-show-name{min-width:0;font-size:var(--cds-font-size-body)}
+.tv-show-name small{display:block;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.tv-seasons{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs)}
+.tv-season{position:relative;width:52px;height:26px;border-radius:4px;background:var(--cds-chart-grid);overflow:hidden}
+.tv-season i{position:absolute;inset:0 auto 0 0;display:block}
+.tv-season span{position:relative;display:block;text-align:center;line-height:26px;font-size:var(--cds-font-size-caption);font-variant-numeric:tabular-nums;color:var(--color-fg);mix-blend-mode:normal}
+.tv-season.tv-done span{color:var(--color-panel)}
+.tv-season.tv-dropped i{opacity:.7}
+
+/* binge rails */
+.tv-rail{stroke:var(--cds-chart-grid);stroke-width:2}
+
+/* tables */
+.tv-scroll{overflow-x:auto}
+.tv-cost,.tv-eps{width:100%;border-collapse:collapse;font-size:var(--cds-font-size-body);font-variant-numeric:tabular-nums}
+.tv-cost th,.tv-eps th{text-align:left;font-weight:500;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);padding:var(--cds-pad-xs) var(--cds-pad-sm);border-bottom:1px solid var(--color-border-line)}
+.tv-cost td,.tv-eps td{padding:var(--cds-pad-xs) var(--cds-pad-sm);border-bottom:1px solid var(--color-border-line)}
+.tv-cost .n,.tv-eps .n{text-align:right}
+.tv-eps td:last-child,.tv-eps th:last-child{padding-left:var(--cds-pad-lg)}
+.tv-eps .tv-no{white-space:nowrap;color:var(--color-fg-muted)}
+
+.tv-head{flex-direction:row}
+@media (max-width:600px){
+  .tv-show{grid-template-columns:1fr}
+  .tv-season{width:44px}
+}
