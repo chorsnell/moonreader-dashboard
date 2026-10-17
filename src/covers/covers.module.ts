@@ -7,6 +7,6 @@ import { OpenLibraryClient } from './open-library.client';
 @Module({
   imports: [LibraryModule],
   providers: [CoverStore, CoverLookupService, OpenLibraryClient],
-  exports: [CoverStore, CoverLookupService],
+  exports: [CoverStore, CoverLookupService, OpenLibraryClient],
 })
 export class CoversModule {}
