@@ -107,6 +107,9 @@
     genre: { field: 'genre', label: 'Genre', many: 'Genres' },
     subgenre: { field: 'subgenre', label: 'Subgenre', many: 'Subgenres' },
     year: { field: 'year', label: 'Year', many: 'Years' },
+    // TV and film (features/tv.js): a show's page lists its seasons; a film has its own page
+    show: { field: 'show', id: (r) => r.show_id, label: 'Show', many: 'Shows' },
+    film: { field: 'film', id: (r) => r.film_id, label: 'Film', many: 'Films' },
   };
   const KIND_OF = Object.fromEntries(Object.entries(LINKS).map(([k, o]) => [o.field, k]));
   const idOf = (kind, r) => (LINKS[kind].id ? LINKS[kind].id(r) : r[LINKS[kind].field]);
@@ -185,7 +188,7 @@
   }
 
   function drawMonths() {
-    const el = $('#ch-months'), rows = state(el, 'per_month'); if (!rows) return;
+    const el = $('#ch-months'), rows = state(el, 'per_month'); if (!rows || !rows.length) return;
     const h = 240, { svg, w, tip } = svgIn(el, h), m = { t: 10, r: 6, b: 24, l: 30 };
     const x = d3.scaleBand(rows.map((r) => r.month), [m.l, w - m.r]).padding(0.15);
     const y = d3.scaleLinear([0, d3.max(rows, (r) => r.hours) || 1], [h - m.b, m.t]).nice();

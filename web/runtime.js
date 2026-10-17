@@ -23,6 +23,8 @@ window.dash = (() => {
     if (config.has_data === false || config.can_read === false) { setAll('missing'); notify(); return config; }
     // only other media so far (say, a Netflix upload): the book files load as empty
     const skip = new Set(config.has_books === false ? ['books', 'reads', 'daily'] : []);
+    // likewise the media_*.json files (TV and film) when there are none
+    if (config.has_media === false) Object.keys(files).filter((k) => k.startsWith('media_')).forEach((k) => skip.add(k));
     // covers are optional: without them the page shows placeholders
     const coverList = fetch('api/covers', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
     try {
@@ -73,6 +75,12 @@ window.dash = (() => {
     // another data file to load; register it before the page loads (from a feature script)
     file: (id, url, o = {}) => { files[id] = url; state[id] = { status: 'loading', data: [] }; if (o.optional) optional.add(id); },
     calc: (id, o) => { calcs.push([id, o]); state[id] = { status: 'loading', data: [] }; },
+    // the same calculation over other inputs, e.g. dash.reuse('tv_per_month', 'per_month', ['tv_daily'])
+    reuse: (id, from, inputs) => {
+      const base = calcs.find(([k]) => k === from);
+      if (!base) throw new Error(`dash.reuse: no calc ${from}`);
+      api.calc(id, { ...base[1], inputs });
+    },
     data: (id) => state[id] || { status: 'missing', data: [] },
     onData: (fn) => { subs.push(fn); try { fn(); } catch (e) { console.error(e); } },
     cover: (id) => covers[id] || null,

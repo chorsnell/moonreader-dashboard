@@ -7,7 +7,7 @@ import { mtimeMs, newestFirst } from '../common/files';
 import { logTimestamp } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
 import { LibraryService } from '../library/library.service';
-import { MediaFiles } from './media-files.service';
+import { MediaFiles, type StreamingSubscription } from './media-files.service';
 import { buildMediaHistory, metaKey } from './media-history';
 import type { ItemMeta, MediaEvent, MediaHistory } from './media.types';
 import { MediaMetadataService } from './metadata/media-metadata.service';
@@ -184,7 +184,7 @@ export class MediaBuildService {
     const itemKeys = new Map<string, string>();
     const catalogue = await this.files.readCatalogue();
     const history = buildMediaHistory(events, { meta, catalogue, itemKeys });
-    await this.write(history, sources);
+    await this.write(history, sources, settings.subscriptions);
     const builtFrom = new Date(started.getTime() - MTIME_MARGIN_MS);
     await utimes(join(this.library.data, MEDIA_META), builtFrom, builtFrom);
     const counts = { items: history.items.length, sessions: history.sessions.length };
@@ -198,7 +198,11 @@ export class MediaBuildService {
     return { lines, counts };
   }
 
-  private async write(history: MediaHistory, sources: Record<string, unknown>): Promise<void> {
+  private async write(
+    history: MediaHistory,
+    sources: Record<string, unknown>,
+    subscriptions: StreamingSubscription[],
+  ): Promise<void> {
     const data = this.library.data;
     const empty = !history.items.length;
     const rows: Record<(typeof MEDIA_FILES)[number], unknown[]> = {
@@ -218,6 +222,7 @@ export class MediaBuildService {
       generated: logTimestamp(),
       sources,
       counts: { items: history.items.length, sessions: history.sessions.length },
+      subscriptions,
     });
   }
 

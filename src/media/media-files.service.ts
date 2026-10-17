@@ -13,6 +13,43 @@ export interface MediaSettings {
   tmdb: { api_key: string };
   /** Plex through Tautulli; user_id limits it to one Plex user (empty: everyone). */
   tautulli: { url: string; api_key: string; user_id: string };
+  /** Streaming subscriptions, for cost per hour watched; shown to readers in media_meta.json. */
+  subscriptions: StreamingSubscription[];
+}
+
+export interface StreamingSubscription {
+  /** e.g. "Netflix"; matched to a source by name (netflix, plex). */
+  service: string;
+  monthly: number;
+  currency: string;
+  /** First and last month paid, YYYY-MM; to is null while it runs. */
+  from: string;
+  to: string | null;
+}
+
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** Checks a list of subscriptions from the admin page; throws a readable Error. */
+export function toSubscriptions(raw: unknown): StreamingSubscription[] {
+  if (!Array.isArray(raw) || raw.length > 50) throw new Error('Send a list of subscriptions.');
+  return raw.map((r: Record<string, unknown>) => {
+    const service = typeof r?.service === 'string' ? r.service.trim().slice(0, 60) : '';
+    const monthly = Number(r?.monthly);
+    const currency =
+      typeof r?.currency === 'string' && /^[A-Za-z]{3}$/.test(r.currency.trim())
+        ? r.currency.trim().toUpperCase()
+        : '';
+    const from = typeof r?.from === 'string' ? r.from.trim() : '';
+    const to = typeof r?.to === 'string' && r.to.trim() ? r.to.trim() : null;
+    if (!service) throw new Error('Give each subscription a service name.');
+    if (!Number.isFinite(monthly) || monthly < 0 || monthly > 1000)
+      throw new Error(`Give ${service} a monthly price.`);
+    if (!currency) throw new Error(`Give ${service}'s currency as a three-letter code, e.g. GBP.`);
+    if (!MONTH.test(from) || (to !== null && (!MONTH.test(to) || to < from))) {
+      throw new Error(`Give ${service}'s months as YYYY-MM, the last one after the first.`);
+    }
+    return { service, monthly: Math.round(monthly * 100) / 100, currency, from, to };
+  });
 }
 
 /** Where other media live in the library: uploads, caches, manual fixes and settings. */
@@ -53,6 +90,13 @@ export class MediaFiles implements OnModuleInit {
         api_key: str(raw.tautulli?.api_key),
         user_id: str(raw.tautulli?.user_id),
       },
+      subscriptions: (() => {
+        try {
+          return toSubscriptions(raw.subscriptions ?? []);
+        } catch {
+          return [];
+        }
+      })(),
     };
   }
 

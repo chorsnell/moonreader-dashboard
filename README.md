@@ -176,6 +176,10 @@ A profile's "Viewing activity" page also has a **Download all** link that gives 
 
 History starts when Tautulli was installed. Plex on its own only keeps a "watched" log with no time watched, so it isn't read yet.
 
+### The TV & film tab
+
+Once there's something watched, a **TV & film** tab appears: hours watched, what's on screen now, seasons you dropped mid-way, season completion per show, a binge fingerprint for every season (episodes per day from the day you started it), when in the week you watch, hours per month, how your genres drift, the films you've seen, and what each streaming subscription costs per hour actually watched (enter your subscriptions on the admin page). Each show and film has its own page (`#show/<id>`, `#film/<id>`). Without any books, the dashboard opens on this tab.
+
 ### How it's built
 
 The media build runs on its own, beside the book build, and writes `media_items.json` (a TV season or a film), `media_runs.json`, `media_daily.json`, `media_sessions.json` and `media_parts.json` (episodes) to `library/data/`. A season is treated like a book and the show like a series. With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or on the admin page) it also adds genres, creators, episode counts and posters; without one everything still works, from the titles alone. To fix a title, put it in `library/media/catalogue.json`, keyed by the lower-case show or film title: `{"copper valley": {"genre": "Drama", "episodes": {"1": 8}}, "some trailer": {"exclude": true}}`.

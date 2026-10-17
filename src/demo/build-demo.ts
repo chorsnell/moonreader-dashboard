@@ -83,7 +83,23 @@ async function main(): Promise<void> {
     try {
       const summary = await app.get(BackupImportService).importBackup(backup);
       summary.lines.forEach((line) => console.log(line));
-      await app.get(MediaFiles).update((st) => (st.netflix.profiles = ['You']));
+      // a Netflix plan from the start, with a price rise halfway through
+      const month = (d: number) => new Date(d * DAY_MS).toISOString().slice(0, 7);
+      const rise = month(firstDay + Math.floor(days / 2));
+      const before = month(firstDay + Math.floor(days / 2) - 31);
+      await app.get(MediaFiles).update((st) => {
+        st.netflix.profiles = ['You'];
+        st.subscriptions = [
+          {
+            service: 'Netflix',
+            monthly: 10.99,
+            currency: 'GBP',
+            from: month(firstDay),
+            to: before,
+          },
+          { service: 'Netflix', monthly: 12.99, currency: 'GBP', from: rise, to: null },
+        ];
+      });
       (await app.get(MediaBuildService).build()).lines.forEach((line) => console.log(line));
       await app.get(CoverLookupService).run();
     } finally {

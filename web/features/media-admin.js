@@ -142,6 +142,35 @@
       saveK.disabled = false;
     } }, h('label', { for: key.id }, 'TMDB API key or read access token'), key, h('div', { class: 'ad-actions' }, saveK), kMsg);
 
+    // ---------- streaming subscriptions ----------
+    let subs = [];
+    const subList = h('div', { class: 'ad-subs' });
+    const sMsg = msg();
+    const field = (label, input) => h('label', { class: 'ad-field' }, label, input);
+    function drawSubs() {
+      subList.replaceChildren(...subs.map((sub, i) => {
+        const set = (k) => (e) => { sub[k] = e.target.value; };
+        return h('div', { class: 'ad-sub' },
+          field('Service', h('input', { value: sub.service, placeholder: 'Netflix', oninput: set('service') })),
+          field('A month', h('input', { type: 'number', step: '0.01', min: '0', inputmode: 'decimal', value: sub.monthly, oninput: set('monthly') })),
+          field('Currency', h('input', { value: sub.currency, maxlength: '3', oninput: set('currency') })),
+          field('From', h('input', { type: 'month', value: sub.from, oninput: set('from') })),
+          field('To', h('input', { type: 'month', value: sub.to || '', oninput: set('to') })),
+          h('button', { class: 'up-link', type: 'button', onclick: () => { subs.splice(i, 1); drawSubs(); } }, 'Remove'));
+      }));
+      if (!subs.length) subList.append(h('p', { class: 'up-note' }, 'None yet.'));
+    }
+    const addSub = h('button', { class: 'up-copy', type: 'button', onclick: () => { subs.push({ service: '', monthly: '', currency: (subs[0] && subs[0].currency) || 'GBP', from: new Date().toISOString().slice(0, 7), to: '' }); drawSubs(); } }, 'Add a subscription');
+    const saveSubs = h('button', { class: 'up-primary ad-auto', type: 'button', onclick: async () => {
+      saveSubs.disabled = true; sMsg.textContent = 'Saving…';
+      try {
+        const before = st;
+        await a.post(`${URL_}/subscriptions`, { subscriptions: subs.map((x) => ({ ...x, monthly: Number(x.monthly), to: x.to || null })) });
+        await waitForMedia(before, (t) => (sMsg.textContent = t));
+      } catch (err) { sMsg.textContent = err.message; }
+      saveSubs.disabled = false;
+    } }, 'Save subscriptions');
+
     function render() {
       if (!st) return;
       const fact = (k, v, cls) => h('div', { class: 'ad-fact' + (cls ? ' ' + cls : '') }, h('dt', {}, k), h('dd', {}, v));
@@ -161,6 +190,7 @@
       tFacts.textContent = (t.from_env ? 'Set with TAUTULLI_URL. ' : '') +
         (t.last_pull ? `Last pulled ${ago(t.last_pull)}; new plays are pulled every ${t.poll_minutes} minutes.` : t.url ? 'Not pulled yet.' : '') +
         (t.last_error ? ` Last error: ${t.last_error}` : '');
+      if (!subs.length || !subList.querySelector('input')) { subs = (st.subscriptions || []).map((x) => ({ ...x })); drawSubs(); }
       key.placeholder = st.tmdb.configured ? (st.tmdb.from_env ? 'Set with TMDB_API_KEY' : 'Saved (save blank to remove it)') : 'Optional';
     }
 
@@ -170,6 +200,8 @@
       block('Netflix', 'On Netflix, go to Account → Security & privacy → Download your personal information. Upload the zip it sends (or its CONTENT_INTERACTION/ViewingActivity.csv). A profile\'s "Download all" file also works, but has dates only.',
         h('label', { for: file.id }, 'Netflix export'), file, h('div', { class: 'ad-actions' }, go), bar, upMsg, profiles),
       block('Plex (through Tautulli)', 'Tautulli keeps every Plex play with how long you watched. The dashboard reads its API with the key, never your Plex password.', tForm),
+      block('Streaming subscriptions', 'What you pay for each service, for the cost per hour on the TV & film tab. A service named Netflix is matched to your Netflix history, Plex to Tautulli; others count all watching. Leave To empty while it runs.',
+        subList, h('div', { class: 'ad-actions' }, saveSubs, addSub), sMsg),
       block('Posters and genres (TMDB)', 'Optional: a free key from themoviedb.org adds genres, episode counts and posters to Netflix titles. Everything works without it.', kForm));
 
     a.get(URL_).then((s) => { st = s; render(); }).catch((e) => facts.replaceChildren(h('p', { class: 'up-msg' }, e.message)));

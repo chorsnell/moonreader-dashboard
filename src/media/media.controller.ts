@@ -14,7 +14,7 @@ import { appConfig, type AppConfigType } from '../config/app.config';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LibraryService } from '../library/library.service';
 import { MEDIA_META, MediaBuildService } from './media-build.service';
-import { MediaFiles, readJson } from './media-files.service';
+import { MediaFiles, readJson, toSubscriptions } from './media-files.service';
 import { MediaService } from './media.service';
 import { TautulliClient, type TautulliConnection } from './sources/tautulli.client';
 
@@ -53,6 +53,7 @@ export class MediaController {
         from_env: !settings.tautulli.url && Boolean(this.config.tautulliUrl),
         poll_minutes: this.config.mediaPollMinutes,
       },
+      subscriptions: settings.subscriptions,
       tmdb: {
         configured: Boolean(settings.tmdb.api_key || this.config.tmdbApiKey),
         from_env: !settings.tmdb.api_key && Boolean(this.config.tmdbApiKey),
@@ -151,6 +152,21 @@ export class MediaController {
     if (userId && !/^\d+$/.test(userId))
       throw new BadRequestException({ error: 'Pick a Plex user.' });
     return { url, api_key: apiKey, user_id: userId };
+  }
+
+  /** Streaming subscriptions, for the cost per hour watched. */
+  @Post('subscriptions')
+  @HttpCode(200)
+  async subscriptions(@Body() body: unknown) {
+    let list;
+    try {
+      list = toSubscriptions((body as { subscriptions?: unknown } | null)?.subscriptions);
+    } catch (e) {
+      throw new BadRequestException({ error: (e as Error).message });
+    }
+    await this.files.update((s) => (s.subscriptions = list));
+    this.activity.log(`Saved ${list.length} streaming subscription(s)`);
+    return { ok: true, subscriptions: list };
   }
 
   /** Rebuilds the media data now. */
