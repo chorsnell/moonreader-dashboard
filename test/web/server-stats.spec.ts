@@ -90,6 +90,10 @@ describe.each(['demo', 'fake'] as const)('on the %s data', (which) => {
       const b = browser.state[id];
       if (server.failed.includes(id)) {
         expect([id, b.status]).toEqual([id, 'error']);
+      } else if (server.client_only.includes(id)) {
+        // left to the page: from a friend's data on demand, so nothing on load
+        expect(server.rows[id]).toBeUndefined();
+        expect(server.page).not.toContain(id);
       } else if (server.lossy.includes(id)) {
         expect([id, b.status]).toEqual([id, 'ok']); // the page works it out
         expect(server.page).not.toContain(id);
@@ -113,8 +117,12 @@ describe.each(['demo', 'fake'] as const)('on the %s data', (which) => {
     // on the demo the server works out every calc; one that needed the viewer's filters or
     // the page would be left to the browser. With very little data (or with the diary
     // hidden) a few averages come out as NaN, which JSON can't carry: the page does those
-    if (which === 'demo')
-      expect([server.client_only, server.lossy, server.failed]).toEqual([[], [], []]);
+    // calcs the page works out from a friend's data (dash.calcWith) are left to it
+    if (which === 'demo') {
+      const offPage = page.calcs.filter((c) => c.inputs.some((i) => i.startsWith('friend_')));
+      expect([server.lossy, server.failed]).toEqual([[], []]);
+      expect(server.client_only.sort()).toEqual([...new Set(offPage.map((c) => c.id))].sort());
+    }
   });
 
   it('gives a filtered visitor the same numbers as the browser from their files', async () => {
@@ -154,6 +162,7 @@ describe('what the server leaves to the browser', () => {
       dash.calc('broken', { inputs: ['books'], fn: () => { throw new Error('no'); } });
       dash.calc('from_broken', { inputs: ['broken'], fn: () => [] });
       dash.calc('needs_missing', { inputs: ['nope'], fn: () => [] });
+      dash.calc('with_friend', { inputs: ['books', 'friend_books'], fn: () => [] });
       `,
     );
   });
@@ -172,7 +181,8 @@ describe('what the server leaves to the browser', () => {
     expect(r.lossy).toEqual(['dated']);
     expect(r.rows.dated).toEqual([{ d: '1970-01-01T00:00:00.000Z' }]);
     // the viewer's filters, the page, and anything worked out from them
-    expect(r.client_only.sort()).toEqual(['filtered', 'from_filtered', 'wide']);
+    // and a friend's data, which only the page has
+    expect(r.client_only.sort()).toEqual(['filtered', 'from_filtered', 'wide', 'with_friend']);
     expect(r.failed.sort()).toEqual(['broken', 'from_broken', 'needs_missing']);
   });
 

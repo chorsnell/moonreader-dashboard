@@ -44,7 +44,9 @@ changes whenever the numbers could (new data, new privacy settings, new page cod
 ### Calcs the server leaves out
 
 - `client_only`: calcs that read something besides their inputs (the viewer's filters or
-  the page itself), and any worked out from them. None do today.
+  the page itself), calcs the page works out from other data it passes in (a friend's,
+  inputs named `friend_*`, through `dash.calcWith`, e.g. `taste_match`), and any worked out
+  from them.
 - `lossy`: calcs whose values JSON can't carry as they are (for example an average of no
   days is `NaN`). They're in `/api/stats/all` and `/api/stats/<calc>` as JSON has them (`NaN`
   as `null`), but not in `/api/stats/page`: the page works them out itself.

@@ -80,6 +80,7 @@ export function computeStats(page: PageCalcs, inputs: Inputs): StatsResult {
   // calcs that depend on the viewer or the page, and so does anything worked out from them
   const tainted = new Set<string>();
   const ms = new Map<string, number>();
+  const offPage = new Set<string>();
   for (const c of page.calcs) {
     // a later calc with the same id replaces the earlier one, as in the page
     state.delete(c.id);
@@ -88,8 +89,15 @@ export function computeStats(page: PageCalcs, inputs: Inputs): StatsResult {
     lossy.delete(c.id);
     failed.delete(c.id);
     tainted.delete(c.id);
-    if (c.inputs.some((i) => !state.has(i))) {
-      failed.add(c.id);
+    offPage.delete(c.id);
+    const missing = c.inputs.filter((i) => !state.has(i));
+    if (missing.length) {
+      // a friend's data (friend_books…), which the page passes in through dash.calcWith:
+      // such calcs are the page's to work out
+      if (missing.every((i) => i.startsWith('friend_') || offPage.has(i))) {
+        offPage.add(c.id);
+        clientOnly.add(c.id);
+      } else failed.add(c.id);
       continue;
     }
     const touched = page.watch(c.id);
