@@ -19,6 +19,7 @@ interface BookRow {
   series_no: number | null;
   genre: string;
   subgenre: string;
+  status?: string;
 }
 
 interface CatalogueBook extends BookRow {
@@ -220,6 +221,36 @@ describe('the Catalogue section', () => {
       author_gender: 'male',
       isbn13: '9780141439518',
     });
+  });
+
+  it('marks a book finished by hand, keeps it through other edits, and clears it', async () => {
+    dash = await withData();
+    const d = dash;
+    const status = async () => (await books(d)).find((b) => b.id === 'beta')?.status;
+    expect(await status()).not.toBe('finished');
+    const files = ['Beta - Bob Writer.epub'];
+    const entry = async () =>
+      (await d.json<{ books: Record<string, Record<string, unknown>> }>('catalogue.json')).books[
+        'beta - bob writer.epub'
+      ];
+
+    await admin(dash)
+      .put('/api/admin/catalogue', { files, title: 'beta', finished: true })
+      .expect(200);
+    expect(await entry()).toMatchObject({ finished: true });
+    expect(await waitFor(async () => (await status()) === 'finished')).toBe(true);
+
+    // a save that doesn't mention it keeps it
+    await admin(dash)
+      .put('/api/admin/catalogue', { files, title: 'beta', genre: 'Fantasy' })
+      .expect(200);
+    expect(await entry()).toMatchObject({ finished: true, genre: 'Fantasy' });
+
+    await admin(dash)
+      .put('/api/admin/catalogue', { files, title: 'beta', finished: null })
+      .expect(200);
+    expect(await entry()).not.toHaveProperty('finished');
+    expect(await waitFor(async () => (await status()) !== 'finished')).toBe(true);
   });
 
   it('hides a file that is not a book', async () => {

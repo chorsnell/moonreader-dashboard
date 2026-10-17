@@ -42,7 +42,7 @@
 .ad-edit .ad-wide{grid-column:1/-1}
 .ad-edit .ad-files{margin:12px 0 0;overflow-wrap:anywhere}
 .ad-edit .ad-actions{margin-top:var(--cds-gap-sm)}
-.ad-edit input:not([type=radio]){background:var(--color-panel)}
+.ad-edit input:not([type=radio]),.ad-edit select{background:var(--color-panel)}
 @media (max-width:520px){
   .ad-edit{grid-template-columns:1fr}
   .ad-toolbar{grid-template-columns:1fr}

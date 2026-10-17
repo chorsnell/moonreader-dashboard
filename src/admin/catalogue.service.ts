@@ -8,6 +8,7 @@ import type {
 } from '../backup-import/reading-history.types';
 import { CoverStore } from '../covers/cover-store.service';
 import { parseIsbn } from '../metadata/isbn';
+import { catalogueEntry } from '../metadata/merge';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LibraryService } from '../library/library.service';
 
@@ -22,6 +23,8 @@ export interface CatalogueBook {
   subgenre: string;
   isbn13: string | null;
   status: string;
+  /** catalogue.json's "finished": true or false by hand, null to leave it to the rules. */
+  finished: boolean | null;
   /** Its file names, as Moon+ has them. */
   files: string[];
   /** True when a file isn't in catalogue.json, so the book is shown as "Untagged". */
@@ -38,7 +41,8 @@ type KeptFields =
   | 'published_year'
   | 'pages'
   | 'author_country'
-  | 'author_gender';
+  | 'author_gender'
+  | 'finished';
 
 /** A change to the catalogue entries of a book's files. */
 export interface CatalogueChange {
@@ -51,6 +55,8 @@ export interface CatalogueChange {
    */
   entry: Required<Omit<CatalogueEntry, KeptFields>> &
     Partial<Pick<CatalogueEntry, 'isbn13' | 'isbn10'>>;
+  /** true or false to set "finished" by hand, null to clear it, left out to keep it. */
+  finished?: boolean | null;
 }
 
 const MAX_TEXT = 300;
@@ -90,9 +96,12 @@ export function toCatalogueChange(body: unknown): CatalogueChange {
     if (!parsed) throw new BadRequestException({ error: 'That isn’t a valid ISBN.' });
     isbns = parsed;
   }
+  const finished =
+    b.finished === true || b.finished === false || b.finished === null ? b.finished : undefined;
   return {
     files,
     exclude,
+    ...(finished !== undefined && !exclude ? { finished } : {}),
     entry: {
       title: exclude ? '' : text(b.title, 'title', true),
       author: text(b.author, 'author'),
@@ -152,6 +161,7 @@ export class CatalogueService {
         subgenre: b.subgenre,
         isbn13: b.isbn13 ?? null,
         status: b.status,
+        finished: catalogueEntry(b, catalogue)?.finished ?? null,
         files: b.source_files,
         untagged:
           b.genre === 'Untagged' || b.source_files.some((f) => !catalogue.books[f.toLowerCase()]),
@@ -179,7 +189,7 @@ export class CatalogueService {
             ...(prev?.isbn && !prev.isbn13 && !prev.isbn10 ? { isbn: prev.isbn } : {}),
             ...(prev?.work_id ? { work_id: prev.work_id } : {}),
             ...Object.fromEntries(
-              (['published_year', 'pages', 'author_country', 'author_gender'] as const)
+              (['published_year', 'pages', 'author_country', 'author_gender', 'finished'] as const)
                 .filter((k) => prev?.[k] != null)
                 .map((k) => [k, prev![k]]),
             ),
@@ -188,6 +198,8 @@ export class CatalogueService {
           if (change.entry.isbn13 !== undefined) delete entry.isbn;
           if (!entry.isbn13) delete entry.isbn13;
           if (!entry.isbn10) delete entry.isbn10;
+          if (change.finished !== undefined) entry.finished = change.finished ?? undefined;
+          if (entry.finished === undefined) delete entry.finished;
           catalogue.books[key] = entry;
         }
       }
@@ -205,6 +217,7 @@ export class CatalogueService {
           files: change.files,
           exclude: change.exclude,
           ...(change.exclude ? {} : change.entry),
+          ...(change.finished !== undefined ? { finished: change.finished } : {}),
         },
       });
     });

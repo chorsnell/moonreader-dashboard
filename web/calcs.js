@@ -195,7 +195,7 @@ dash.calc('timeline', {
   fn: (reads, daily) => {
     const days = readDays(reads, daily);
     return reads.filter((r) => r.days_read !== 1)
-      .map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, genre: r.genre, start: r.start, end: r.end, progress: r.progress, read_no: r.read_no,
+      .map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, genre: r.genre, start: r.start, end: r.end, progress: r.progress, finished: r.finished === true, read_no: r.read_no,
         days_read: r.days_read, active: runs(days.get(r.read_id).map((d) => d.date)) }))
       .sort((a, b) => (a.start < b.start ? -1 : 1));
   },
@@ -272,16 +272,20 @@ const CHECK = {
 };
 dash.calc('anomalies', {
   inputs: ['reads', 'daily', 'books'], title: 'Data checks',
-  description: 'Reads with stray first or last days, long pauses or thinly spread spans; days with many books, implausible speeds or very long sessions; progress jumps; untagged books; books without an ISBN.',
+  description: 'Reads with stray first or last days, long pauses or thinly spread spans, or counted as finished by a guess; days with many books, implausible speeds or very long sessions; progress jumps; untagged books; books without an ISBN.',
   fn: (reads, daily, books) => {
     const fd = (s) => new Date(s + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
     const out = [], days = readDays(reads, daily);
     const add = (check, r, date, detail, extra = {}) => out.push({ key: `${check}|${r.read_id || r.book_id || r.id}|${date || ''}`, check, book_id: r.book_id || r.id, title: r.title, author: r.author || '', genre: r.genre, date, detail, ...extra });
     reads.forEach((r) => {
       const ds = days.get(r.read_id).map((d) => d.date);
+      const strip = { start: r.start, end: r.end, active: runs(ds) };
+      if (r.finished_by === 'estimate')
+        add('guessed', r, r.end, "Moon+ didn't record how far you got; counted as finished because the words read cover the book's page count. Wrong? Set Finished to No in Admin → Catalogue.", strip);
+      else if (r.finished_by === 'near_end')
+        add('guessed', r, r.end, `Stopped at ${Math.round(r.progress * 10) / 10}%; counted as finished, the rest being back matter. Wrong? Set Finished to No in Admin → Catalogue.`, strip);
       if (ds.length < 2) return;
       const span = dayNo(ds[ds.length - 1]) - dayNo(ds[0]) + 1, gaps = ds.slice(1).map((s, i) => dayNo(s) - dayNo(ds[i]) - 1);
-      const strip = { start: r.start, end: r.end, active: runs(ds) };
       if (ds.length >= 3 && gaps[0] >= CHECK.strayGap)
         add('stray', r, ds[0], `Opened on ${fd(ds[0])}, then not again for ${gaps[0]} days. The read probably starts on ${fd(ds[1])}.`, { ...strip, gap: gaps[0], suggest: ds[1] });
       if (ds.length >= 3 && gaps[gaps.length - 1] >= CHECK.strayGap)
@@ -322,7 +326,7 @@ dash.calc('anomalies', {
     const sameWork = d3.rollup(books.filter((b) => b.work_id), (v) => v.length, (b) => b.work_id);
     books.forEach((b) => {
       if (b.genre === 'Untagged') add('untagged', b, b.last_read, b.source ? `Only in your ${{ storygraph: 'StoryGraph', kobo: 'Kobo', kindle: 'Kindle', kindle_clippings: 'Kindle' }[b.source] || 'Goodreads'} data, so it has no genre. Give it one in Admin → Catalogue.` : 'Not in catalogue.json, so it has no genre, series or tidy title.');
-      if (b.status === 'unknown' && b.times_read && !b.source) add('noprog', b, b.last_read, 'Read, but Moon+ never recorded how far you got, so it never counts as finished.');
+      if (b.status === 'unknown' && b.times_read && !b.source) add('noprog', b, b.last_read, "Read, but Moon+ never recorded how far you got, and the words logged don't cover the book's page count (or it has none). If you finished it, set Finished to Yes in Admin → Catalogue.");
       if (b.work_id && sameWork.get(b.work_id) > 1) add('samework', b, b.last_read, `Shares the work id ${b.work_id} with another book. If they're editions of one book, give their catalogue.json entries the same "work_id" to merge them.`);
       if (!b.isbn13) add('noisbn', b, b.last_read, 'No ISBN yet. Add "isbn" to its catalogue.json entry so it can be matched with other sources.');
     });

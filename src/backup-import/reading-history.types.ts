@@ -21,6 +21,11 @@ export interface CatalogueEntry {
   /** ISO 3166 code ("GB") or English name ("United Kingdom"). */
   author_country?: string | null;
   author_gender?: string | null;
+  /**
+   * true when you finished the book though Moon+ didn't see it (a broken file, say): its
+   * latest read counts as finished. false stops finish-rules.ts guessing that it was.
+   */
+  finished?: boolean;
 }
 
 /** What catalogue.json says about an author, keyed by the name as books.json shows it. */
@@ -81,6 +86,12 @@ export interface ReadEntry {
   minutes: number | null;
   progress: number | null;
   finished: boolean | null;
+  /**
+   * Set when finish-rules.ts counted the read finished although its progress didn't reach
+   * 99%: by_hand (catalogue.json), near_end (only back matter left) or estimate (no progress
+   * logged, but enough words read for the book's length).
+   */
+  finished_by?: 'by_hand' | 'near_end' | 'estimate';
   /** Set when the read came from an import rather than Moon+. */
   source?: ImportSource;
 }

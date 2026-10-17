@@ -424,7 +424,7 @@
       const runs = (d.active || []).filter(([s, e]) => e >= R.start && s <= R.end);
       d3.select(this).selectAll('rect.run').data(runs).join('rect').attr('class', 'run')
         .attr('x', ([s]) => x0({ start: s })).attr('y', 2).attr('height', rh - 4).attr('rx', 1.5)
-        .attr('width', ([s, e]) => Math.max(1.5, x1({ end: e }) - x0({ start: s }))).attr('fill', gColor(d.genre)).attr('fill-opacity', d.progress >= 99 ? 1 : 0.5);
+        .attr('width', ([s, e]) => Math.max(1.5, x1({ end: e }) - x0({ start: s }))).attr('fill', gColor(d.genre)).attr('fill-opacity', d.finished ? 1 : 0.5);
     });
     g.append('text').attr('class', 'axl').attr('y', rh / 2).attr('dy', '0.35em')
       .each(function (d) {
@@ -883,6 +883,7 @@
     ['jump', 'Progress jumps', 'Big leaps with little time logged, or going backwards.'],
     ['speed', 'Implausible speed', 'Over 800 or under 40 words a minute.'],
     ['long', 'Very long sessions', 'Six hours or more on one book in a day.'],
+    ['guessed', 'Guessed finished', 'Stopped in the back matter, or no progress recorded but long enough to be the whole book.'],
     ['noprog', 'No progress recorded', 'Read, but never counts as finished.'],
     ['untagged', 'Untagged books', 'Missing from catalogue.json.'],
     ['samework', 'Same work?', 'The metadata lookup matched these to the same Open Library work.'],

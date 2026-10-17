@@ -4,7 +4,7 @@ import { basename, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Injectable } from '@nestjs/common';
 import { findFiles, mtimeMs } from '../common/files';
-import { localDateTime, round1 } from '../common/time';
+import { localDate, localDateTime, round1 } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
 import { ImportsStore } from '../imports/imports.store';
 import { mergeImports, type MergeResult } from '../imports/merge';
@@ -13,6 +13,7 @@ import { bookFacts } from '../metadata/merge';
 import { MetadataStore } from '../metadata/metadata-store.service';
 import type { MetadataFile } from '../metadata/metadata.types';
 import { readBackup } from './backup-archive';
+import { applyFinishRules } from './finish-rules';
 import { buildHighlights, type Highlight, type NoteRow, readNotes } from './highlights';
 import { buildReadingHistory } from './reading-history';
 import type {
@@ -82,6 +83,9 @@ export class BackupImportService {
         positions: parsePositions(contents.positionsXml),
         synced: await this.readSyncedPositions(),
       });
+      const metadata = await this.metadata.read();
+      // before the imports, which bring their own finished flags
+      applyFinishRules(result.books, catalogue, metadata, localDate());
       // books read elsewhere, ratings and shelves (Goodreads, StoryGraph)
       const importFiles = await this.imports.all();
       const imported = importFiles.length
@@ -124,7 +128,7 @@ export class BackupImportService {
         backup,
         result.books,
         catalogue,
-        await this.metadata.read(),
+        metadata,
         highlights,
         result.untagged.length,
         result.syncedApplied,
@@ -240,6 +244,7 @@ export class BackupImportService {
           hours: r.minutes ? round1(r.minutes / 60) : null,
           progress: r.progress,
           finished: r.finished,
+          ...(r.finished_by ? { finished_by: r.finished_by } : {}),
           ...(r.source ? { source: r.source } : {}),
         });
       }
