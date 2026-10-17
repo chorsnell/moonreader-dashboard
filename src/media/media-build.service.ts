@@ -8,10 +8,12 @@ import { logTimestamp } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
 import { LibraryService } from '../library/library.service';
 import { MediaFiles } from './media-files.service';
-import { buildMediaHistory } from './media-history';
+import { buildMediaHistory, metaKey } from './media-history';
 import type { ItemMeta, MediaEvent, MediaHistory } from './media.types';
 import { MediaMetadataService } from './metadata/media-metadata.service';
 import { netflixEvents, parseNetflix, type NetflixFile } from './sources/netflix';
+import { tautulliEvents, tautulliMeta } from './sources/tautulli';
+import { TautulliClient } from './sources/tautulli.client';
 
 /** The data files the media build writes, media_meta.json last. */
 export const MEDIA_FILES = [
@@ -50,13 +52,16 @@ export class MediaBuildService {
     private readonly files: MediaFiles,
     private readonly metadata: MediaMetadataService,
     private readonly covers: CoverStore,
+    private readonly tautulli: TautulliClient,
   ) {}
 
   /** The newest time any media input changed: uploads, the media catalogue, the settings. */
   async inputsChanged(): Promise<number> {
     const inbox = await this.netflixFiles();
     const times = await Promise.all(
-      [...inbox, this.files.catalogue, this.files.settingsFile].map(mtimeMs),
+      [...inbox, this.files.catalogue, this.files.settingsFile, this.files.tautulliCache].map(
+        mtimeMs,
+      ),
     );
     return Math.max(0, ...times);
   }
@@ -153,16 +158,29 @@ export class MediaBuildService {
       }
     }
 
+    const plex = await this.tautulli.readCache();
+    let plexMeta = new Map<string, ItemMeta>();
+    if (plex.rows.length) {
+      const ev = tautulliEvents(plex.rows);
+      events.push(...ev);
+      plexMeta = tautulliMeta(plex);
+      sources.tautulli = { rows: ev.length, pulled: plex.pulled };
+      lines.push(`Tautulli: ${ev.length} Plex plays`);
+    }
+
     const key = await this.files.tmdbKey();
-    let meta = new Map<string, ItemMeta>();
-    if (events.length) {
-      const r = await this.metadata.resolve(events, this.files.cache, key, signal);
-      meta = r.meta;
+    const meta = new Map<string, ItemMeta>();
+    // Plex knows its own titles; TMDB fills in the rest
+    const forTmdb = events.filter((e) => !plexMeta.has(metaKey(e)));
+    if (forTmdb.length) {
+      const r = await this.metadata.resolve(forTmdb, this.files.cache, key, signal);
+      for (const [k, m] of r.meta) meta.set(k, m);
       if (r.looked_up) lines.push(`Looked up ${r.looked_up} title(s) on TMDB, found ${r.found}`);
       if (r.error)
         lines.push(`Stopped TMDB lookups: ${r.error}. The rest are tried on the next build.`);
     }
 
+    for (const [k, m] of plexMeta) meta.set(k, m);
     const itemKeys = new Map<string, string>();
     const catalogue = await this.files.readCatalogue();
     const history = buildMediaHistory(events, { meta, catalogue, itemKeys });
@@ -173,9 +191,9 @@ export class MediaBuildService {
     lines.push(
       `Media: ${counts.items} seasons and films, ${counts.sessions} sittings, ${history.daily.length} watching days`,
     );
-    if (key && history.items.length) {
-      const posters = await this.fetchPosters(history, meta, itemKeys, signal);
-      if (posters) lines.push(`Saved ${posters} poster(s) from TMDB`);
+    if (history.items.length) {
+      const posters = await this.fetchPosters(history, meta, itemKeys, Boolean(key), signal);
+      if (posters) lines.push(`Saved ${posters} poster(s)`);
     }
     return { lines, counts };
   }
@@ -203,26 +221,34 @@ export class MediaBuildService {
     });
   }
 
-  /** Posters from TMDB for items without a cover, keyed by item id like book covers. */
+  /** Posters (through Tautulli, or from TMDB) for items without a cover, keyed by item id like book covers. */
   private async fetchPosters(
     history: MediaHistory,
     meta: Map<string, ItemMeta>,
     itemKeys: Map<string, string>,
+    tmdb: boolean,
     signal?: AbortSignal,
   ): Promise<number> {
     const have = await this.covers.existing();
+    const conn = await this.files.tautulli();
+    const down = new Set<string>();
     let saved = 0;
     for (const item of history.items) {
       if (have.has(item.id) || signal?.aborted) continue;
       const m = meta.get(itemKeys.get(item.id) ?? '');
       const season = item.media === 'tv' ? m?.seasons?.[String(item.series_no)]?.poster : null;
       const path = season ?? m?.poster;
-      if (!path) continue;
+      const from = m?.poster_from ?? 'tmdb';
+      if (!path || down.has(from) || (from === 'tmdb' ? !tmdb : !conn)) continue;
       try {
         if (saved) await sleep(this.config.coverPauseMs, undefined, { signal });
-        if (await this.covers.save(item.id, await this.metadata.poster(path, signal))) saved++;
+        const image =
+          from === 'tautulli'
+            ? await this.tautulli.poster(conn!, path, signal)
+            : await this.metadata.poster(path, signal);
+        if (await this.covers.save(item.id, image)) saved++;
       } catch {
-        break; // TMDB is down: the rest are tried on the next build
+        down.add(from); // can't be reached: the rest are tried on the next build
       }
     }
     return saved;

@@ -74,8 +74,9 @@ export interface ItemMeta {
   runtime?: number | null;
   collection?: { name: string; order?: number | null } | null;
   seasons?: Record<string, SeasonMeta>;
-  /** A poster path or URL the build can fetch. */
+  /** A poster path the build can fetch, from TMDB (the default) or through Tautulli. */
   poster?: string | null;
+  poster_from?: 'tmdb' | 'tautulli';
   ext?: ExternalIds;
 }
 

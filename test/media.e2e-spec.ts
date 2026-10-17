@@ -240,3 +240,125 @@ describe('Netflix import', () => {
     });
   });
 });
+
+describe('Plex through Tautulli', () => {
+  let tautulli: Server;
+  const calls: URLSearchParams[] = [];
+  /** 520 plays of one show (more than a page), then one film for user 2. */
+  const history = [
+    ...Array.from({ length: 520 }, (_, i) => ({
+      row_id: i + 1,
+      started: Date.parse('2025-01-01T12:00:00Z') / 1000 + i * 86_400,
+      play_duration: 2600,
+      percent_complete: 97,
+      watched_status: 1,
+      media_type: 'episode',
+      title: `Episode ${(i % 10) + 1}`,
+      grandparent_title: 'Night Ferry',
+      parent_media_index: Math.floor(i / 10) + 1,
+      media_index: (i % 10) + 1,
+      rating_key: 1000 + i,
+      parent_rating_key: 500 + Math.floor(i / 10),
+      grandparent_rating_key: 10,
+      user_id: 1,
+      player: 'Living Room',
+    })),
+    {
+      row_id: 600,
+      started: Date.parse('2026-01-01T20:00:00Z') / 1000,
+      play_duration: 5000,
+      percent_complete: 96,
+      watched_status: 1,
+      media_type: 'movie',
+      title: 'Metropolis',
+      year: 1927,
+      rating_key: 77,
+      user_id: 2,
+    },
+  ];
+
+  beforeAll(async () => {
+    tautulli = createServer((req, res) => {
+      const q = new URL(req.url ?? '/', 'http://x').searchParams;
+      calls.push(q);
+      const send = (response: unknown) =>
+        res.setHeader('Content-Type', 'application/json').end(JSON.stringify({ response }));
+      const ok = (data: unknown) => send({ result: 'success', message: null, data });
+      if (q.get('apikey') !== 'secret') return send({ result: 'error', message: 'Invalid apikey' });
+      switch (q.get('cmd')) {
+        case 'get_users':
+          return ok([
+            { user_id: 0, friendly_name: 'Local' },
+            { user_id: 1, friendly_name: 'Chris' },
+            { user_id: 2, friendly_name: 'Sam' },
+          ]);
+        case 'get_history': {
+          const user = q.get('user_id');
+          const rows = history.filter((r) => !user || String(r.user_id) === user);
+          const start = Number(q.get('start'));
+          const length = Number(q.get('length'));
+          return ok({ recordsFiltered: rows.length, data: rows.slice(start, start + length) });
+        }
+        case 'get_metadata':
+          return ok(
+            q.get('rating_key') === '10'
+              ? { title: 'Night Ferry', genres: ['Crime'], thumb: '/library/metadata/10/thumb' }
+              : { title: 'Metropolis', genres: ['Science Fiction'], duration: 8880000 },
+          );
+        case 'get_children_metadata':
+          return ok({ children_count: 10, children_list: [] });
+        case 'pms_image_proxy':
+          res.setHeader('Content-Type', 'image/jpeg').end(JPEG);
+          return;
+        default:
+          res.writeHead(404).end();
+      }
+    });
+    tautulli.listen(0, '127.0.0.1');
+    await new Promise((r) => tautulli.once('listening', r));
+  });
+
+  afterAll(() => new Promise((r) => tautulli.close(r)));
+
+  it('tests the connection, pulls every page for the chosen user, and builds', async () => {
+    const url = `http://127.0.0.1:${(tautulli.address() as AddressInfo).port}`;
+    const d = (dash = await TestDashboard.start({ coverPauseMs: 0 }));
+    const admin = (path: string, body: object) =>
+      request(d.server).post(`/api/admin/media/${path}`).set('X-Upload-Token', TOKEN).send(body);
+
+    const bad = await admin('tautulli/test', { url, api_key: 'wrong' }).expect(400);
+    expect(bad.body.error).toMatch(/Invalid apikey/);
+    const test = await admin('tautulli/test', { url, api_key: 'secret' }).expect(200);
+    expect(test.body.users).toEqual([
+      { user_id: '1', name: 'Chris' },
+      { user_id: '2', name: 'Sam' },
+    ]);
+    await admin('tautulli', { url: 'not a url', api_key: 'secret' }).expect(400);
+
+    await admin('tautulli', { url, api_key: 'secret', user_id: '1' }).expect(200);
+    expect(await waitFor(async () => (await items(d)).length === 52)).toBe(true);
+    const rows = await items(d);
+    expect(rows[0]).toMatchObject({
+      id: 'tv-night-ferry-s1',
+      genre: 'Crime',
+      units: 10,
+      units_total: 10,
+      status: 'finished',
+    });
+    expect(rows.some((r) => r.media === 'film')).toBe(false); // Sam's film stays out
+    const pages = calls.filter((c) => c.get('cmd') === 'get_history').map((c) => c.get('start'));
+    expect(pages).toEqual(['0', '500']);
+    expect(await waitFor(fileExists(d.path('covers', 'tv-night-ferry-s1.jpg')))).toBe(true);
+
+    // the key is never shown back
+    const status = await request(d.server).get('/api/admin/media').set('X-Upload-Token', TOKEN);
+    expect(status.body.tautulli).toMatchObject({ url, user_id: '1', has_key: true });
+    expect(JSON.stringify(status.body)).not.toContain('secret');
+
+    // a sync only asks for plays since the day before the newest one
+    calls.length = 0;
+    const sync = await admin('tautulli/sync', {}).expect(200);
+    expect(sync.body).toMatchObject({ new_rows: 0, total: 520 });
+    expect(calls.find((c) => c.get('cmd') === 'get_history')?.get('after')).toBe('2026-06-03');
+  });
+});

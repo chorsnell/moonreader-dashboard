@@ -11,6 +11,8 @@ import type { MediaCatalogue } from './media.types';
 export interface MediaSettings {
   netflix: { profiles: string[] };
   tmdb: { api_key: string };
+  /** Plex through Tautulli; user_id limits it to one Plex user (empty: everyone). */
+  tautulli: { url: string; api_key: string; user_id: string };
 }
 
 /** Where other media live in the library: uploads, caches, manual fixes and settings. */
@@ -21,6 +23,8 @@ export class MediaFiles implements OnModuleInit {
   readonly cache: string;
   readonly catalogue: string;
   readonly settingsFile: string;
+  /** Plays pulled from Tautulli so far, so a rebuild never pulls them again. */
+  readonly tautulliCache: string;
   private saving = Promise.resolve();
 
   constructor(@Inject(appConfig.KEY) private readonly config: AppConfigType) {
@@ -29,6 +33,7 @@ export class MediaFiles implements OnModuleInit {
     this.cache = join(this.root, 'cache');
     this.catalogue = join(this.root, 'catalogue.json');
     this.settingsFile = join(this.root, 'settings.json');
+    this.tautulliCache = join(this.cache, 'tautulli.json');
   }
 
   async onModuleInit(): Promise<void> {
@@ -42,8 +47,21 @@ export class MediaFiles implements OnModuleInit {
       netflix: {
         profiles: Array.isArray(profiles) ? profiles.filter((p) => typeof p === 'string') : [],
       },
-      tmdb: { api_key: typeof raw.tmdb?.api_key === 'string' ? raw.tmdb.api_key : '' },
+      tmdb: { api_key: str(raw.tmdb?.api_key) },
+      tautulli: {
+        url: str(raw.tautulli?.url),
+        api_key: str(raw.tautulli?.api_key),
+        user_id: str(raw.tautulli?.user_id),
+      },
     };
+  }
+
+  /** Tautulli's address and key: the admin's, else TAUTULLI_URL / TAUTULLI_API_KEY. Null when not set up. */
+  async tautulli(): Promise<{ url: string; api_key: string; user_id: string } | null> {
+    const t = (await this.settings()).tautulli;
+    const url = (t.url || this.config.tautulliUrl).replace(/\/+$/, '');
+    const key = t.api_key || this.config.tautulliApiKey;
+    return url && key ? { url, api_key: key, user_id: t.user_id } : null;
   }
 
   /** The TMDB key: the admin's, else TMDB_API_KEY. Empty means no lookups. */
@@ -73,6 +91,8 @@ export class MediaFiles implements OnModuleInit {
     return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   }
 }
+
+const str = (x: unknown) => (typeof x === 'string' ? x : '');
 
 export async function readJson<T>(path: string, fallback: T): Promise<T> {
   try {
