@@ -25,6 +25,8 @@ const POLL_INTERVAL = 'library-poll';
 export class RebuildService implements OnApplicationBootstrap, OnApplicationShutdown {
   private running: Promise<void> | null = null;
   private again = false;
+  /** Set by rebuildNow: build from the newest backup on the next check, changed or not. */
+  private force = false;
   private readonly stop = new AbortController();
 
   constructor(
@@ -69,8 +71,23 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     return this.running;
   }
 
+  /** Rebuilds from the newest backup now, even if nothing changed. False when there's none. */
+  async rebuildNow(): Promise<boolean> {
+    if (!(await this.library.backups()).length) return false;
+    this.force = true;
+    void this.check();
+    return true;
+  }
+
+  get busy(): boolean {
+    return this.running !== null;
+  }
+
   private async checkOnce(): Promise<void> {
-    const backup = await this.library.needsBuild();
+    const forced = this.force;
+    this.force = false;
+    const backup =
+      (forced && (await this.library.backups())[0]) || (await this.library.needsBuild());
     if (!backup) return;
     await this.waitUntilCopied(backup);
     await this.build(backup);

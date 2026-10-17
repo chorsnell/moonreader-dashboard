@@ -7,5 +7,6 @@ import { RebuildService } from './rebuild.service';
 @Module({
   imports: [LibraryModule, BackupImportModule, CoversModule],
   providers: [RebuildService],
+  exports: [RebuildService],
 })
 export class RebuildModule {}
