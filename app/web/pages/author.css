@@ -1,0 +1,11 @@
+/* author page */
+.au-covers{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--cds-gap-sm);margin-top:var(--cds-gap-sm)}
+.au-covers .cv{align-self:auto}
+.au-covers .cv[data-book]:hover{box-shadow:0 0 0 2px var(--color-fg-muted)}
+.au-more{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);align-self:center}
+.rh-list .au-meta{text-align:right;display:flex;flex-direction:column;gap:2px}
+.au-stack{flex:none;display:flex;align-self:flex-start;margin-right:calc(var(--cds-gap-sm) - var(--cds-gap-md))}
+.rh-list li .au-stack .cv{margin-right:0}
+.au-stack .cv+.cv{margin-left:-14px}
+.chart rect.rd{cursor:pointer}
+@media (max-width:520px){.au-kpis{grid-template-columns:1fr 1fr;gap:var(--cds-gap-sm)}.au-kpis .rh-kpi{padding:var(--cds-pad-sm) var(--cds-pad-md)}.au-kpis .val{font-size:20px}}

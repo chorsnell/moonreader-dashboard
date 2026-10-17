@@ -19,7 +19,7 @@ It reads the statistics Moon+ keeps inside its backups (every book, every day yo
 - **Library:** every book and every re-read, searchable and sortable.
 - **Data checks:** things in the log that look odd. These include a book opened once and then left for weeks (which stretches its dates), reads spread thinly over months, long pauses, days with three or more books, implausible speeds, very long sessions, progress jumps, and untagged books. Click a date to open that day in the diary.
 - **Book pages:** click any book, anywhere (lists, tables, the diary, chart bars and dots), for everything about it: times read, when each read started and finished, how long it took, time spent, words, speed against your average, its longest day, a day-by-day chart of minutes and progress for each read, the rest of its series (or more by the author) and every day you opened it. Each book has its own link (`#book/<id>`).
-- **Author, series, genre and subgenre pages:** click any author, series, genre or subgenre, wherever it's shown (bylines, tables, chart bars and legends, the chips on a book page), for its books, reads, time spent, speed against your average and finished reads per year, plus the other authors, series and genres it overlaps with. Each has its own link (`#author/<name>`, `#series/<name>`, `#genre/<name>`, `#subgenre/<name>`).
+- **Author, series, genre and year pages:** click an author, series, genre, subgenre or year wherever it's shown (bylines, tables, chart bars and legends, the diary, a book page) for its own page of stats, charts and books, with links between them. Each has its own link too (`#author/<name>`, `#series/<name>`, `#genre/<name>`, `#subgenre/<name>`, `#year/<year>`).
 
 Every book shows its cover, taken from the backup or looked up on Open Library (see [Book covers](#book-covers)).
 
@@ -178,7 +178,7 @@ python3 -m unittest discover -s tests -v     # builds a fake backup and tests th
 LIBRARY=./library UPLOAD_TOKEN=dev python3 app/server.py   # run without Docker on :8080
 ```
 
-Everything you can click through to (books, authors, series, genres, subgenres) is listed once, in `LINKS` at the top of `app/web/charts.js`. Show those fields with its helpers (`ref()`, `byline()`, `chip()`, or `table()`, `list()`, `hbars()` and `genreLegend()`, which use them) and they link on their own. The tests fail if one is shown as plain text or a link is made by hand.
+Everything you can click through to (books, authors, series, genres, subgenres, years) is listed once, in `LINKS` at the top of `app/web/charts.js`. Show those fields with its helpers (`ref()`, `byline()`, `chip()`, or `table()`, `list()`, `hbars()` and `genreLegend()`, which use them) and they link on their own; each kind other than a book opens the page `pages/<kind>.js` registers with `rh.register`. The tests fail if one is shown as plain text or a link is made by hand.
 
 ### The demo
 

@@ -362,15 +362,18 @@ class CoverTests(unittest.TestCase):
 
 
 class LinkTests(unittest.TestCase):
-    """Books, authors, series and genres link through the helpers in charts.js's links
-    section, so they link the same way everywhere. These catch code that goes around them."""
+    """Books, authors, series, genres and years link through the helpers in charts.js's links
+    section (pages/*.js get them from rh), so they link the same way everywhere. These catch
+    code that goes around them."""
 
     @classmethod
     def setUpClass(cls):
-        src = open(os.path.join(ROOT, 'app', 'web', 'charts.js'), encoding='utf-8').read()
+        web = os.path.join(ROOT, 'app', 'web')
+        src = open(os.path.join(web, 'charts.js'), encoding='utf-8').read()
         start = src.index('// ---------- links ----------')
         end = src.index('// ----------', start + 10)
-        cls.links, cls.rest = src[start:end], src[:start] + src[end:]
+        pages = [open(os.path.join(web, 'pages', f), encoding='utf-8').read() for f in sorted(os.listdir(os.path.join(web, 'pages'))) if f.endswith('.js')]
+        cls.links, cls.rest = src[start:end], '\n'.join([src[:start] + src[end:]] + pages)
         cls.fields = [f for f in re.findall(r"field: '(\w+)'", cls.links) if f != 'title']
 
     def test_links_are_made_only_by_the_helpers(self):
@@ -378,7 +381,7 @@ class LinkTests(unittest.TestCase):
         self.assertEqual(made, [], 'make links with link() or links() instead')
 
     def test_linkable_fields_are_not_shown_as_plain_text(self):
-        self.assertEqual(sorted(self.fields), ['author', 'genre', 'series', 'subgenre'])
+        self.assertEqual(sorted(self.fields), ['author', 'genre', 'series', 'subgenre', 'year'])
         f = '|'.join(self.fields)
         plain = [rf"\bel\([^()]*,\s*\w+\.(?:{f})\s*\)",            # el('small', null, r.author)
                  rf"textContent\s*=\s*\w+\.(?:{f})\b",              # td.textContent = r.series
