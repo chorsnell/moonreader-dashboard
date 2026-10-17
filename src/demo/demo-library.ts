@@ -2,18 +2,20 @@
  * A library folder holding the demo's made-up history, imported exactly as on the server:
  * a catalogue.json, a fake Moon+ backup and the data/*.json the import writes from it.
  */
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { BackupImportService, type ImportSummary } from '../backup-import/backup-import.service';
 import type { Catalogue } from '../backup-import/reading-history.types';
 import { CoverLookupService } from '../covers/cover-lookup.service';
 import { parseReadingExport } from '../imports/goodreads';
+import { MediaBuildService } from '../media/media-build.service';
 import { servedPrices } from '../prices/prices';
 import { writeDemoBackup } from './demo-backup';
 import { BOOKS, fileName, ISBN } from './demo-books';
 import { demoGoodreadsCsv } from './demo-goodreads';
 import { simulateHighlights } from './demo-highlights';
+import { demoMediaCatalogue, simulateNetflix } from './demo-media';
 import { demoMetadata } from './demo-metadata';
 import { demoPrices } from './demo-prices';
 import { DemoModule } from './demo.module';
@@ -72,18 +74,60 @@ export async function buildDemoLibrary(
     }),
     'utf8',
   );
-  const summary = await importInto(lib, backup, { lookUpCovers });
+  await writeDemoMedia(lib, seed, log, firstDay, days);
+  const summary = await importInto(lib, backup, { lookUpCovers, media: true });
   // what the server writes from library/prices.json
   const prices = servedPrices(demoPrices(log, firstDay, seed));
   await writeFile(join(lib, 'data', 'prices.json'), JSON.stringify(prices));
   return { log, firstDay, lastDay, summary };
 }
 
-/** Imports a backup into the library at `lib`, as a rebuild would. */
+/**
+ * TV and film, as a Netflix export of two profiles (the demo's own is "You"), with a media
+ * catalogue for genres and episode counts, and a Netflix plan with a price rise halfway.
+ */
+async function writeDemoMedia(
+  lib: string,
+  seed: number,
+  log: Map<string, DemoDay[]>,
+  firstDay: number,
+  days: number,
+): Promise<void> {
+  const readingMinutes = new Map<number, number>();
+  for (const entries of log.values()) {
+    for (const e of entries)
+      readingMinutes.set(e.day, (readingMinutes.get(e.day) ?? 0) + e.minutes);
+  }
+  const media = join(lib, 'media');
+  await mkdir(join(media, 'inbox', 'netflix'), { recursive: true });
+  await writeFile(
+    join(media, 'inbox', 'netflix', 'ViewingActivity.csv'),
+    simulateNetflix(seed, firstDay, days, readingMinutes),
+  );
+  await writeFile(join(media, 'catalogue.json'), JSON.stringify(demoMediaCatalogue(), null, 1));
+  const month = (d: number) => new Date(d * DAY_MS).toISOString().slice(0, 7);
+  const half = firstDay + Math.floor(days / 2);
+  const settings = {
+    netflix: { profiles: ['You'] },
+    subscriptions: [
+      {
+        service: 'Netflix',
+        monthly: 10.99,
+        currency: 'GBP',
+        from: month(firstDay),
+        to: month(half - 31),
+      },
+      { service: 'Netflix', monthly: 12.99, currency: 'GBP', from: month(half), to: null },
+    ],
+  };
+  await writeFile(join(media, 'settings.json'), JSON.stringify(settings, null, 2));
+}
+
+/** Imports a backup into the library at `lib`, as a rebuild would (and the media, when asked). */
 export async function importInto(
   lib: string,
   backup: string,
-  { lookUpCovers }: { lookUpCovers: boolean },
+  { lookUpCovers, media = false }: { lookUpCovers: boolean; media?: boolean },
 ): Promise<ImportSummary> {
   process.env.LIBRARY = lib; // read when the app context starts
   const app = await NestFactory.createApplicationContext(DemoModule, {
@@ -91,6 +135,7 @@ export async function importInto(
   });
   try {
     const summary = await app.get(BackupImportService).importBackup(backup);
+    if (media) summary.lines.push(...(await app.get(MediaBuildService).build()).lines);
     if (lookUpCovers) await app.get(CoverLookupService).run();
     return summary;
   } finally {

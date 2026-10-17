@@ -1,0 +1,13 @@
+/* Reading and watching together (features/watching-and-reading.js) */
+.x-line{margin:0 0 var(--cds-gap-sm);font-size:var(--cds-font-size-body);color:var(--color-fg)}
+.x-line b{font-weight:500;font-variant-numeric:tabular-nums}
+.x-chart{position:relative;width:100%}
+.x-pics{display:flex;flex:none}
+.x-pics .cv+.cv{margin-left:-10px;box-shadow:0 0 0 2px var(--color-panel)}
+.rh-list li.x-adapt .x-pics .cv{margin-right:0}
+.rh-list li.x-adapt .x-pics{margin-right:calc(var(--cds-gap-sm) - var(--cds-gap-md))}
+.x-h3{font-size:var(--cds-font-size-body);font-weight:500;margin:var(--cds-gap-md) 0 var(--cds-gap-xs)}
+.x-year .rh-kpis{margin-top:var(--cds-gap-xs)}
+@media (max-width:600px){
+  .rh-list li.x-adapt .meta{white-space:normal;text-align:right;max-width:8rem}
+}

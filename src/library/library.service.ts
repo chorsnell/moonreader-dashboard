@@ -131,8 +131,17 @@ export class LibraryService implements OnModuleInit {
     return safe;
   }
 
+  /** Whether there's anything to show: books, other media (TV, film), or both. */
   async hasData(): Promise<boolean> {
+    return (await this.hasBooks()) || (await this.hasMedia());
+  }
+
+  async hasBooks(): Promise<boolean> {
     return exists(join(this.data, 'books.json'));
+  }
+
+  async hasMedia(): Promise<boolean> {
+    return exists(join(this.data, 'media_items.json'));
   }
 
   /** data/meta.json, or {} before the first build. */

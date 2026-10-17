@@ -26,6 +26,15 @@ export interface AppConfig {
   wikidataUrl: string;
   /** Pause between Open Library lookups, to be polite. */
   coverPauseMs: number;
+  /** TMDB, for TV and film posters, genres and runtimes; the admin can also set the key on the page. */
+  tmdbApiKey: string;
+  tmdbUrl: string;
+  tmdbImageUrl: string;
+  /** Tautulli, for Plex watch history; the admin can also set these on the page. */
+  tautulliUrl: string;
+  tautulliApiKey: string;
+  /** How often to pull new plays from Tautulli, in minutes. */
+  mediaPollMinutes: number;
   /** Who should own the files in the library when the container starts as root. */
   puid: number;
   pgid: number;
@@ -70,6 +79,12 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     metadataLookup: onOff(env, 'METADATA_LOOKUP'),
     wikidataUrl: url(env, 'WIKIDATA_URL', 'https://www.wikidata.org'),
     coverPauseMs: decimal(env, 'COVER_PAUSE', 1) * 1000,
+    tmdbApiKey: (env.TMDB_API_KEY ?? '').trim(),
+    tmdbUrl: url(env, 'TMDB_URL', 'https://api.themoviedb.org/3'),
+    tmdbImageUrl: url(env, 'TMDB_IMAGE_URL', 'https://image.tmdb.org/t/p'),
+    tautulliUrl: (env.TAUTULLI_URL ?? '').trim().replace(/\/+$/, ''),
+    tautulliApiKey: (env.TAUTULLI_API_KEY ?? '').trim(),
+    mediaPollMinutes: Math.max(1, integer(env, 'MEDIA_POLL_MINUTES', 60)),
     puid: integer(env, 'PUID', 1000),
     pgid: integer(env, 'PGID', 1000),
   };
