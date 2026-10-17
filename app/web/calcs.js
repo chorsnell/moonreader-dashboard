@@ -171,12 +171,103 @@ dash.calc('speed_year', {
   },
 });
 
+// The days each read was actually opened, as runs of consecutive days [[from, to], ...].
+const DAY_MS = 864e5;
+const dayNo = (s) => Date.parse(s + 'T00:00:00Z') / DAY_MS;
+function readDays(reads, daily) {
+  const byBook = new Map();
+  daily.forEach((d) => { if (!byBook.has(d.book_id)) byBook.set(d.book_id, []); byBook.get(d.book_id).push(d); });
+  byBook.forEach((v) => v.sort((a, b) => (a.date < b.date ? -1 : 1)));
+  return new Map(reads.map((r) => [r.read_id, (byBook.get(r.book_id) || []).filter((d) => d.date >= r.start && d.date <= r.end)]));
+}
+function runs(dates) {
+  const out = [];
+  dates.forEach((s) => { const last = out[out.length - 1]; if (last && dayNo(s) - dayNo(last[1]) === 1) last[1] = s; else out.push([s, s]); });
+  return out;
+}
+
 dash.calc('timeline', {
-  inputs: ['reads'], title: 'Every read',
-  description: 'Every read with its first and last day; single-day dips into a book are left out.',
-  fn: (reads) => reads.filter((r) => r.days_read !== 1)
-    .map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, genre: r.genre, start: r.start, end: r.end, progress: r.progress, read_no: r.read_no }))
-    .sort((a, b) => (a.start < b.start ? -1 : 1)),
+  inputs: ['reads', 'daily'], title: 'Every read',
+  description: 'Every read with its first and last day and the runs of days it was actually opened; single-day dips into a book are left out.',
+  fn: (reads, daily) => {
+    const days = readDays(reads, daily);
+    return reads.filter((r) => r.days_read !== 1)
+      .map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, genre: r.genre, start: r.start, end: r.end, progress: r.progress, read_no: r.read_no,
+        days_read: r.days_read, active: runs(days.get(r.read_id).map((d) => d.date)) }))
+      .sort((a, b) => (a.start < b.start ? -1 : 1));
+  },
+});
+
+// ---------- data checks ----------
+// Things in the log that look odd and may skew the other charts. Each row is one finding;
+// `date` is the day to open in the diary. Thresholds are deliberately loose: these are
+// prompts to look, not errors.
+const CHECK = {
+  strayGap: 30,        // a first/last day this many days away from the rest of the read is a stray opening
+  pauseGap: 60,        // a gap this long in the middle of a read is a pause
+  sparseSpan: 60,      // reads spanning at least this many days...
+  sparseShare: 0.15,   // ...but opened on less than this share of them
+  busyBooks: 3,        // days with this many books opened
+  longDayMin: 360,     // a single book open this long in a day (minutes)
+  jumpPts: 40,         // progress jumping this many points in a day...
+  jumpMin: 20,         // ...with fewer minutes than this logged
+  backPts: 15,         // progress going back this many points
+};
+dash.calc('anomalies', {
+  inputs: ['reads', 'daily', 'books'], title: 'Data checks',
+  description: 'Reads with stray first or last days, long pauses or thinly spread spans; days with many books, implausible speeds or very long sessions; progress jumps; untagged books.',
+  fn: (reads, daily, books) => {
+    const fd = (s) => new Date(s + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+    const out = [], days = readDays(reads, daily);
+    const add = (check, r, date, detail, extra = {}) => out.push({ key: `${check}|${r.read_id || r.book_id || r.id}|${date || ''}`, check, book_id: r.book_id || r.id, title: r.title, author: r.author || '', genre: r.genre, date, detail, ...extra });
+    reads.forEach((r) => {
+      const ds = days.get(r.read_id).map((d) => d.date);
+      if (ds.length < 2) return;
+      const span = dayNo(ds[ds.length - 1]) - dayNo(ds[0]) + 1, gaps = ds.slice(1).map((s, i) => dayNo(s) - dayNo(ds[i]) - 1);
+      const strip = { start: r.start, end: r.end, active: runs(ds) };
+      if (ds.length >= 3 && gaps[0] >= CHECK.strayGap)
+        add('stray', r, ds[0], `Opened on ${fd(ds[0])}, then not again for ${gaps[0]} days. The read probably starts on ${fd(ds[1])}.`, { ...strip, gap: gaps[0], suggest: ds[1] });
+      if (ds.length >= 3 && gaps[gaps.length - 1] >= CHECK.strayGap)
+        add('stray', r, ds[ds.length - 1], `Last opened ${gaps[gaps.length - 1]} days after the rest, on ${fd(ds[ds.length - 1])}. The read probably ends on ${fd(ds[ds.length - 2])}.`, { ...strip, gap: gaps[gaps.length - 1], suggest: ds[ds.length - 2] });
+      const off = ds.length >= 3 ? 1 : 0, inner = gaps.slice(off, ds.length >= 3 ? -1 : undefined);
+      const pause = Math.max(0, ...inner);
+      if (pause >= CHECK.pauseGap) {
+        const i = inner.indexOf(pause) + off;
+        add('pause', r, ds[i], `A ${pause}-day break between ${fd(ds[i])} and ${fd(ds[i + 1])}, in a read of ${ds.length} days.`, { ...strip, gap: pause });
+      }
+      if (span >= CHECK.sparseSpan && ds.length / span < CHECK.sparseShare)
+        add('sparse', r, ds[0], `Opened on ${ds.length} of the ${span} days between first and last.`, { ...strip, share: ds.length / span });
+    });
+    const byDate = d3.groups(daily, (d) => d.date);
+    byDate.filter(([, v]) => new Set(v.map((d) => d.book_id)).size >= CHECK.busyBooks).forEach(([date, v]) => {
+      const top = v.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0));
+      out.push({ key: `busy|${date}`, check: 'busy', title: `${v.length} books on one day`, author: '', date,
+        detail: top.map((d) => d.title + (d.minutes ? ` (${Math.round(d.minutes)} min)` : '')).join(' · '), books: v.length });
+    });
+    daily.forEach((d) => {
+      if (d.minutes >= CHECK.longDayMin) add('long', d, d.date, `${Math.round(d.minutes / 6) / 10} hours in one day${d.words ? `, ${Math.round(d.words / d.minutes)} wpm` : ''}. Left open?`, { minutes: d.minutes });
+      else if (d.minutes >= 5 && d.words > 0 && (d.words / d.minutes > 800 || d.words / d.minutes < 40))
+        add('speed', d, d.date, `${Math.round(d.words / d.minutes)} wpm over ${Math.round(d.minutes)} min (${d.words.toLocaleString()} words). Left out of speed figures.`, { wpm: Math.round(d.words / d.minutes) });
+    });
+    // progress from one logged day to the next, per book
+    const last = new Map();
+    daily.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((d) => {
+      if (d.progress == null) return;
+      const p = last.get(d.book_id);
+      if (p != null) {
+        if (d.progress - p >= CHECK.jumpPts && (d.minutes || 0) < CHECK.jumpMin)
+          add('jump', d, d.date, `Progress went from ${Math.round(p)}% to ${Math.round(d.progress)}% with ${d.minutes ? Math.round(d.minutes) + ' min' : 'no time'} logged. Skipped ahead?`, { delta: d.progress - p });
+        else if (p - d.progress >= CHECK.backPts)
+          add('jump', d, d.date, `Progress went back from ${Math.round(p)}% to ${Math.round(d.progress)}%. Restarted, or a different copy?`, { delta: d.progress - p });
+      }
+      last.set(d.book_id, d.progress);
+    });
+    books.forEach((b) => {
+      if (b.genre === 'Untagged') add('untagged', b, b.last_read, 'Not in catalogue.json, so it has no genre, series or tidy title.');
+      if (b.status === 'unknown' && b.times_read) add('noprog', b, b.last_read, 'Read, but Moon+ never recorded how far you got, so it never counts as finished.');
+    });
+    return out.sort((a, b) => ((a.date || '') < (b.date || '') ? 1 : -1));
+  },
 });
 
 dash.calc('diary', {

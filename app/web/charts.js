@@ -274,7 +274,7 @@
     const rows = all.filter((r) => r.end >= R.start && r.start <= R.end);
     const genres = genreOrder.filter((g) => rows.some((r) => r.genre === g));
     legend($('#leg-gantt'), genres.map((g) => [gColor(g), g]));
-    $('#gantt-note').textContent = `${rangeLabel(R)}: ${fmt(rows.length)} read${rows.length === 1 ? '' : 's'}, one bar from first to last day. Colour is genre; faded bars weren't finished. ↻ marks a re-read.`;
+    $('#gantt-note').textContent = `${rangeLabel(R)}: ${fmt(rows.length)} read${rows.length === 1 ? '' : 's'}, one bar from first to last day, solid on the days the book was opened. Colour is genre; faded bars weren't finished. ↻ marks a re-read.`;
     if (!rows.length) { el.style.minHeight = '80px'; el.replaceChildren(Object.assign(document.createElement('div'), { className: 'dy-empty', textContent: 'No reads in this period.' })); return; }
     const rh = 16, m = { t: 22, r: 8, b: 4, l: 8 }, h = m.t + rows.length * rh + m.b;
     el.style.minHeight = h + 'px';
@@ -285,8 +285,15 @@
     axis(svg.append('g').attr('transform', `translate(0,${m.t - 4})`), d3.axisTop(x).ticks(Math.max(2, Math.floor(w / 90))).tickFormat(d3.utcFormat(R.days <= 120 ? '%-d %b' : '%b %y')).tickSize(-(h - m.t)));
     svg.select('.domain').remove();
     const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (d, i) => `translate(0,${m.t + i * rh})`);
+    // the whole span faintly, then the days the book was actually opened on top
     g.append('rect').attr('x', x0).attr('y', 2).attr('height', rh - 4).attr('rx', 3)
-      .attr('width', (d) => Math.max(3, x1(d) - x0(d))).attr('fill', (d) => gColor(d.genre)).attr('fill-opacity', (d) => (d.progress >= 99 ? 1 : 0.45));
+      .attr('width', (d) => Math.max(3, x1(d) - x0(d))).attr('fill', (d) => gColor(d.genre)).attr('fill-opacity', 0.16);
+    g.each(function (d) {
+      const runs = (d.active || []).filter(([s, e]) => e >= R.start && s <= R.end);
+      d3.select(this).selectAll('rect.run').data(runs).join('rect').attr('class', 'run')
+        .attr('x', ([s]) => x0({ start: s })).attr('y', 2).attr('height', rh - 4).attr('rx', 1.5)
+        .attr('width', ([s, e]) => Math.max(1.5, x1({ end: e }) - x0({ start: s }))).attr('fill', gColor(d.genre)).attr('fill-opacity', d.progress >= 99 ? 1 : 0.5);
+    });
     g.append('text').attr('class', 'axl').attr('y', rh / 2).attr('dy', '0.35em')
       .each(function (d) {
         const t = d3.select(this).text((d.read_no > 1 ? '↻ ' : '') + d.title);
@@ -294,7 +301,7 @@
         if (xe + len < w) t.attr('x', xe); else if (x0(d) - 5 - len > 0) t.attr('x', x0(d) - 5).attr('text-anchor', 'end'); else t.attr('x', x0(d) + 4).style('fill', 'var(--color-fg)');
       });
     g.append('rect').attr('width', w).attr('height', rh).attr('fill', 'transparent').attr('data-book', (d) => d.book_id)
-      .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.title, [[gColor(d.genre), d.genre, ''], [null, 'From', fDay(pDate(d.start))], [null, 'To', fDay(pDate(d.end))], [null, 'Reached', d.progress != null ? d.progress + '%' : '—']])))
+      .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.title, [[gColor(d.genre), d.genre, ''], [null, 'From', fDay(pDate(d.start))], [null, 'To', fDay(pDate(d.end))], [null, 'Opened on', `${fmt(d3.sum(d.active || [], ([a, b]) => d3.utcDay.count(pDate(a), pDate(b)) + 1))} of ${fmt(d3.utcDay.count(pDate(d.start), pDate(d.end)) + 1)} days`], [null, 'Reached', d.progress != null ? d.progress + '%' : '—']])))
       .on('mouseleave', () => hideTip(tip));
   }
 
@@ -674,6 +681,62 @@
   }
   ['#lib-q', '#lib-genre', '#lib-status', '#lib-reread'].forEach((s) => $(s).addEventListener('input', () => drawTables()));
 
+  // ---------- data checks ----------
+  const CHECKS = [
+    ['stray', 'Stray first or last day', 'Opened once, then nothing for weeks. Stretches the dates of the read.'],
+    ['sparse', 'Thinly spread reads', 'Opened on only a few of the days between first and last.'],
+    ['pause', 'Long pauses', 'A break of two months or more in the middle of a read.'],
+    ['busy', 'Many books in a day', 'Three or more books opened on the same day.'],
+    ['jump', 'Progress jumps', 'Big leaps with little time logged, or going backwards.'],
+    ['speed', 'Implausible speed', 'Over 800 or under 40 words a minute.'],
+    ['long', 'Very long sessions', 'Six hours or more on one book in a day.'],
+    ['noprog', 'No progress recorded', 'Read, but never counts as finished.'],
+    ['untagged', 'Untagged books', 'Missing from catalogue.json.'],
+  ];
+  const CK_PAGE = 50;
+  let ckLimit = CK_PAGE;
+  $('#ck-more').addEventListener('click', () => { ckLimit += 100; drawChecks(); });
+  function strip(r) {
+    const box = el('div', 'ck-strip'), lo = pDate(r.start), n = d3.utcDay.count(lo, pDate(r.end)) + 1;
+    const bg = el('span'); bg.style.background = gColor(r.genre); box.append(bg);
+    r.active.forEach(([a, b]) => {
+      const i = el('i'); i.style.background = gColor(r.genre);
+      i.style.left = (d3.utcDay.count(lo, pDate(a)) / n) * 100 + '%'; i.style.width = ((d3.utcDay.count(pDate(a), pDate(b)) + 1) / n) * 100 + '%';
+      box.append(i);
+    });
+    box.title = `${fDay(lo)} – ${fDay(pDate(r.end))}`;
+    return box;
+  }
+  function drawChecks() {
+    const list = $('#ck-list'), filt = $('#ck-filter'), more = $('#ck-more');
+    const rows = state(list, 'anomalies'); if (!rows) { filt.replaceChildren(); more.hidden = true; return; }
+    const counts = d3.rollup(rows, (v) => v.length, (r) => r.check);
+    const cur = params().check || CHECKS.find(([k]) => counts.get(k))?.[0] || 'stray';
+    filt.replaceChildren(...CHECKS.map(([k, name, help]) => {
+      const b = el('button', null, name); b.append(el('b', null, fmt(counts.get(k) || 0)));
+      b.title = help; b.setAttribute('aria-pressed', String(k === cur)); b.disabled = !counts.get(k);
+      b.addEventListener('click', () => { ckLimit = CK_PAGE; dash.setParams({ check: k }); });
+      return b;
+    }));
+    let shown = rows.filter((r) => r.check === cur);
+    if (cur === 'sparse') shown.sort((a, b) => a.share - b.share);
+    else if (cur === 'stray' || cur === 'pause') shown.sort((a, b) => b.gap - a.gap);
+    else if (cur === 'busy') shown.sort((a, b) => b.books - a.books || (a.date < b.date ? 1 : -1));
+    if (!shown.length) { list.replaceChildren(el('li', 'meta', 'Nothing to check here.')); more.hidden = true; return; }
+    list.replaceChildren(...shown.slice(0, ckLimit).map((r) => {
+      const li = linkTo(el('li'), r.book_id), a = el('div', 'ttl');
+      a.append(el('span', 'ck-title', r.title));
+      if (r.author) a.append(el('small', null, r.author));
+      a.append(el('p', null, r.detail));
+      if (r.active) a.append(strip(r));
+      const right = el('div', 'meta');
+      if (r.date) { const btn = el('button', 'ck-date', fDay(pDate(r.date))); btn.title = 'Open this day in the diary'; btn.addEventListener('click', () => openDiary(r.date)); right.append(btn); }
+      li.append(a, right); return li;
+    }));
+    more.hidden = shown.length <= ckLimit;
+    more.textContent = `Show more (${fmt(shown.length - ckLimit)} left)`;
+  }
+
   // ---------- KPIs & header ----------
   function fillMetrics(id) {
     const r = D(id);
@@ -924,6 +987,7 @@
     } else if (tab === 'genres') { drawGenre(); drawSub(); drawGenreYear(); drawAuthors(); drawTables(); }
     else if (tab === 'diary') drawDiary();
     else if (tab === 'speed') drawSpeedTab();
+    else if (tab === 'checks') drawChecks();
     else if (tab === 'timeline') {
       drawHeat(); drawGantt(); drawWeek();
       list('#big', 'big_reads', (r) => [r.title, r.author, `${r.hours} h · ${r.days_read} days`, null, r.book_id]);

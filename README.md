@@ -1,27 +1,58 @@
 # moonreader-dashboard
 
+[![test](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/test.yml/badge.svg)](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/test.yml)
+[![demo](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/pages.yml/badge.svg)](https://chorsnell.github.io/moonreader-dashboard/)
+
 A self-hosted dashboard for your [Moon+ Reader](https://www.moondownload.com/) reading history.
+
+**[Try the live demo →](https://chorsnell.github.io/moonreader-dashboard/)** It runs on a made-up reading history of public-domain classics, rebuilt every week.
+
+<a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png"><img src="docs/screenshots/overview.png" alt="The Overview tab"></picture></a>
 
 It reads the statistics Moon+ keeps inside its backups (every book, every day you read, minutes, words and progress). It keeps that history even for books whose files are long gone, and turns it into:
 
 - **Overview:** this year against last year, streaks, minutes per day, what's on the go (shown large, with time left at your current pace, when it's a single book), recently finished, books per year and hours per month.
 - **Genres & authors:** genre and subgenre mix, how it shifts over the years, top authors and series progress.
 - **Speed:** your words-per-minute over time, with the books you were reading laid over it (any date range), plus your words-per-minute for every book, showing your page turners and your slow reads, plus speed by genre, subgenre and author against your average, and by year.
-- **Timeline & habits:** a day-by-day heatmap and a "what you read when" timeline, each with its own date range (presets or custom dates), plus weekday rhythm, biggest reads and books left unfinished.
+- **Timeline & habits:** a day-by-day heatmap and a "what you read when" timeline, each with its own date range (presets or custom dates), plus weekday rhythm, biggest reads and books left unfinished. Each timeline bar is faint from first to last day and solid on the days you actually opened the book.
 - **Diary:** a day-by-day log for any period showing which books you read, minutes, words, and progress from one day to the next, with started and finished markers. Click any heatmap square to jump to that day.
 - **Library:** every book and every re-read, searchable and sortable.
+- **Data checks:** things in the log that look odd. These include a book opened once and then left for weeks (which stretches its dates), reads spread thinly over months, long pauses, days with three or more books, implausible speeds, very long sessions, progress jumps, and untagged books. Click a date to open that day in the diary.
 - **Book pages:** click any book, anywhere (lists, tables, the diary, chart bars and dots), for everything about it: times read, when each read started and finished, how long it took, time spent, words, speed against your average, its longest day, a day-by-day chart of minutes and progress for each read, the rest of its series (or more by the author) and every day you opened it. Each book has its own link (`#book/<id>`).
 
 Every book shows its cover, taken from the backup or looked up on Open Library (see [Book covers](#book-covers)).
 
 It's one small container with no dependencies beyond the Python standard library.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#genres"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/genres-dark.png"><img src="docs/screenshots/genres.png" alt="Genres & authors"></picture></a><br><b>Genres &amp; authors</b></td>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#speed"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/speed-dark.png"><img src="docs/screenshots/speed.png" alt="Speed"></picture></a><br><b>Speed</b></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#timeline"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/timeline-dark.png"><img src="docs/screenshots/timeline.png" alt="Timeline & habits"></picture></a><br><b>Timeline &amp; habits</b></td>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#diary"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/diary-dark.png"><img src="docs/screenshots/diary.png" alt="Diary"></picture></a><br><b>Diary</b></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#library"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/library-dark.png"><img src="docs/screenshots/library.png" alt="Library"></picture></a><br><b>Library</b></td>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#checks"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/checks-dark.png"><img src="docs/screenshots/checks.png" alt="Data checks"></picture></a><br><b>Data checks</b></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mobile-dark.png"><img src="docs/screenshots/mobile.png" alt="On a phone" width="240"></picture></a><br><b>On a phone</b></td>
+  </tr>
+</table>
+
+All screenshots are from the [demo](https://chorsnell.github.io/moonreader-dashboard/), not anyone's real reading.
+
 ## Run it
 
 ```sh
 git clone https://github.com/chorsnell/moonreader-dashboard.git
 cd moonreader-dashboard
-# set UPLOAD_TOKEN in docker-compose.yml first (openssl rand -hex 16)
+cp .env.example .env
+# set UPLOAD_TOKEN in .env first (openssl rand -hex 16)
 docker compose up -d --build
 ```
 
@@ -103,7 +134,7 @@ Each cover is saved as `library/covers/<book id>.jpg` (or `.png`), and an existi
 
 ## Settings
 
-All of these are optional environment variables in `docker-compose.yml`:
+All of these are optional environment variables in `docker-compose.yml`. `UPLOAD_TOKEN` is read from `.env` (copied from `.env.example`, and ignored by git) so the secret never lands in the compose file:
 
 | Variable | Default | What it does |
 |---|---|---|
@@ -124,6 +155,7 @@ The server also has three JSON endpoints: `/healthz`, which Docker uses as its h
 - **Minutes and words:** these are only logged per day from 2019 onwards. Per-book totals use the app's lifetime counters.
 - **Speed:** words divided by minutes, over days where Moon+ logged both. Days above 800 wpm (flicking through) or below 40 wpm (book left open) are skipped, and a book needs 2+ hours of timed reading to get a speed.
 - **Time of day:** Moon+ records which days you read, not what time, so the diary is per day.
+- **Data checks:** a first or last day 30+ days from the rest of a read counts as stray; a 60+ day gap mid-read is a pause; a read is thinly spread when it spans 60+ days but was opened on under 15% of them. The thresholds are in `CHECK` in `app/web/calcs.js`.
 - **Changing the rules:** the thresholds are at the top of `app/update.py`, and every chart's calculation is in `app/web/calcs.js`.
 
 ## Development
@@ -133,6 +165,17 @@ python3 -m unittest discover -s tests -v     # builds a fake backup and tests th
 LIBRARY=./library UPLOAD_TOKEN=dev python3 app/server.py   # run without Docker on :8080
 ```
 
+### The demo
+
+`demo/build_demo.py` makes up three years of reading (65 public-domain books, with series, a re-read, abandoned books, one on the go, and a few of the oddities the Data checks tab looks for), writes it as a fake Moon+ backup, and runs it through the real `update.py`. The result is a static copy of the page that works on any static host:
+
+```sh
+python3 demo/build_demo.py site              # COVER_LOOKUP=off to skip Open Library
+python3 -m http.server 8000 --directory site
+```
+
+The [`demo` workflow](.github/workflows/pages.yml) does the same on every push to `main`, and weekly, and publishes it to GitHub Pages.
+
 ```
 app/server.py        web server, rebuild watcher, uploads, WebDAV
 app/update.py        turns a .mrpro backup (plus synced positions) into data/*.json, and saves its covers
@@ -140,4 +183,5 @@ app/covers.py        looks up missing covers on Open Library
 app/web/             the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js
 app/seed/            the starting catalogue.json
 examples/traefik.yml reverse-proxy example
+demo/build_demo.py   builds the demo site from made-up data
 ```
