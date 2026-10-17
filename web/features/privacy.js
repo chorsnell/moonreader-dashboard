@@ -44,7 +44,7 @@
   }
 
   function banner(as) {
-    const who = as === 'reader' ? 'someone with the read password' : 'a public visitor';
+    const who = as === 'reader' ? 'someone with the read password' : as === 'friends' ? 'a friend you share with' : 'a public visitor';
     const stop = document.createElement('button');
     stop.type = 'button'; stop.className = 'up-link'; stop.textContent = 'Stop previewing';
     stop.addEventListener('click', async () => {

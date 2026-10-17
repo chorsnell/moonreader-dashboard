@@ -352,7 +352,11 @@ describe('signing in', () => {
     expect((await setAccess(dash, admin, 'password')).status).toBe(400); // no read password yet
     expect((await setAccess(dash, admin, 'password', TOKEN)).status).toBe(400); // must differ
     expect((await setAccess(dash, admin, 'password', 'friends')).status).toBe(200);
-    expect(await readFile(dash.path('settings.json'), 'utf8')).not.toContain('friends');
+    // only a hash of it is kept ("friends" is also a settings key)
+    expect(await readFile(dash.path('settings.json'), 'utf8')).not.toMatch(/: "friends"/);
+    expect(JSON.parse(await readFile(dash.path('settings.json'), 'utf8')).read_password).toMatch(
+      /^pbkdf2_sha256\$/,
+    );
 
     expect((await get(dash, '/api/config')).body).toEqual({
       access: 'password',

@@ -20,6 +20,7 @@ import { WEB_DIR } from '../paths';
 import { loadPageCalcs } from '../stats/page-sandbox';
 import { bundleJson, computeStats, readInputs } from '../stats/stats';
 import { withFeatures } from '../web/features';
+import { writeStaticFriends } from './demo-friends-site';
 import { buildDemoLibrary } from './demo-library';
 
 const DAY_MS = 86_400_000;
@@ -93,12 +94,13 @@ async function main(): Promise<void> {
     for (const [id, value] of Object.entries(stats.rows)) {
       await writeFile(join(out, 'api', 'stats', id), JSON.stringify(value));
     }
+    const friends = await writeStaticFriends(lib, out);
     await writeFile(join(out, '.nojekyll'), '');
     const iso = (d: number) => new Date(d * DAY_MS).toISOString().slice(0, 10);
     console.log(
       `Demo site in ${out}: ${log.size} books, ${Object.keys(coverUrls).length} covers, ` +
         `${Object.keys(stats.rows).length} calcs worked out ahead (${stats.page.length} for the page), ` +
-        `${iso(firstDay)} to ${iso(lastDay)}`,
+        `${iso(firstDay)} to ${iso(lastDay)}, friends ${friends.join(', ')}`,
     );
   } finally {
     await rm(lib, { recursive: true, force: true });
