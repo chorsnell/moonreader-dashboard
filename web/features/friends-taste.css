@@ -25,3 +25,4 @@
 .tm-tbl td .lk{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
 .tm-win{font-weight:600}
 @media (max-width:520px){.tm-cols{grid-template-columns:1fr}.tm-part{grid-template-columns:7rem 1fr 2.4rem}}
+.tm-stars{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);white-space:nowrap}
