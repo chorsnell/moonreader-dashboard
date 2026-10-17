@@ -2,7 +2,8 @@
   // Anonymous usage analytics with Mixpanel, only when the server has MIXPANEL_TOKEN set
   // (/api/config then carries `analytics`). It counts which views are opened and which
   // controls are used, never what's in them: no titles, authors, friends or dates leave the
-  // page, only tab and page kinds, card ids and control names. Do Not Track is respected.
+  // page, only tab and page kinds, card ids and control names. Mixpanel adds the visitor's
+  // rough location (city, region, country) from their address. Do Not Track is respected.
 
   // events wait in `queue` until the library loads; it's dropped when analytics is off
   let mp = null, queue = [], last = '';
@@ -18,7 +19,7 @@
     const options = {
       api_host: cfg.api_host,
       persistence: 'localStorage',
-      ip: false, // no geolocation from the visitor's address
+      ip: true, // Mixpanel turns the visitor's address into a city and country (it doesn't keep the address)
       track_pageview: false, // views are sent below, as the page's own tabs and pages
       autocapture: false,
       record_sessions_percent: 0,

@@ -291,7 +291,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `TAUTULLI_URL` / `TAUTULLI_API_KEY` | *(empty)* | Tautulli's address and API key, for Plex watch history |
 | `AUDIOBOOKSHELF_URL` / `AUDIOBOOKSHELF_TOKEN` | *(empty)* | Audiobookshelf's address and API token |
 | `MEDIA_POLL_MINUTES` | `60` | How often to pull from Tautulli and Audiobookshelf |
-| `MIXPANEL_TOKEN` | *(empty)* | A Mixpanel project token: sends anonymous page views and clicks (no titles, names or dates) to Mixpanel. Off when empty |
+| `MIXPANEL_TOKEN` | *(empty)* | A Mixpanel project token: sends page views and clicks to Mixpanel, with each visitor's rough location (city and country, from their IP address) but no titles, names or dates. Off when empty |
 | `MIXPANEL_API_HOST` | `https://api-js.mixpanel.com` | Mixpanel's address, e.g. `https://api-eu.mixpanel.com` for EU data residency |
 
 The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", `YYYY-MM-DD`) and `DEMO_SEED`; see [docs/contributing.md](docs/contributing.md).
