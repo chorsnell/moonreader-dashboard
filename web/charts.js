@@ -1317,6 +1317,8 @@
   }
   // sections of the admin page (web/features/admin.js draws them); see web/features/README.md
   const adminSections = [];
+  // slides other features add to Wrapped (web/features/wrapped.js draws them)
+  const wrappedSlides = [];
   document.addEventListener('animationend', (e) => e.target.classList?.remove('in-l', 'in-r', 'in-up'));
 
   // ---------- swipe between tabs (touch) ----------
@@ -1434,6 +1436,8 @@
     page: addPage,
     adminSection: (o) => { adminSections.push(o); window.dispatchEvent(new CustomEvent('rh:admin-section', { detail: o })); },
     adminSections: () => adminSections.slice().sort((a, b) => (a.order ?? 50) - (b.order ?? 50)),
+    wrappedSlide: (o) => { wrappedSlides.push(o); },
+    wrappedSlides: () => wrappedSlides.slice(),
     show: (name) => show(name),
     current: () => tab,
     redraw: () => redraw(),
