@@ -11,6 +11,7 @@ import { ActivityLogService } from '../library/activity-log.service';
 import { LIBRARY_CHANGED } from '../library/library.events';
 import { LibraryService } from '../library/library.service';
 import { StatusService } from '../library/status.service';
+import { MetadataLookupService } from '../metadata/metadata-lookup.service';
 
 /** How long to wait between size checks while a backup is still being copied in. */
 const SETTLE_MS = 2000;
@@ -36,6 +37,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     private readonly library: LibraryService,
     private readonly importer: BackupImportService,
     private readonly covers: CoverLookupService,
+    private readonly metadata: MetadataLookupService,
     private readonly status: StatusService,
     private readonly activity: ActivityLogService,
     private readonly scheduler: SchedulerRegistry,
@@ -45,7 +47,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     const timer = setInterval(() => void this.check(), this.config.pollSeconds * 1000);
     this.scheduler.addInterval(POLL_INTERVAL, timer);
     void this.check('startup');
-    this.covers.start('startup'); // carry on with any lookups an earlier run didn't finish
+    this.lookUp('startup'); // carry on with any lookups an earlier run didn't finish
   }
 
   async onApplicationShutdown(): Promise<void> {
@@ -72,6 +74,11 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
       } while (this.again && !this.stop.signal.aborted);
     })().finally(() => (this.running = null));
     return this.running;
+  }
+
+  /** Looks up missing covers, then missing metadata, in the background, one service at a time. */
+  private lookUp(trigger: string): void {
+    void this.covers.run(trigger).then(() => this.metadata.run(trigger));
   }
 
   /** Rebuilds from the newest backup now, even if nothing changed. False when there's none. */
@@ -140,7 +147,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
           ...(summary.imported ? { imported: summary.imported } : {}),
         },
       });
-      this.covers.start('rebuild');
+      this.lookUp('rebuild');
     } catch (e) {
       // keep the last good data, and set the bad backup aside so it isn't retried
       const why = e instanceof Error ? e.message : String(e);

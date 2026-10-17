@@ -15,6 +15,18 @@ export interface CatalogueEntry {
   isbn?: string | null;
   /** Any id shared by every edition of the book (e.g. an Open Library work id): files with the same one count as one book. */
   work_id?: string | null;
+  /** Hand-entered facts; each one wins over what the metadata lookup found. */
+  published_year?: number | null;
+  pages?: number | null;
+  /** ISO 3166 code ("GB") or English name ("United Kingdom"). */
+  author_country?: string | null;
+  author_gender?: string | null;
+}
+
+/** What catalogue.json says about an author, keyed by the name as books.json shows it. */
+export interface CatalogueAuthor {
+  country?: string | null;
+  gender?: string | null;
 }
 
 /** What the reading history knows about a book's identity. */
@@ -35,6 +47,7 @@ export interface Catalogue {
   books: Record<string, CatalogueEntry>;
   /** Lower-case file names that aren't books. */
   exclude: string[];
+  authors?: Record<string, CatalogueAuthor>;
 }
 
 /** One row of Moon+'s statistics table. */

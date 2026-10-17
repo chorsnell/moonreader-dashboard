@@ -26,6 +26,8 @@ export class LibraryService implements OnModuleInit {
   readonly dav: string;
   readonly covers: string;
   readonly catalogue: string;
+  /** What the metadata lookup found; an input to the build, like catalogue.json. */
+  readonly metadata: string;
 
   constructor(
     @Inject(appConfig.KEY) private readonly config: AppConfigType,
@@ -39,6 +41,7 @@ export class LibraryService implements OnModuleInit {
     this.dav = join(this.root, 'dav');
     this.covers = join(this.root, 'covers');
     this.catalogue = join(this.root, 'catalogue.json');
+    this.metadata = join(this.root, 'metadata.json');
   }
 
   /** Creates the folders and a starting catalogue.json on first run. */
@@ -67,7 +70,7 @@ export class LibraryService implements OnModuleInit {
     );
   }
 
-  /** The newest backup, if it, catalogue.json, an import or a synced position is newer than the data. */
+  /** The newest backup, if it, catalogue.json, metadata.json, an import or a synced position is newer than the data. */
   async needsBuild(): Promise<string | null> {
     const [newest] = await this.backups();
     if (!newest) return null;
@@ -76,6 +79,7 @@ export class LibraryService implements OnModuleInit {
     const changed = Math.max(
       await mtimeMs(newest),
       await mtimeMs(this.catalogue),
+      await mtimeMs(this.metadata),
       await this.imports.newest(),
       ...syncs,
     );

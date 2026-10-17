@@ -12,6 +12,7 @@ export const ACTIVITY_TYPES = [
   'upload',
   'import',
   'cover',
+  'metadata',
   'prune',
   'settings',
 ] as const;

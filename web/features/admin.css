@@ -49,3 +49,17 @@
   .ad-book-head:has(.ad-buttons){flex-direction:column;gap:6px}
   .ad-buttons{justify-content:flex-start}
 }
+/* Access & privacy: what visitors can see */
+.pv-roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr));gap:var(--cds-gap-md);margin-top:var(--cds-gap-sm)}
+.pv-role{border:1px solid var(--color-border-line);border-radius:8px;padding:4px var(--cds-pad-md) var(--cds-pad-md);margin:0;min-width:0}
+.pv-role legend{font-size:14px;font-weight:500;padding:0 4px}
+.pv-checks{margin-top:8px}
+.ad-page label.pv-check{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--color-fg);margin:6px 0;cursor:pointer}
+.pv-check input{margin:2px 0 0}
+.pv-private{margin-top:var(--cds-gap-md)}
+.pv-private h4{margin:0 0 4px;font-size:14px;font-weight:500}
+.pv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pv-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 4px 2px 10px;border-radius:999px;border:1px solid var(--color-border-line);background:var(--color-bg)}
+.pv-chip button{border:0;background:none;color:var(--color-fg-muted);cursor:pointer;font-size:14px;line-height:1;padding:0 4px}
+.pv-genre{font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--color-border-line);background:var(--color-panel);color:var(--color-fg-muted);cursor:pointer}
+.pv-genre[aria-pressed=true]{background:var(--color-fg);border-color:var(--color-fg);color:var(--color-bg)}

@@ -9,6 +9,9 @@ import { CoverStore } from '../covers/cover-store.service';
 import { ImportsStore } from '../imports/imports.store';
 import { mergeImports, type MergeResult } from '../imports/merge';
 import { LibraryService } from '../library/library.service';
+import { bookFacts } from '../metadata/merge';
+import { MetadataStore } from '../metadata/metadata-store.service';
+import type { MetadataFile } from '../metadata/metadata.types';
 import { readBackup } from './backup-archive';
 import { buildHighlights, type Highlight, type NoteRow, readNotes } from './highlights';
 import { buildReadingHistory } from './reading-history';
@@ -52,6 +55,7 @@ export class BackupImportService {
   constructor(
     private readonly library: LibraryService,
     private readonly covers: CoverStore,
+    private readonly metadata: MetadataStore,
     private readonly imports: ImportsStore,
   ) {}
 
@@ -96,6 +100,8 @@ export class BackupImportService {
       const counts = await this.writeData(
         backup,
         result.books,
+        catalogue,
+        await this.metadata.read(),
         highlights,
         result.untagged.length,
         result.syncedApplied,
@@ -160,6 +166,8 @@ export class BackupImportService {
   private async writeData(
     backup: string,
     books: BookHistory[],
+    catalogue: Catalogue,
+    metadata: MetadataFile,
     highlights: Highlight[],
     untagged: number,
     synced: number,
@@ -169,6 +177,7 @@ export class BackupImportService {
     const readsRows = [];
     const dailyRows = [];
     for (const b of books) {
+      const facts = bookFacts(b, catalogue, metadata);
       booksRows.push({
         id: b.id,
         title: b.title,
@@ -177,9 +186,7 @@ export class BackupImportService {
         series_no: b.series_no,
         genre: b.genre,
         subgenre: b.subgenre,
-        isbn13: b.isbn13,
-        isbn10: b.isbn10,
-        work_id: b.work_id,
+        ...facts,
         status: b.status,
         progress: b.progress,
         hours: b.source ? null : round1(b.total_minutes / 60),

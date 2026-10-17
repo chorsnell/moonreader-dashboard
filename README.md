@@ -99,6 +99,17 @@ To choose who can *read* the dashboard, sign in as the admin, open the admin pag
 
 Setting a new read password signs out everyone who used the old one. Changing `UPLOAD_TOKEN` signs out the admin.
 
+**What visitors see.** The same section chooses, separately for the public and for people with the read password, which details they get. Start from a preset (**Everything**, **Everything but exact dates** or **Taste only**), or set each one:
+
+- **Dates:** exact days, or only the week or month.
+- **Day-by-day reading:** the diary, heatmaps and timeline.
+- **What you're reading now** and when you last read.
+- **Streaks and quiet spells.**
+- **Highlights and notes.** These are hidden from the public by default.
+- **Prices and spending.**
+
+You can also mark books or whole genres as private. Visitors then see nothing of them, or see them as "A private book" with no title, author or cover. This is enforced on the server: the data files and API are filtered for each visitor, so hidden details never reach their browser. **Preview as a visitor** shows you exactly what they get. You, as the admin, always see everything.
+
 ## Sync straight from Moon+ (WebDAV)
 
 When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-domain/reading/dav/`. The admin page's **Data** section shows the exact address. Log in with any username, and use your `UPLOAD_TOKEN` as the password.
@@ -154,6 +165,21 @@ Books without a cover show a tile with their first letter. Covers appear when yo
 
 Each cover is saved as `library/covers/<book id>.jpg` (or `.png`), and an existing file is never replaced. To fix a wrong cover or add a missing one, save your own image under that name. The book id is the title in lower case with dashes, such as `project-hail-mary`. Set `COVER_LOOKUP: "off"` to never contact Open Library.
 
+## Publication years, pages and authors
+
+After the covers, the dashboard looks up each book on [Open Library](https://openlibrary.org) (by ISBN when it has one, otherwise by title and author) for the year it was first published, its page count and an ISBN, and each author on [Wikidata](https://www.wikidata.org) for their country and gender. It goes one request a second, in the background, and stores what it finds in `library/metadata.json`; saving that file rebuilds the data, so the results appear on the next reload. Books and authors it can't find are tried again after 30 days (`library/.metadata-misses.json`). Delete an entry from `metadata.json` to look it up again.
+
+The country is the author's citizenship, or, for a country that no longer exists, the country their birthplace is in today. Lookups can be wrong, and what you put in `catalogue.json` always wins. Per book:
+
+```json
+"some new book - author.epub": {
+  "title": "Some New Book", "author": "Author Name",
+  "published_year": 1965, "pages": 412, "author_country": "GB", "author_gender": "female"
+}
+```
+
+or once per author, under `"authors"` next to `"books"`: `"authors": { "Author Name": { "country": "Ireland", "gender": "male" } }`. Countries can be an ISO code (`GB`) or an English name; genders are `female`, `male`, `non-binary` or `other`. Set `METADATA_LOOKUP: "off"` to never look anything up.
+
 ## Settings
 
 All of these are optional environment variables in `docker-compose.yml`. `UPLOAD_TOKEN` is read from `.env` (copied from `.env.example`, and ignored by git) so the secret never lands in the compose file:
@@ -166,6 +192,7 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 | `POLL_SECONDS` | `30` | How often to check the inbox |
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
 | `COVER_LOOKUP` | `on` | Set to `off` to stop looking up missing covers on Open Library |
+| `METADATA_LOOKUP` | `on` | Set to `off` to stop looking up publication years, page counts and authors on Open Library and Wikidata |
 | `TZ` | UTC | Time zone for the log |
 
 The server also has three JSON endpoints: `/healthz`, which Docker uses as its health check, `/api/config`, which reports who you're signed in as and the last rebuild, and `/api/covers`, which lists the saved covers.
@@ -217,6 +244,7 @@ src/app.setup.ts            HTTP setup shared with the e2e tests (BASE_PATH, hea
 src/config/                 every setting, read and checked from environment variables
 src/library/                the library folder, update.log and the server's status
 src/access/                 sign-in, sessions, and whether the dashboard is public or needs the read password
+src/privacy/                what visitors may see, and the filter that enforces it on the data they get
 src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
   reading-history.ts        the rules: what counts as a read, finished, and so on
 src/covers/                 saves covers from the backup and looks up missing ones on Open Library
