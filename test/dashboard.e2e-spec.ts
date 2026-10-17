@@ -42,6 +42,9 @@ const upload = (d: TestDashboard, prefix = '') =>
     .type('application/octet-stream')
     .send(backup);
 
+/** A build has finished: meta.json is written after every other data file. */
+const built = (d: TestDashboard) => fileExists(d.path('data', 'meta.json'));
+
 const booksByTitle = async (d: TestDashboard) =>
   Object.fromEntries(
     (await d.json<BookRow[]>('data', 'books.json')).map((b) => [b.title, b]),
@@ -61,7 +64,7 @@ describe('rebuilding', () => {
   it('builds the data from an upload', async () => {
     dash = await TestDashboard.start();
     await upload(dash).expect(200, { ok: true });
-    expect(await waitFor(fileExists(dash.path('data', 'books.json')))).toBe(true);
+    expect(await waitFor(built(dash))).toBe(true);
     const books = await booksByTitle(dash);
     expect(books.Alpha.status).toBe('finished');
     expect(books.Beta.progress).toBe(50);
@@ -76,7 +79,7 @@ describe('covers', () => {
   it('saves the covers in the backup and serves only those', async () => {
     dash = await TestDashboard.start();
     await upload(dash);
-    expect(await waitFor(fileExists(dash.path('data', 'books.json')))).toBe(true);
+    expect(await waitFor(built(dash))).toBe(true);
     expect(await readFile(dash.path('covers', 'alpha.png'))).toEqual(PNG); // the larger image
     const covers = (await request(dash.server).get('/api/covers').expect(200)).body as Record<
       string,
@@ -244,7 +247,7 @@ describe('signing in', () => {
   it('keeps a private dashboard behind the read password', async () => {
     dash = await TestDashboard.start();
     await upload(dash);
-    expect(await waitFor(fileExists(dash.path('data', 'books.json')))).toBe(true);
+    expect(await waitFor(built(dash))).toBe(true);
     const { cookie: admin } = await signIn(dash, TOKEN);
 
     // only the admin can change it, and only with a JSON body (so other sites can't)
@@ -367,7 +370,7 @@ describe('WebDAV', () => {
       .type('application/octet-stream')
       .send(backup)
       .expect(201);
-    expect(await waitFor(fileExists(dash.path('data', 'books.json')))).toBe(true);
+    expect(await waitFor(built(dash))).toBe(true);
 
     // Moon+ syncs "<book file>.po" holding "<ms timestamp>*<chapter>@<split>#<pos>:<percent>%"
     const later = new Date(2026, 3, 2, 9, 30).getTime();
