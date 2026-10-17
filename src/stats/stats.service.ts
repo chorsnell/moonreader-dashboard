@@ -1,28 +1,31 @@
 import { createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { gzipSync } from 'node:zlib';
-import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  type OnApplicationBootstrap,
+  type OnModuleDestroy,
+} from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { AccessSettingsService } from '../access/access-settings.service';
 import { localDate } from '../common/time';
+import { appConfig, type AppConfigType } from '../config/app.config';
 import { LIBRARY_REBUILT } from '../library/library.events';
 import { LibraryService } from '../library/library.service';
 import { WEB_DIR } from '../paths';
 import { filterDataFile, VIEWER_ROLES, type ViewerRole } from '../privacy/privacy';
 import { PrivacyService, type Viewer } from '../privacy/privacy.service';
-import { loadPageCalcs, scriptsSignature, type PageCalcs } from './page-sandbox';
-import { bundleJson, computeStats, readInputs, type Inputs, type StatsResult } from './stats';
+import { scriptsSignature } from './page-sandbox';
+import type { Inputs, StatsResult } from './stats';
+import type { CalcInfo, PageInfo } from './stats-job';
+import { StatsRunner } from './stats-runner';
+
+export type { CalcInfo } from './stats-job';
 
 /** Whose numbers: the admin's (everything), or what a visitor role may see. */
 export type StatsAudience = 'admin' | ViewerRole;
-
-export interface CalcInfo {
-  id: string;
-  title: string | null;
-  description: string | null;
-  inputs: string[];
-}
 
 /** One audience's results, worked out once per data, settings and scripts version. */
 export interface StatsSet extends StatsResult {
@@ -44,25 +47,69 @@ export interface Bundle {
   etag: string;
 }
 
+/** Each calc's rows, parsed from JSON the first time they're read (most requests want a bundle). */
+export function lazyRows(json: Record<string, string>): Record<string, unknown> {
+  const rows: Record<string, unknown> = {};
+  for (const [id, text] of Object.entries(json)) {
+    Object.defineProperty(rows, id, {
+      enumerable: true,
+      configurable: true,
+      get: () => {
+        const value = JSON.parse(text) as unknown;
+        Object.defineProperty(rows, id, { value, enumerable: true, writable: false });
+        return value;
+      },
+    });
+  }
+  return rows;
+}
+
+/** The data files, each parsed from JSON the first time it's read (null: missing). */
+export function lazyInputs(json: [string, string | null][]): Inputs {
+  const texts = new Map(json);
+  const parsed = new Map<string, unknown>();
+  const inputs = new Map<string, unknown>(json.map(([id]) => [id, undefined]));
+  inputs.get = (id: string) => {
+    if (!parsed.has(id)) {
+      const text = texts.get(id);
+      parsed.set(id, text == null ? undefined : JSON.parse(text));
+    }
+    return parsed.get(id);
+  };
+  return inputs;
+}
+
+const toBuffer = (b: Uint8Array) => Buffer.from(b.buffer, b.byteOffset, b.byteLength);
+
 /**
  * The page's calcs, worked out on the server for each audience from the data that audience
  * may see, kept in memory and worked out again when the data, the privacy settings or the
- * page's scripts change. Warmed after every rebuild, so the first visitor doesn't wait.
+ * page's scripts change. Warmed after every rebuild, so the first visitor doesn't wait. The
+ * calcs themselves run in a worker thread (StatsRunner), so other requests aren't held up.
  */
 @Injectable()
-export class StatsService implements OnApplicationBootstrap {
+export class StatsService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly log = new Logger(StatsService.name);
-  private page: { signature: string; calcs: Promise<PageCalcs> } | null = null;
+  private page: { signature: string; info: Promise<PageInfo> } | null = null;
   private readonly cache = new Map<StatsAudience, { version: string; set: Promise<StatsSet> }>();
+  /** Works the calcs out in a worker thread (or on this one, with STATS_WORKER=off). */
+  readonly runner: StatsRunner;
 
   constructor(
     private readonly library: LibraryService,
     private readonly settings: AccessSettingsService,
     private readonly privacy: PrivacyService,
-  ) {}
+    @Inject(appConfig.KEY) config: AppConfigType,
+  ) {
+    this.runner = new StatsRunner({ worker: config.statsWorker });
+  }
 
   onApplicationBootstrap(): void {
     void this.warm();
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.runner.close();
   }
 
   /** Works everything out for every audience, ready for the first request. */
@@ -86,28 +133,32 @@ export class StatsService implements OnApplicationBootstrap {
   }
 
   async get(audience: StatsAudience): Promise<StatsSet> {
-    const page = await this.pageCalcs();
+    const page = await this.pageInfo();
     const version = await this.version(audience, page);
     const had = this.cache.get(audience);
     if (had?.version === version) return had.set;
-    const set = this.compute(audience, page, version);
+    const set = this.compute(audience, version);
     this.cache.set(audience, { version, set });
     set.catch(() => this.cache.get(audience)?.set === set && this.cache.delete(audience));
     return set;
   }
 
-  /** The page's scripts, loaded again when one changes. */
-  private async pageCalcs(): Promise<PageCalcs> {
+  /**
+   * The data files the page's scripts load (for the version). The runner loads the scripts,
+   * and is asked again only when one of them changes.
+   */
+  private async pageInfo(): Promise<PageInfo> {
     const signature = await scriptsSignature(WEB_DIR);
     if (this.page?.signature !== signature) {
-      const calcs = loadPageCalcs(WEB_DIR);
-      this.page = { signature, calcs };
-      calcs.catch(() => this.page?.calcs === calcs && (this.page = null));
+      const info = this.runner.describe(WEB_DIR);
+      const mine = { signature, info };
+      this.page = mine;
+      info.catch(() => this.page === mine && (this.page = null));
     }
-    return this.page.calcs;
+    return this.page.info;
   }
 
-  private async version(audience: StatsAudience, page: PageCalcs): Promise<string> {
+  private async version(audience: StatsAudience, page: PageInfo): Promise<string> {
     const names = [...page.files.map((f) => f.name), 'meta.json'];
     const files = await Promise.all(
       names.map((n) =>
@@ -125,45 +176,45 @@ export class StatsService implements OnApplicationBootstrap {
       .slice(0, 22);
   }
 
-  private async compute(
-    audience: StatsAudience,
-    page: PageCalcs,
-    version: string,
-  ): Promise<StatsSet> {
+  private async compute(audience: StatsAudience, version: string): Promise<StatsSet> {
     const { privacy } = await this.settings.load();
     const viewer: Viewer =
       audience === 'admin'
         ? { role: 'admin', preview: null, policy: null }
         : { role: audience, preview: null, policy: privacy[audience] };
     const ctx = await this.privacy.context(viewer);
-    const inputs = await readInputs(this.library.data, page.files, ctx);
-    const started = Date.now();
-    const result = computeStats(page, inputs);
     const meta = await this.library.meta();
     const shown = (ctx ? filterDataFile('meta.json', meta, ctx) : meta) as Record<string, unknown>;
     const generated = typeof shown.generated === 'string' ? shown.generated : null;
-    const bundle = (name: string, ids?: string[]): Bundle => {
-      const json = Buffer.from(bundleJson(version, generated, result.rows, ids));
-      return { json, gzip: gzipSync(json), etag: `"${version}-${name}"` };
-    };
+    const started = Date.now();
+    const r = await this.runner.run({
+      webDir: WEB_DIR,
+      dataDir: this.library.data,
+      ctx,
+      version,
+      generated,
+    });
     this.log.debug(
-      `${audience}: ${Object.keys(result.rows).length} calcs in ${Date.now() - started} ms`,
+      `${audience}: ${Object.keys(r.rows).length} calcs in ${Math.round(r.ms)} ms ` +
+        `(${Date.now() - started} ms in all${this.runner.usingWorker ? ', in the worker' : ''})`,
     );
+    const bundle = (name: 'all' | 'page'): Bundle => ({
+      json: toBuffer(r.bundles[name].json),
+      gzip: toBuffer(r.bundles[name].gzip),
+      etag: `"${version}-${name}"`,
+    });
     return {
-      ...result,
+      rows: lazyRows(r.rows),
+      client_only: r.client_only,
+      lossy: r.lossy,
+      failed: r.failed,
+      page: r.page,
       audience,
       version,
       generated,
-      inputs,
-      calcs: page.calcs
-        .filter((c, i, all) => all.findLastIndex((d) => d.id === c.id) === i)
-        .map((c) => ({
-          id: c.id,
-          title: c.title ?? null,
-          description: c.description ?? null,
-          inputs: [...c.inputs],
-        })),
-      bundles: { all: bundle('all'), page: bundle('page', result.page) },
+      inputs: lazyInputs(r.inputs),
+      calcs: r.calcs,
+      bundles: { all: bundle('all'), page: bundle('page') },
     };
   }
 }

@@ -49,6 +49,8 @@ export interface AppConfig {
   mixpanelToken: string;
   /** Mixpanel's API host, e.g. https://api-eu.mixpanel.com for EU data residency. */
   mixpanelApiHost: string;
+  /** Whether to work out the stats in a worker thread (off: on the main thread). */
+  statsWorker: boolean;
   /** Who should own the files in the library when the container starts as root. */
   puid: number;
   pgid: number;
@@ -113,6 +115,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     federationRefreshMinutes: Math.max(0, integer(env, 'FEDERATION_REFRESH_MINUTES', 60)),
     mixpanelToken: (env.MIXPANEL_TOKEN ?? '').trim(),
     mixpanelApiHost: url(env, 'MIXPANEL_API_HOST', 'https://api-js.mixpanel.com'),
+    statsWorker: onOff(env, 'STATS_WORKER'),
     puid: integer(env, 'PUID', 1000),
     pgid: integer(env, 'PGID', 1000),
   };
