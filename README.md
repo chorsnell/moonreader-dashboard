@@ -11,7 +11,7 @@ A self-hosted dashboard for your [Moon+ Reader](https://www.moondownload.com/) r
 
 It reads the statistics Moon+ keeps inside its backups (every book, every day you read, minutes, words and progress, plus your highlights, notes and bookmarks). It keeps that history even for books whose files are long gone, and turns it into:
 
-- **Overview:** this year against last year, streaks, minutes per day, what's on the go (shown large, with time left at your current pace, when it's a single book), recently finished, books per year and hours per month.
+- **Overview:** this year against last year, streaks, minutes per day, what's on the go (shown large, with time left at your current pace, when it's a single book), recently finished, a quote of the day from your highlights, books per year and hours per month.
 - **Genres & authors:** genre and subgenre mix, how it shifts over the years, top authors and series progress.
 - **Speed:** your words-per-minute over time, with the books you were reading laid over it (any date range), plus your words-per-minute for every book, showing your page turners and your slow reads, plus speed by genre, subgenre and author against your average, and by year.
 - **Timeline & habits:** a day-by-day heatmap and a "what you read when" timeline, each with its own date range (presets or custom dates), plus weekday rhythm, biggest reads and books left unfinished. Each timeline bar is faint from first to last day and solid on the days you actually opened the book.
