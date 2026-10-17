@@ -16,12 +16,21 @@ export function loadCalcs(...scripts: string[]) {
   const rh = new Proxy({}, { get: () => noop });
   const dash = {
     calc: (id: string, o: Calc) => calcs.set(id, o),
+    reuse: (id: string, from: string, inputs: string[]) =>
+      calcs.set(id, { ...calcs.get(from)!, inputs }),
     file: noop,
     data: () => ({ status: 'missing', data: [] }),
     onData: noop,
     colors: [],
   };
-  const context = createContext({ dash, rh, console, matchMedia: () => ({ matches: false }) });
+  const window = { addEventListener: noop };
+  const context = createContext({
+    dash,
+    rh,
+    window,
+    console,
+    matchMedia: () => ({ matches: false }),
+  });
   for (const s of scripts) runInContext(readFileSync(join(WEB_DIR, s), 'utf8'), context);
 
   return function run<T = Record<string, unknown>>(id: string, data: Record<string, unknown>): T[] {

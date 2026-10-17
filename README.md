@@ -193,6 +193,38 @@ The country is the author's citizenship, or, for a country that no longer exists
 
 or once per author, under `"authors"` next to `"books"`: `"authors": { "Author Name": { "country": "Ireland", "gender": "male" } }`. Countries can be an ISO code (`GB`) or an English name; genders are `female`, `male`, `non-binary` or `other`. Set `METADATA_LOOKUP: "off"` to never look anything up.
 
+## TV and film (Netflix, Plex)
+
+The dashboard can also show what you watch, from Netflix and from Plex (through Tautulli). See [docs/media-verticals.md](docs/media-verticals.md) for how it's modelled.
+
+### Netflix
+
+1. On Netflix, go to Account → Security & privacy → **Download your personal information**. A day or so later you get a zip; it holds `CONTENT_INTERACTION/ViewingActivity.csv`.
+2. Upload the zip (or just that .csv) on the admin page, under **TV & film** (or from a script: `curl -T netflix.zip -H "X-Upload-Token: $UPLOAD_TOKEN" "http://your-server/upload?source=netflix&name=netflix.zip"`).
+3. Netflix accounts are shared, so nothing is imported until you tick your profile(s) there (`POST /api/admin/media/netflix` with `{"profiles": ["Chris"]}`). An export with only one profile is imported straight away.
+
+A profile's "Viewing activity" page also has a **Download all** link that gives `NetflixViewingHistory.csv`. It works, but it only has titles and dates, so time watched is estimated; the full export is better.
+
+### Plex (through Tautulli)
+
+[Tautulli](https://tautulli.com) keeps every Plex play with how long it was watched, so it's the source the dashboard reads; it never needs your Plex token or password.
+
+1. In Tautulli, copy the API key from Settings → Web Interface.
+2. On the admin page, under **TV & film**, enter Tautulli's address (such as `http://tautulli:8181`) and the key, press **Test**, pick your Plex user and **Save**. Or set `TAUTULLI_URL` and `TAUTULLI_API_KEY`.
+3. The dashboard pulls the whole history once, then new plays every `MEDIA_POLL_MINUTES` (60); **Sync Plex now** pulls straight away. Posters come through Tautulli's image proxy.
+
+History starts when Tautulli was installed. Plex on its own only keeps a "watched" log with no time watched, so it isn't read yet.
+
+### The TV & film tab
+
+Once there's something watched, a **TV & film** tab appears: hours watched, what's on screen now, seasons you dropped mid-way, season completion per show, a binge fingerprint for every season (episodes per day from the day you started it), when in the week you watch, hours per month, how your genres drift, the films you've seen, and what each streaming subscription costs per hour actually watched (enter your subscriptions on the admin page). Each show and film has its own page (`#show/<id>`, `#film/<id>`). Without any books, the dashboard opens on this tab.
+
+Books and screen meet in a few places: the Overview gets a **Reading and watching** chart (hours of each per month); the TV & film tab asks whether big TV weeks crowd out reading, and lists **Book to screen**: films and shows of books in your library, and whether you read or watched first (a book's page shows its adaptations, too); and each year page adds what you read and watched that year.
+
+### How it's built
+
+The media build runs on its own, beside the book build, and writes `media_items.json` (a TV season or a film), `media_runs.json`, `media_daily.json`, `media_sessions.json` and `media_parts.json` (episodes) to `library/data/`. A season is treated like a book and the show like a series. With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or on the admin page) it also adds genres, creators, episode counts and posters; without one everything still works, from the titles alone. To fix a title, put it in `library/media/catalogue.json`, keyed by the lower-case show or film title: `{"copper valley": {"genre": "Drama", "episodes": {"1": 8}}, "nosferatu": {"book": "Dracula"}, "some trailer": {"exclude": true}}`. Films and shows are matched to your books by title; `book` names the book when the titles differ.
+
 ## Settings
 
 All of these are optional environment variables in `docker-compose.yml`. `UPLOAD_TOKEN` is read from `.env` (copied from `.env.example`, and ignored by git) so the secret never lands in the compose file:
@@ -206,6 +238,9 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
 | `COVER_LOOKUP` | `on` | Set to `off` to stop looking up missing covers on Open Library |
 | `METADATA_LOOKUP` | `on` | Set to `off` to stop looking up publication years, page counts and authors on Open Library and Wikidata |
+| `TMDB_API_KEY` | *(empty)* | A TMDB key (v3 key or v4 read token) for TV and film genres and posters |
+| `TAUTULLI_URL` / `TAUTULLI_API_KEY` | *(empty)* | Tautulli's address and API key, to read Plex watch history |
+| `MEDIA_POLL_MINUTES` | `60` | How often to pull new plays from Tautulli |
 | `TZ` | UTC | Time zone for the log |
 
 The server also has three JSON endpoints: `/healthz`, which Docker uses as its health check, `/api/config`, which reports who you're signed in as and the last rebuild, and `/api/covers`, which lists the saved covers.
@@ -262,6 +297,8 @@ src/privacy/                what visitors may see, and the filter that enforces 
 src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
   reading-history.ts        the rules: what counts as a read, finished, and so on
 src/covers/                 saves covers from the backup and looks up missing ones on Open Library
+src/media/                  other media (TV and film): Netflix and Tautulli imports, the media build and its watcher
+  media-history.ts          the rules: seasons, re-watches, what counts as watched
 src/rebuild/                watches for new backups, catalogue edits and syncs, and rebuilds
 src/upload/                 the admin page's backup upload
 src/admin/                  the admin page's API: data and backups, rebuild now, catalogue edits, covers
