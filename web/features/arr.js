@@ -51,6 +51,11 @@
     });
     return el('div', 'arr-act', b, msg);
   }
+  // for other views (a friend's favourites): a "Get it" button for a book not in your
+  // library, or null when there's no book manager or this isn't the admin
+  rh.arrGetButton = (book) => (on && book && book.title && book.author
+    ? requestButton('Get it', 'api/admin/arr/request', { title: book.title, author: book.author, isbn13: book.isbn13 || undefined })
+    : null);
   const lastRequest = (match) => (status?.requests || []).filter(match).pop();
   const nextOf = (series) => { const n = D('series_next'); return n.status === 'ok' ? n.data.find((r) => r.series === series) : null; };
   const no = (n) => (n != null ? `#${n}` : 'the next book');
