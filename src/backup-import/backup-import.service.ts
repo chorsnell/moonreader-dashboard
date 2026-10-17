@@ -226,6 +226,9 @@ export class BackupImportService {
         ...(b.rating ? { rating: b.rating } : {}),
         ...(b.shelves?.length ? { shelves: b.shelves } : {}),
         ...(b.source ? { source: b.source } : {}),
+        // so the book page can link straight to the book on Goodreads (an export row with no
+        // Book Id falls back to its title, which isn't one)
+        ...(/^\d+$/.test(b.imports?.goodreads ?? '') ? { goodreads_id: b.imports!.goodreads } : {}),
       });
       for (const r of b.reads) {
         readsRows.push({

@@ -19,6 +19,7 @@ interface BookRow {
   rating?: number;
   shelves?: string[];
   source?: string;
+  goodreads_id?: string;
 }
 
 interface ReadRow {
@@ -84,7 +85,9 @@ describe('imports', () => {
   it('leave the data as it was without an import', async () => {
     dash = await withData();
     const books = await dash.json<BookRow[]>('data', 'books.json');
-    expect(books.some((b) => 'rating' in b || 'source' in b || 'shelves' in b)).toBe(false);
+    expect(
+      books.some((b) => 'rating' in b || 'source' in b || 'shelves' in b || 'goodreads_id' in b),
+    ).toBe(false);
     expect(await dash.json('data', 'meta.json')).not.toHaveProperty('imports');
   });
 
@@ -106,6 +109,7 @@ describe('imports', () => {
     expect(books.find((b) => b.id === 'alpha')).toMatchObject({
       rating: 4,
       shelves: ['favourites'],
+      goodreads_id: '11',
     });
     expect(books.find((b) => b.title === 'Paper Book')).toMatchObject({
       id: 'paper-book',
@@ -114,6 +118,7 @@ describe('imports', () => {
       hours: null,
       rating: 5,
       source: 'goodreads',
+      goodreads_id: '12',
     });
     expect(books.some((b) => b.title === 'Wishlist')).toBe(false);
     const reads = await d.json<ReadRow[]>('data', 'reads.json');

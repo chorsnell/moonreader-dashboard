@@ -9,6 +9,7 @@ considered, which were built, and why some were not.
 | Open Library | covers, first-published year, pages, ISBNs | live lookup, one request a second, cached in `library/` | built (`COVER_LOOKUP`, `METADATA_LOOKUP`) |
 | Wikidata | author country and gender | live lookup, cached | built |
 | Goodreads, StoryGraph | ratings, shelves, books read elsewhere | your export file, uploaded in Admin → Imports | built (BOO-53) |
+| Goodreads | a link from each book page to the book there | the Book Id from your export, else ISBN or title (no request is made) | built (BOO-65) |
 | Kobo, Kindle | reads, days and highlights from e-readers | your files, uploaded in Admin → Imports | built (BOO-57) |
 | Your *arr book manager (Readarr API: Bookshelf…) | asking for the next book in a series or the rest of an author | your own instance, admin only | built (BOO-64) |
 | Anna's Archive | filling gaps in book metadata | — | **not built** (below) |

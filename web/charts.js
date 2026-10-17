@@ -1049,6 +1049,13 @@
     fact('Pages', b.pages ? fmt(b.pages) : null);
     fact('ISBN', b.isbn13 ? b.isbn13 + (b.isbn10 ? ` · ${b.isbn10}` : '') : null);
     info.append(facts);
+    const gr = goodreadsUrl(b);
+    if (gr) {
+      const a = el('a', 'bk-ext', 'Goodreads ↗');
+      a.href = gr; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.title = b.goodreads_id ? 'Open this book on Goodreads' : 'Find this book on Goodreads';
+      info.append(a);
+    }
     head.replaceChildren(cover(b.id, b.title, b.genre, 'lg'), info);
 
     // headline figures
@@ -1113,6 +1120,18 @@
       return tr;
     }));
     drawBookCards(b);
+  }
+
+  // the book's Goodreads page: by the id a Goodreads import gave, else by ISBN (Goodreads
+  // redirects to the book), else a search; none for a private book, which mustn't be named
+  function goodreadsUrl(b) {
+    if (/^private-\d+$/.test(b.id)) return null;
+    const GR = 'https://www.goodreads.com';
+    if (b.goodreads_id) return `${GR}/book/show/${encodeURIComponent(b.goodreads_id)}`;
+    const isbn = b.isbn13 || b.isbn10;
+    if (isbn) return `${GR}/book/isbn/${encodeURIComponent(isbn)}`;
+    const q = [b.title, b.author].filter(Boolean).join(' ');
+    return q ? `${GR}/search?q=${encodeURIComponent(q)}` : null;
   }
 
   // minutes per day as bars and progress as a line, across one read
