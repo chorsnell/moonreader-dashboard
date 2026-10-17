@@ -41,7 +41,9 @@ export function demoGoodreadsCsv(
     return raw.length === 13 ? ['', `="${raw}"`] : [`="${raw}"`, '=""'];
   };
   const rows: unknown[][] = [];
-  let id = 1000;
+  // no Book Ids: made-up ones would link the book page to whatever real book has that id,
+  // and without one it finds the book on Goodreads by ISBN or title instead
+  const id = '';
   for (const [title, author, genre, , series, seriesNo] of BOOKS) {
     const days = log.get(fileName(title, author));
     if (!days?.length || days.at(-1)!.progress < 100) continue;
@@ -57,7 +59,7 @@ export function demoGoodreadsCsv(
     // Goodreads puts the series in the title
     const shown = series ? `${title} (${series}, #${seriesNo})` : title;
     rows.push([
-      id++,
+      id,
       shown,
       author,
       ...isbn(title),
@@ -73,7 +75,7 @@ export function demoGoodreadsCsv(
   for (const [title, author, shelves, rating, at] of PAPER) {
     const end = firstDay + Math.round(days * at);
     rows.push([
-      id++,
+      id,
       title,
       author,
       '=""',
@@ -87,7 +89,7 @@ export function demoGoodreadsCsv(
     ]);
   }
   rows.push([
-    id++,
+    id,
     'Don Quixote',
     'Miguel de Cervantes',
     '=""',
@@ -100,7 +102,7 @@ export function demoGoodreadsCsv(
     0,
   ]);
   rows.push([
-    id++,
+    id,
     'Mansfield Park',
     'Jane Austen',
     '=""',

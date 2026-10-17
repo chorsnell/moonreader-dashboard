@@ -141,6 +141,7 @@ Upload a Goodreads library export (My Books → Import and export → Export lib
 - Books only the export knows count as finished on the day it gives. With no minutes or words, they count towards books, genres, authors and series, but not time, speed, streaks or heatmaps. To-read shelves are left out.
 - Ratings add views: speed against rating, ratings by genre, and whether you rate books you devoured higher.
 - **Export to Goodreads** downloads your finished books as a CSV that Goodreads' import reads.
+- Every book page links to the book on Goodreads: straight to it when a Goodreads export knows it, otherwise by ISBN or a title search. Private books get no link.
 
 ### Kobo and Kindle
 
