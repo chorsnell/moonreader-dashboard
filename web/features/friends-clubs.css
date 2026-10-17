@@ -1,0 +1,28 @@
+/* book clubs */
+.chart#ch-friends-clubs{min-height:0}
+.cl-grid{display:flex;flex-direction:column;gap:var(--cds-gap-md)}
+.cl-club{padding:var(--cds-pad-md);border-radius:8px;background:var(--color-bg);min-width:0}
+.cl-title{font-family:var(--font-anthropic-serif);font-weight:500;font-size:18px}
+.cl-title[data-link]{cursor:pointer}
+.cl-sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-top:2px}
+.cl-members{list-style:none;margin:var(--cds-gap-sm) 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:var(--cds-font-size-body)}
+.cl-members li{display:flex;align-items:center;gap:6px}
+.cl-members .sw{margin:0}
+.cl-badge{font-size:11px;padding:0 7px;border-radius:999px;border:1px solid var(--color-border-line);color:var(--color-fg-muted);white-space:nowrap}
+.cl-ok,.cl-ahead{color:var(--color-ok);border-color:currentColor}
+.cl-on{color:var(--color-fg)}
+.cl-behind{color:var(--color-warn);border-color:currentColor}
+.cl-h{margin:var(--cds-gap-md) 0 6px;font-size:var(--cds-font-size-body);font-weight:500}
+.cl-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr));gap:8px var(--cds-gap-md)}
+.cl-stats div{display:flex;flex-direction:column;gap:2px}
+.cl-stats span{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.cl-stats b{font-weight:500;font-size:var(--cds-font-size-body)}
+.cl-quotes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.cl-quotes q{font-family:var(--font-anthropic-serif);font-size:15px;display:block}
+.cl-n,.cl-none{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.cl-comments{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:var(--cds-font-size-body)}
+.cl-comments li{display:grid;grid-template-columns:3.2rem 1fr;gap:8px;align-items:baseline}
+.cl-pos{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums;text-align:right}
+.cl-hidden{color:var(--color-fg-muted);font-style:italic}
+.cl-form{display:grid;grid-template-columns:5rem 1fr auto;gap:6px;margin-top:var(--cds-gap-sm)}
+.cl-form input{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-panel);color:var(--color-fg);min-width:0}

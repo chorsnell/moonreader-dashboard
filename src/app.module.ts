@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AdminModule } from './admin/admin.module';
 import { appConfig } from './config/app.config';
+import { ClubsModule } from './clubs/clubs.module';
 import { DavModule } from './dav/dav.module';
 import { FederationModule } from './federation/federation.module';
 import { FriendsModule } from './friends/friends.module';
@@ -30,6 +31,7 @@ import { WebModule } from './web/web.module';
     DavModule,
     FriendsModule,
     FederationModule,
+    ClubsModule,
     // last: its catch-all route for the page's files must come after every other route
     WebModule,
   ],
