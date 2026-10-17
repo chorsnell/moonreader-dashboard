@@ -185,10 +185,13 @@ describe('the Catalogue section', () => {
       'The Greek Letters',
       2,
     ]);
-    const after = (await admin(dash).get('/api/admin/catalogue')).body as {
-      books: CatalogueBook[];
-    };
-    expect(after.books.find((b) => b.title === 'Beta Reborn')!.untagged).toBe(false);
+    // reading_history.json, which the list reads, is written just after books.json
+    const reborn = async () =>
+      ((await admin(d).get('/api/admin/catalogue')).body as { books: CatalogueBook[] }).books.find(
+        (b) => b.title === 'Beta Reborn',
+      );
+    expect(await waitFor(async () => (await reborn()) !== undefined)).toBe(true);
+    expect((await reborn())!.untagged).toBe(false);
   });
 
   it('hides a file that is not a book', async () => {
