@@ -161,7 +161,7 @@
     document.querySelectorAll('.rh-page').forEach((p) => (p.hidden = true));
     if (take) { take.classList.remove('dash-skeleton'); take.textContent = ''; }
     if ($('#' + id)) return;
-    $('.rh-tabs').after(h('div', { class: 'rh-card wide rh-gate', id }, ...kids));
+    $('.rh-top').after(h('div', { class: 'rh-card wide rh-gate', id }, ...kids));
   }
 
   function lockScreen() {
