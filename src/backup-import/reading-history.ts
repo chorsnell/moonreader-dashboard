@@ -1,7 +1,9 @@
 import { posix } from 'node:path';
 import { dateFromEpochDays, daysBetween, localDateTime, round1 } from '../common/time';
+import { parseIsbn } from '../metadata/isbn';
 import type {
   BookHistory,
+  BookInfo,
   BookStatus,
   CatalogueEntry,
   DayEntry,
@@ -40,7 +42,7 @@ interface Sync {
 }
 
 interface WorkingBook {
-  info: Required<CatalogueEntry>;
+  info: BookInfo;
   files: Set<string>;
   days: Map<string, DayEntry>;
   ms: number;
@@ -58,6 +60,12 @@ export function titleFromFileName(fileName: string): string {
     .replace(/\((BookSee|Booksee)\.(org|Org)\)/g, '')
     .replace(/_/g, ' ')
     .trim();
+}
+
+/** A catalogue entry's ISBN, from isbn13, isbn10 or isbn, whichever is valid first. */
+function entryIsbns(entry: CatalogueEntry | undefined) {
+  if (!entry) return null;
+  return parseIsbn(entry.isbn13) ?? parseIsbn(entry.isbn10) ?? parseIsbn(entry.isbn);
 }
 
 /** Like Python's str.title(): capitalise the first letter of every word. */
@@ -106,10 +114,16 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
   const books = new Map<string, WorkingBook>();
   const byFile = new Map<string, WorkingBook>();
 
-  const identify = (path: string): Required<CatalogueEntry> | null => {
+  const identify = (path: string): BookInfo | null => {
     const base = basename(path).toLowerCase();
     if (!path || exclude.has(base)) return null;
     const entry = known[base];
+    const isbn = entryIsbns(entry) ?? parseIsbn(input.isbns?.get(path.toLowerCase()));
+    const ids = {
+      isbn13: isbn?.isbn13 ?? null,
+      isbn10: isbn?.isbn10 ?? null,
+      work_id: entry?.work_id ? String(entry.work_id).trim() || null : null,
+    };
     if (entry) {
       return {
         title: entry.title ?? '',
@@ -118,6 +132,7 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
         series_no: entry.series_no ?? null,
         genre: entry.genre ?? 'Untagged',
         subgenre: entry.subgenre ?? 'Untagged',
+        ...ids,
       };
     }
     let [title, author] = input.bookMeta.get(path.toLowerCase()) ?? ['', ''];
@@ -133,18 +148,27 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
       series_no: null,
       genre: 'Untagged',
       subgenre: 'Untagged',
+      ...ids,
     };
   };
 
+  // copies of a book are one book when they share a title and author, a work id or an ISBN
   const bookFor = (path: string): WorkingBook | null => {
     const info = identify(path);
     if (!info) return null;
-    const key = `${info.title}|${info.author}`.toLowerCase();
-    let book = books.get(key);
+    const keys = [`${info.title}|${info.author}`.toLowerCase()];
+    if (info.work_id) keys.push(`work:${info.work_id.toLowerCase()}`);
+    if (info.isbn13) keys.push(`isbn:${info.isbn13}`);
+    let book = keys.map((k) => books.get(k)).find(Boolean);
     if (!book) {
       book = { info, files: new Set(), days: new Map(), ms: 0, words: 0, finals: [] };
-      books.set(key, book);
+    } else {
+      // an edition may know what the first copy didn't
+      book.info.isbn13 ??= info.isbn13;
+      book.info.isbn10 ??= info.isbn10;
+      book.info.work_id ??= info.work_id;
     }
+    for (const k of keys) if (!books.has(k)) books.set(k, book);
     book.files.add(basename(path));
     byFile.set(basename(path).toLowerCase(), book);
     return book;
@@ -198,7 +222,7 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
   );
 
   const out: BookHistory[] = [];
-  for (const b of books.values()) {
+  for (const b of new Set(books.values())) {
     const history = toHistory(b);
     if (history) out.push(history);
   }
@@ -331,6 +355,9 @@ function toHistory(b: WorkingBook): BookHistory | null {
     series_no: info.series_no,
     genre: info.genre,
     subgenre: info.subgenre,
+    isbn13: info.isbn13,
+    isbn10: info.isbn10,
+    work_id: info.work_id,
     status,
     progress: final,
     total_minutes: round1(b.ms / 60000),

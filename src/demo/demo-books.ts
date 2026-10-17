@@ -205,6 +205,34 @@ export const BOOKS: DemoBook[] = [
   ],
 ];
 
+/** ISBNs of well-known paperback editions, as if typed into catalogue.json; the rest have none. */
+export const ISBN: Record<string, string> = {
+  'Pride and Prejudice': '978-0-14-143951-8',
+  Emma: '978-0-14-143958-7',
+  Persuasion: '978-0-14-143968-6',
+  'Sense and Sensibility': '978-0-14-143966-2',
+  'Jane Eyre': '978-0-14-144114-6',
+  'Wuthering Heights': '978-0-14-143955-6',
+  'Great Expectations': '978-0-14-143956-3',
+  'A Tale of Two Cities': '978-0-14-143960-0',
+  Middlemarch: '978-0-14-143954-9',
+  Frankenstein: '978-0-14-143947-1',
+  Dracula: '978-0-14-143984-6',
+  'The Picture of Dorian Gray': '978-0-14-143957-0',
+  'Moby-Dick': '978-0-14-243724-7',
+  'The Moonstone': '978-0-14-043408-8',
+  'The Woman in White': '978-0-14-143961-7',
+  'Anna Karenina': '978-0-14-303500-8',
+  'Crime and Punishment': '978-0-14-310763-7',
+  'The Great Gatsby': '978-0-7432-7356-5',
+  'Little Women': '0-14-039069-3',
+  'The Count of Monte Cristo': '978-0-14-044926-6',
+  'The Three Musketeers': '978-0-14-044025-6',
+  'Treasure Island': '978-0-14-132100-4',
+  Meditations: '978-0-14-044933-4',
+  'On the Origin of Species': '978-0-14-043912-0',
+};
+
 /** Typical reading speed (wpm) by genre; each book and each day varies around it. */
 export const SPEED: Record<string, number> = {
   'Science Fiction': 270,

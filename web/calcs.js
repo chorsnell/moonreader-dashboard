@@ -272,7 +272,7 @@ const CHECK = {
 };
 dash.calc('anomalies', {
   inputs: ['reads', 'daily', 'books'], title: 'Data checks',
-  description: 'Reads with stray first or last days, long pauses or thinly spread spans; days with many books, implausible speeds or very long sessions; progress jumps; untagged books.',
+  description: 'Reads with stray first or last days, long pauses or thinly spread spans; days with many books, implausible speeds or very long sessions; progress jumps; untagged books; books without an ISBN.',
   fn: (reads, daily, books) => {
     const fd = (s) => new Date(s + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
     const out = [], days = readDays(reads, daily);
@@ -322,6 +322,7 @@ dash.calc('anomalies', {
     books.forEach((b) => {
       if (b.genre === 'Untagged') add('untagged', b, b.last_read, 'Not in catalogue.json, so it has no genre, series or tidy title.');
       if (b.status === 'unknown' && b.times_read) add('noprog', b, b.last_read, 'Read, but Moon+ never recorded how far you got, so it never counts as finished.');
+      if (!b.isbn13) add('noisbn', b, b.last_read, 'No ISBN yet. Add "isbn" to its catalogue.json entry so it can be matched with other sources.');
     });
     return out.sort((a, b) => ((a.date || '') < (b.date || '') ? 1 : -1));
   },
