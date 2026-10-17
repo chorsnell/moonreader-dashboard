@@ -16,7 +16,14 @@ let backup: Buffer;
 let dash: TestDashboard;
 let admin: string;
 
-const DATA = ['books.json', 'reads.json', 'daily.json', 'highlights.json', 'meta.json'];
+const DATA = [
+  'books.json',
+  'reads.json',
+  'daily.json',
+  'highlights.json',
+  'prices.json',
+  'meta.json',
+];
 
 beforeAll(async () => {
   tmp = await mkdtemp(join(tmpdir(), 'e2e-privacy-'));
@@ -220,6 +227,42 @@ describe('private books', () => {
     await setPrivacy({ public: everything, private_genres: ['untagged'] }).expect(200);
     expect(await json('/data/books.json')).toEqual([]); // every fake book is untagged
     expect(await json('/data/reads.json')).toEqual([]);
+  });
+});
+
+describe('prices', () => {
+  it('leave out or anonymise private books when money is shown', async () => {
+    const put = (id: string, body: object) =>
+      request(dash.server).put(`/api/admin/prices/books/${id}`).set('Cookie', admin).send(body);
+    await put('alpha', {
+      title: 'Alpha',
+      author: 'Ann Author',
+      price: 4.5,
+      currency: 'GBP',
+      store: 'Alpha Shop',
+    }).expect(200);
+    await put('beta', { title: 'Beta', author: 'Bob Writer', price: 3, currency: 'GBP' }).expect(
+      200,
+    );
+    const books = async (cookie = '') =>
+      ((await json('/data/prices.json', cookie)) as { books: Record<string, unknown>[] }).books;
+    expect((await books(admin)).map((b) => b.title).sort()).toEqual(['Alpha', 'Beta']);
+
+    await setPrivacy({ public: everything, private_books: ['alpha'] }).expect(200);
+    expect((await books()).map((b) => b.book_id)).toEqual(['beta']);
+    expect(await everythingServed()).not.toMatch(/Alpha|Ann Author|Alpha Shop/);
+
+    await setPrivacy({
+      public: everything,
+      private_books: ['alpha'],
+      private_mode: 'anonymise',
+    }).expect(200);
+    const anon = (await books()).find((b) => b.title === 'A private book')!;
+    expect(anon).toMatchObject({ book_id: 'private-1', author: '', price: 4.5, store: null });
+    expect(await everythingServed()).not.toMatch(/Alpha|Ann Author|Alpha Shop/);
+
+    await setPrivacy({ public: { ...everything, money: false } }).expect(200);
+    expect(await json('/data/prices.json')).toEqual([]);
   });
 });
 

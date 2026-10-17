@@ -7,7 +7,8 @@
  * It writes a fake Moon+ backup, turns it into data/*.json, looks up covers on Open Library
  * (skipped with COVER_LOOKUP=off), and adds static stand-ins for /api/config and /api/covers
  * so the page works on any static host, such as GitHub Pages. The history always ends
- * yesterday, so "this year" is never empty. DEMO_SEED picks another made-up history.
+ * yesterday, so "this year" is never empty. DEMO_SEED picks another made-up history, and
+ * DEMO_TODAY=YYYY-MM-DD builds it as if run on that day (for repeatable screenshots).
  */
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -20,7 +21,9 @@ import type { Catalogue } from '../backup-import/reading-history.types';
 import { CoverLookupService } from '../covers/cover-lookup.service';
 import { WEB_DIR } from '../paths';
 import { withFeatures } from '../web/features';
+import { servedPrices } from '../prices/prices';
 import { writeDemoBackup } from './demo-backup';
+import { demoPrices } from './demo-prices';
 import { simulateHighlights } from './demo-highlights';
 import { DemoModule } from './demo.module';
 import { BOOKS, CURRENT, fileName, ISBN } from './demo-books';
@@ -36,7 +39,11 @@ async function main(): Promise<void> {
   const seed = Number(process.env.DEMO_SEED ?? 7);
   const { log, days } = simulate(new Random(seed));
   const highlights = simulateHighlights(log, seed);
-  const yesterday = Date.parse(localDate()) / DAY_MS - 1;
+  const today = process.env.DEMO_TODAY || localDate();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today) || Number.isNaN(Date.parse(today))) {
+    throw new Error(`DEMO_TODAY must be a date as YYYY-MM-DD, not ${today}`);
+  }
+  const yesterday = Date.parse(today) / DAY_MS - 1;
   let firstDay = yesterday - days + 1;
   firstDay -= firstDay % 7; // keep simulated weekends on real weekends (day 0 is a Thursday)
   const lastDay = firstDay + days - 1;
@@ -80,6 +87,9 @@ async function main(): Promise<void> {
     const page = await readFile(join(out, 'index.html'), 'utf8');
     await writeFile(join(out, 'index.html'), await withFeatures(page, WEB_DIR));
     await cp(join(lib, 'data'), join(out, 'data'), { recursive: true });
+    // what the server writes from library/prices.json
+    const prices = servedPrices(demoPrices(log, firstDay, seed));
+    await writeFile(join(out, 'data', 'prices.json'), JSON.stringify(prices));
     await mkdir(join(out, 'covers'), { recursive: true });
     const coverUrls: Record<string, string> = {};
     for (const f of (await readdir(covers)).sort()) {
