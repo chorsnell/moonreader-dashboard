@@ -134,6 +134,12 @@ Moon+ doesn't store genres, so they come from `catalogue.json`, keyed by the low
 
 You can also paste the untagged list into Claude and ask for the entries. To hide something that isn't a book, add its lower-case file name to `"exclude"`.
 
+### ISBNs and editions
+
+Give a book an ISBN with `"isbn": "978-0-14-143951-8"` (ISBN-13 or ISBN-10, with or without hyphens; the other form is worked out, and invalid ones are ignored). It shows on the book's page, and **Data checks** lists books without one. Moon+ backups don't usually hold ISBNs, though one is read from Moon+'s books table if a version of the app keeps it there.
+
+Copies of a book count as one book when they share a title and author, an ISBN, or a `"work_id"`: any id you give every edition of the same work (paperback, ebook, a translation), such as its Open Library work id (`"OL66562W"`).
+
 ## Book covers
 
 Moon+ only keeps covers for the books that are still on your device, so a backup usually has covers for a fraction of your history. On each rebuild the dashboard:
