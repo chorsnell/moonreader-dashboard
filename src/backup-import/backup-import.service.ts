@@ -6,6 +6,8 @@ import { Injectable } from '@nestjs/common';
 import { findFiles, mtimeMs } from '../common/files';
 import { localDateTime, round1 } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
+import { ImportsStore } from '../imports/imports.store';
+import { mergeImports, type MergeResult } from '../imports/merge';
 import { LibraryService } from '../library/library.service';
 import { bookFacts } from '../metadata/merge';
 import { MetadataStore } from '../metadata/metadata-store.service';
@@ -30,6 +32,8 @@ export interface ImportSummary {
   /** "<file>  ->  <title>" for every file not in catalogue.json. */
   untagged: string[];
   highlights: number;
+  /** What the Goodreads/StoryGraph imports added, when there are any. */
+  imported: (MergeResult & { sources: string[] }) | null;
   lines: string[];
 }
 
@@ -52,16 +56,24 @@ export class BackupImportService {
     private readonly library: LibraryService,
     private readonly covers: CoverStore,
     private readonly metadata: MetadataStore,
+    private readonly imports: ImportsStore,
   ) {}
 
-  async importBackup(backup: string): Promise<ImportSummary> {
+  /** Builds from a backup, or from the imports alone (Kobo, Kindle…) when backup is null. */
+  async importBackup(backup: string | null): Promise<ImportSummary> {
     const started = new Date();
     const catalogue = JSON.parse(await readFile(this.library.catalogue, 'utf8')) as Catalogue;
     const tmp = await mkdtemp(join(tmpdir(), 'moonreader-'));
     try {
-      const contents = await readBackup(backup, tmp);
-      if (!contents.databasePath) throw new Error('This backup has no mrbooks.db database.');
-      const { bookMeta, isbns, statistics, notes } = readDatabase(contents.databasePath);
+      const contents = backup
+        ? await readBackup(backup, tmp)
+        : { databasePath: null, positionsXml: null, covers: new Map<string, Buffer>() };
+      if (backup && !contents.databasePath) {
+        throw new Error('This backup has no mrbooks.db database.');
+      }
+      const { bookMeta, isbns, statistics, notes } = contents.databasePath
+        ? readDatabase(contents.databasePath)
+        : { bookMeta: new Map(), isbns: new Map(), statistics: [], notes: [] };
       const result = buildReadingHistory({
         catalogue,
         bookMeta,
@@ -70,8 +82,32 @@ export class BackupImportService {
         positions: parsePositions(contents.positionsXml),
         synced: await this.readSyncedPositions(),
       });
+      // books read elsewhere, ratings and shelves (Goodreads, StoryGraph)
+      const importFiles = await this.imports.all();
+      const imported = importFiles.length
+        ? {
+            ...mergeImports(result.books, importFiles, catalogue),
+            sources: importFiles.map((f) => f.source),
+          }
+        : null;
 
       const { highlights } = buildHighlights(result.books, notes);
+      // highlights from Kobo and Kindle, numbered after Moon+'s
+      let nextId = highlights.reduce((m, h) => Math.max(m, h.id), 0);
+      for (const h of imported?.highlights ?? []) {
+        highlights.push({
+          id: ++nextId,
+          book_id: h.book_id,
+          date: h.time ? h.time.slice(0, 10) : null,
+          time: h.time,
+          progress: h.progress,
+          chapter: h.chapter,
+          text: h.text,
+          note: h.note,
+          colour: null,
+          kind: h.kind,
+        });
+      }
 
       let newCovers = 0;
       for (const book of result.books) {
@@ -92,6 +128,7 @@ export class BackupImportService {
         highlights,
         result.untagged.length,
         result.syncedApplied,
+        importFiles.map((f) => ({ source: f.source, file: f.file, imported: f.imported })),
       );
       // The watcher rebuilds when an input is newer than meta.json. Date it to when this
       // build started reading its inputs, so a position synced (or a catalogue saved) while
@@ -99,11 +136,18 @@ export class BackupImportService {
       const builtFrom = new Date(started.getTime() - MTIME_MARGIN_MS);
       await utimes(join(this.library.data, 'meta.json'), builtFrom, builtFrom);
       const lines = [
-        `${basename(backup)}: ${counts.books} books, ${counts.reads} reads, ${counts.readingDays} reading days` +
+        `${backup ? basename(backup) : 'Imports only (no Moon+ backup)'}: ${counts.books} books, ${counts.reads} reads, ${counts.readingDays} reading days` +
           (counts.highlights ? `, ${counts.highlights} highlights and notes` : '') +
           (result.syncedApplied ? `, ${result.syncedApplied} synced position(s) applied` : '') +
           (newCovers ? `, ${newCovers} new cover(s) from the backup` : ''),
       ];
+      if (imported) {
+        lines.push(
+          `Imports (${imported.sources.join(', ')}): ${imported.matched} matched, ${imported.added} added` +
+            (imported.highlights.length ? `, ${imported.highlights.length} highlights` : '') +
+            (imported.skipped ? `, ${imported.skipped} to-read or excluded left out` : ''),
+        );
+      }
       if (result.unreadableSyncs.length) {
         lines.push(
           `${result.unreadableSyncs.length} synced .po file(s) not understood (please report):`,
@@ -121,6 +165,7 @@ export class BackupImportService {
         syncedApplied: result.syncedApplied,
         newCovers,
         untagged: result.untagged,
+        imported,
         lines,
       };
     } finally {
@@ -143,13 +188,14 @@ export class BackupImportService {
   }
 
   private async writeData(
-    backup: string,
+    backup: string | null,
     books: BookHistory[],
     catalogue: Catalogue,
     metadata: MetadataFile,
     highlights: Highlight[],
     untagged: number,
     synced: number,
+    imports: { source: string; file: string; imported: string }[] = [],
   ): Promise<Pick<ImportSummary, 'books' | 'reads' | 'readingDays' | 'highlights'>> {
     const booksRows = [];
     const readsRows = [];
@@ -167,11 +213,15 @@ export class BackupImportService {
         ...facts,
         status: b.status,
         progress: b.progress,
-        hours: round1(b.total_minutes / 60),
+        hours: b.source && !b.total_minutes ? null : round1(b.total_minutes / 60),
         words: b.total_words,
         times_read: b.times_read,
         first_read: b.first_read,
         last_read: b.last_read,
+        // only with an import, so the files stay as they were without one
+        ...(b.rating ? { rating: b.rating } : {}),
+        ...(b.shelves?.length ? { shelves: b.shelves } : {}),
+        ...(b.source ? { source: b.source } : {}),
       });
       for (const r of b.reads) {
         readsRows.push({
@@ -190,6 +240,7 @@ export class BackupImportService {
           hours: r.minutes ? round1(r.minutes / 60) : null,
           progress: r.progress,
           finished: r.finished,
+          ...(r.source ? { source: r.source } : {}),
         });
       }
       for (const d of b.daily) {
@@ -209,7 +260,7 @@ export class BackupImportService {
     dailyRows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
     const generated = localDateTime();
-    const backupFile = basename(backup);
+    const backupFile = backup ? basename(backup) : null;
     await mkdir(this.library.data, { recursive: true });
     await this.dump('books.json', booksRows);
     await this.dump('reads.json', readsRows);
@@ -231,6 +282,7 @@ export class BackupImportService {
       generated,
       untagged,
       synced_positions: synced,
+      ...(imports.length ? { imports } : {}),
     });
     return {
       books: books.length,

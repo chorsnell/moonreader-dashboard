@@ -148,6 +148,14 @@ describe('filterDataFile', () => {
     expect(filterDataFile('books.json', books, ctx)).toEqual(books);
   });
 
+  it('leaves ratings and shelves out when ratings are hidden', () => {
+    const rated = [{ id: 'emma', title: 'Emma', rating: 4, shelves: ['favourites'] }];
+    expect(filterDataFile('books.json', rated, ctxFor(PRESETS.taste))).toMatchObject(rated);
+    expect(
+      filterDataFile('books.json', rated, ctxFor({ ...PRESETS.everything, ratings: false })),
+    ).toEqual([{ id: 'emma', title: 'Emma' }]);
+  });
+
   it('coarsens every date and drops times of day', () => {
     const ctx = ctxFor({ ...PRESETS.everything, dates: 'month' });
     const b = filterDataFile('books.json', books, ctx) as typeof books;
