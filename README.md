@@ -13,7 +13,7 @@ It reads the statistics Moon+ keeps inside its backups (every book, every day yo
 
 Every book shows its cover, taken from the backup or looked up on Open Library (see [Book covers](#book-covers)).
 
-It's one small container with no dependencies beyond the Python standard library.
+It's one small container: a [NestJS](https://nestjs.com) app on Node.js 24, reading the backup's SQLite database with Node's built-in `node:sqlite`.
 
 ## Run it
 
@@ -123,20 +123,38 @@ The server also has three JSON endpoints: `/healthz`, which Docker uses as its h
 - **Minutes and words:** these are only logged per day from 2019 onwards. Per-book totals use the app's lifetime counters.
 - **Speed:** words divided by minutes, over days where Moon+ logged both. Days above 800 wpm (flicking through) or below 40 wpm (book left open) are skipped, and a book needs 2+ hours of timed reading to get a speed.
 - **Time of day:** Moon+ records which days you read, not what time, so the diary is per day.
-- **Changing the rules:** the thresholds are at the top of `app/update.py`, and every chart's calculation is in `app/web/calcs.js`.
+- **Changing the rules:** the thresholds are at the top of `src/backup-import/reading-history.ts`, and every chart's calculation is in `web/calcs.js`.
 
 ## Development
 
+Needs Node.js 24 (or 22.13+).
+
 ```sh
-python3 -m unittest discover -s tests -v     # builds a fake backup and tests the real server
-LIBRARY=./library UPLOAD_TOKEN=dev python3 app/server.py   # run without Docker on :8080
+npm install
+npm test                 # unit tests: the reading rules and the PNG shrinker
+npm run test:e2e         # builds a fake backup and tests the real app: uploads, rebuilds, covers, WebDAV
+npm run lint             # oxlint
+LIBRARY=./library UPLOAD_TOKEN=dev npm run start:dev   # run without Docker on :8080, restarting on changes
 ```
 
+The server is a NestJS app with one module per job:
+
 ```
-app/server.py        web server, rebuild watcher, uploads, WebDAV
-app/update.py        turns a .mrpro backup (plus synced positions) into data/*.json, and saves its covers
-app/covers.py        looks up missing covers on Open Library
-app/web/             the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js
-app/seed/            the starting catalogue.json
-examples/traefik.yml reverse-proxy example
+src/main.ts                 starts the app (drops root privileges first, in Docker)
+src/app.module.ts           wires the modules together
+src/app.setup.ts            HTTP setup shared with the e2e tests (BASE_PATH, headers)
+src/config/                 every setting, read and checked from environment variables
+src/library/                the library folder, update.log and the server's status
+src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
+  reading-history.ts        the rules: what counts as a read, finished, and so on
+src/covers/                 saves covers from the backup and looks up missing ones on Open Library
+src/rebuild/                watches for new backups, catalogue edits and syncs, and rebuilds
+src/upload/                 the Update data button's upload
+src/dav/                    the WebDAV server Moon+ syncs to
+src/status/                 /healthz, /api/config and /api/covers
+src/web/                    serves the page, its data and the covers
+web/                        the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js
+seed/                       the starting catalogue.json
+test/                       end-to-end tests
+examples/traefik.yml        reverse-proxy example
 ```

@@ -1,16 +1,27 @@
-FROM python:3.12-alpine
-
-# no dependencies beyond the Python standard library
+# ---- build: compile the TypeScript
+FROM node:24-alpine AS build
 WORKDIR /app
-COPY app/ /app/
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY tsconfig.json tsconfig.build.json nest-cli.json ./
+COPY src/ src/
+RUN npm run build && npm prune --omit=dev
 
-ENV PORT=8080 \
+# ---- run: only the compiled app, production dependencies, the page and the seed catalogue
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=8080 \
     LIBRARY=/library \
     POLL_SECONDS=30 \
     KEEP_BACKUPS=5 \
     PUID=1000 \
-    PGID=1000 \
-    PYTHONUNBUFFERED=1
+    PGID=1000
+COPY --from=build /app/package.json ./
+COPY --from=build /app/node_modules/ node_modules/
+COPY --from=build /app/dist/ dist/
+COPY web/ web/
+COPY seed/ seed/
 
 # starts as root only to hand /library to PUID:PGID, then drops to that user
 VOLUME ["/library"]
@@ -19,4 +30,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=60s --timeout=5s --start-period=10s \
   CMD wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1
 
-CMD ["python3", "/app/server.py"]
+# node:sqlite still prints an "experimental" warning on every start; it is stable enough here
+CMD ["node", "--disable-warning=ExperimentalWarning", "dist/main.js"]
