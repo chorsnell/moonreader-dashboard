@@ -1,0 +1,21 @@
+/* personal records */
+.chart.pr-chart{min-height:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr));gap:var(--cds-gap-sm)}
+.pr{display:flex;flex-direction:column;gap:2px;padding:var(--cds-pad-md);border-radius:8px;background:var(--color-bg);border:1px solid transparent;min-width:0}
+.pr-new{border-color:color-mix(in srgb,var(--series-2) 55%,transparent);background:color-mix(in srgb,var(--series-2) 8%,var(--color-bg))}
+.pr-top{display:flex;justify-content:space-between;align-items:center;gap:var(--cds-gap-xs);min-height:20px}
+.pr-lbl{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.pr-badge{flex:none;font-size:11px;font-weight:600;letter-spacing:.02em;padding:1px 7px;border-radius:999px;background:var(--series-2);color:#fff;animation:pr-pop .5s ease-out}
+@media (prefers-color-scheme:dark){.pr-badge{color:#1f1e1c}}
+.pr-val{font-family:var(--font-anthropic-serif);font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums}
+.pr-val small{font-family:var(--font-anthropic-sans);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.pr-sub{min-height:1.4em;font-size:var(--cds-font-size-caption);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-sub .lk[data-day]{cursor:pointer;text-decoration:underline dotted var(--color-fg-muted);text-underline-offset:3px}
+.pr-sp{height:32px;padding:4px 0 2px}
+.pr-spark{display:block;width:100%;height:26px;overflow:visible}
+.pr-spark path{fill:none;stroke:var(--series-1);stroke-width:1.5}
+.pr-spark circle{fill:var(--series-1)}
+.pr-new .pr-spark path{stroke:var(--series-2)}.pr-new .pr-spark circle{fill:var(--series-2)}
+.pr-prev{font-size:11px;color:var(--color-fg-muted)}
+@keyframes pr-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.1)}}
+@media (prefers-reduced-motion:reduce){.pr-badge{animation:none}}
+@media (max-width:520px){.chart.pr-chart{grid-template-columns:repeat(2,minmax(0,1fr))}.pr{padding:var(--cds-pad-sm) var(--cds-pad-md)}.pr-val{font-size:20px}.pr-top{flex-wrap:wrap}.pr-sub{white-space:normal}}
