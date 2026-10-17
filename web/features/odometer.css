@@ -1,0 +1,15 @@
+/* lifetime words odometer */
+.chart.odo-chart{min-height:0;display:flex;flex-direction:column;gap:var(--cds-gap-md)}
+.odo{display:inline-flex;align-items:flex-end;gap:3px;font-family:var(--font-anthropic-serif);font-size:clamp(28px,7vw,52px);line-height:1;font-variant-numeric:tabular-nums}
+.odo-d{display:inline-block;height:1.25em;width:.78em;overflow:hidden;border-radius:6px;background:var(--color-bg);box-shadow:inset 0 0 0 1px var(--color-border-line),inset 0 6px 8px -6px rgba(0,0,0,.25),inset 0 -6px 8px -6px rgba(0,0,0,.25)}
+.odo-strip{display:flex;flex-direction:column;transform:translateY(0)}
+.odo-strip span{height:1.25em;display:flex;align-items:center;justify-content:center}
+.odo.rolling .odo-strip{transition:transform 1.8s cubic-bezier(.2,.7,.2,1)}
+.odo-sep{color:var(--color-fg-muted);padding-bottom:.12em;width:.2em}
+.odo-units{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:var(--cds-gap-sm)}
+.odo-unit{display:flex;flex-direction:column;gap:2px;padding:var(--cds-pad-sm) var(--cds-pad-md);border-radius:8px;background:var(--color-bg)}
+.odo-unit b{font-family:var(--font-anthropic-serif);font-weight:400;font-size:22px;font-variant-numeric:tabular-nums}
+.odo-unit span{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.odo-next{margin:0;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+@media (max-width:520px){.odo{gap:2px}.odo-units{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion:reduce){.odo.rolling .odo-strip{transition:none}}
