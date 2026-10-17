@@ -37,6 +37,11 @@ interface Plan {
   url?: string;
   /** Their dashboard hasn't answered for this many days: their data stops then. */
   offline_days?: number;
+  /**
+   * Star ratings for the books they finished: a book you rated gets yours give or take this
+   * spread (small: you agree), others a rating around 3.5.
+   */
+  rating_spread: number;
 }
 
 export const FRIEND_PLANS: Plan[] = [
@@ -44,6 +49,7 @@ export const FRIEND_PLANS: Plan[] = [
     slug: 'ada',
     name: 'Ada',
     seed: 11,
+    rating_spread: 0.6,
     wpm: 330,
     daily: 0.86,
     minutes: 62,
@@ -91,6 +97,7 @@ export const FRIEND_PLANS: Plan[] = [
     slug: 'ben',
     name: 'Ben',
     seed: 23,
+    rating_spread: 1.4,
     wpm: 205,
     daily: 0.62,
     minutes: 28,
@@ -291,6 +298,13 @@ export function simulateFriend(
   const books: Row[] = [];
   const reads: Row[] = [];
   const daily: Row[] = [];
+  // ratings from a stream of their own, so adding them moved nothing else in the demo
+  const stars = new Random(plan.seed * 1000 + 7);
+  const starsFor = (title: string) => {
+    const yours = Number(mine.get(title)?.rating) || 0;
+    const r = stars.normal(yours || 3.5, yours ? plan.rating_spread : 0.9);
+    return stars.random() < 0.85 ? Math.max(1, Math.min(5, Math.round(r))) : null;
+  };
   for (const { book: b, days } of log) {
     if (!days.length) continue;
     const id = slug(b.title);
@@ -311,6 +325,7 @@ export function simulateFriend(
       isbn10: null,
       work_id: null,
       status: finished ? 'finished' : 'in_progress',
+      ...(finished ? { rating: starsFor(b.title) } : {}),
       progress: last.progress,
       hours: round1(minutes / 60),
       words: days.reduce((a, d) => a + d.words, 0),
