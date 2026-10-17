@@ -1,6 +1,8 @@
 name: test
 on:
+  # Branch pushes are covered by their PR; only main runs on push.
   push:
+    branches: [main]
   pull_request:
 jobs:
   test:
