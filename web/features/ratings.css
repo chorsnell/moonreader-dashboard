@@ -1,0 +1,4 @@
+.rt-take{margin:0 0 var(--cds-gap-sm);font-size:var(--cds-font-size-body);line-height:1.5}
+.rt-avg{font-size:11px;fill:var(--color-fg-muted)}
+.rt-stars{font-size:22px;letter-spacing:2px;color:var(--color-fg);line-height:1.2;margin-bottom:var(--cds-gap-xs)}
+.rt-note{margin:var(--cds-gap-xs) 0 0;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);line-height:1.5}
