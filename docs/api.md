@@ -66,7 +66,7 @@ curl -s -b jar https://reading.example.com/api/stats/year/2025
 
 `src/stats/page-sandbox.ts` loads the page's scripts in Node, in the order `index.html` loads
 them, with a stand-in for `dash` and an inert DOM, so there is one copy of every
-calculation. `src/stats/stats.service.ts` works them out for each audience (admin, public,
+calculation. `src/stats/stats.service.ts` works them out for each audience (admin, public, friends,
 read password) from the data files as that audience is served them, keeps the results in
 memory, and works them out again when the data, the privacy settings or the page's scripts
 change; it warms the cache after every rebuild. The page (`web/runtime.js`) fetches

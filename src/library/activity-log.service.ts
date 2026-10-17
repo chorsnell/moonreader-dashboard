@@ -16,6 +16,7 @@ export const ACTIVITY_TYPES = [
   'metadata',
   'prune',
   'settings',
+  'friends',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 export type Outcome = 'ok' | 'failed';

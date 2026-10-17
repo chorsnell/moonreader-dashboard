@@ -51,12 +51,12 @@ export class PrivacyService {
     const { privacy } = await this.settings.load();
     if (role === 'admin') {
       const as = cookie(req, PREVIEW_COOKIE);
-      if (as === 'public' || as === 'reader') {
+      if (as === 'public' || as === 'reader' || as === 'friends') {
         return { role: 'admin', preview: as, policy: privacy[as] };
       }
       return { role: 'admin', preview: null, policy: null };
     }
-    const visitor: ViewerRole = role === 'reader' ? 'reader' : 'public';
+    const visitor = role === 'reader' ? 'reader' : 'public';
     return { role: visitor, preview: null, policy: privacy[visitor] };
   }
 

@@ -115,6 +115,19 @@ window.dash = (() => {
       visit(id);
       return out;
     },
+    // a calc worked out from other data (a friend's): `given` stands in for the page's files,
+    // and any calc in between is worked out again from it
+    calcWith: (id, given) => {
+      const memo = new Map(Object.entries(given));
+      const get = (k) => {
+        if (memo.has(k)) return memo.get(k);
+        const c = calcs.find(([x]) => x === k);
+        const v = c ? c[1].fn(...c[1].inputs.map(get)) : files[k] ? [] : undefined;
+        memo.set(k, v);
+        return v;
+      };
+      return get(id);
+    },
     // ids of the calcs the server worked out for this load (for checks and timing)
     precomputed: () => Object.keys(server || {}),
     onData: (fn) => { subs.push(fn); try { fn(); } catch (e) { console.error(e); } },

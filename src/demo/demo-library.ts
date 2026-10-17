@@ -13,6 +13,7 @@ import { MediaBuildService } from '../media/media-build.service';
 import { servedPrices } from '../prices/prices';
 import { writeDemoBackup } from './demo-backup';
 import { BOOKS, fileName, ISBN } from './demo-books';
+import { writeDemoFriends } from './demo-friends-site';
 import { demoGoodreadsCsv } from './demo-goodreads';
 import { demoKobo } from './demo-kobo';
 import { simulateHighlights } from './demo-highlights';
@@ -35,7 +36,7 @@ export interface DemoLibrary {
 
 /**
  * Writes the demo's backup into `lib` and imports it, then adds the prices the server would
- * serve. The history always ends the day before `today` (YYYY-MM-DD).
+ * serve and two friends. The history always ends the day before `today` (YYYY-MM-DD).
  */
 export async function buildDemoLibrary(
   lib: string,
@@ -90,6 +91,8 @@ export async function buildDemoLibrary(
   // what the server writes from library/prices.json
   const prices = servedPrices(demoPrices(log, firstDay, seed));
   await writeFile(join(lib, 'data', 'prices.json'), JSON.stringify(prices));
+  // two friends to compare with, as if their share files had been added
+  await writeDemoFriends(lib, firstDay, lastDay);
   return { log, firstDay, lastDay, summary };
 }
 
