@@ -151,6 +151,9 @@ describe('the Catalogue section', () => {
     await admin(dash)
       .put('/api/admin/catalogue', { files: beta.files, title: 'B', series: 'S', series_no: 'x' })
       .expect(400);
+    await admin(dash)
+      .put('/api/admin/catalogue', { files: beta.files, title: 'B', isbn: '978-0-14-143951-9' })
+      .expect(400); // bad checksum
 
     await admin(dash)
       .put('/api/admin/catalogue', {
@@ -161,6 +164,7 @@ describe('the Catalogue section', () => {
         series_no: 2,
         genre: 'Fantasy',
         subgenre: 'Epic',
+        isbn: '0-14-143951-3',
       })
       .expect(200, { ok: true });
     const catalogue = await dash.json<{ books: Record<string, BookRow> }>('catalogue.json');
@@ -171,6 +175,8 @@ describe('the Catalogue section', () => {
       series_no: 2,
       genre: 'Fantasy',
       subgenre: 'Epic',
+      isbn13: '9780141439518',
+      isbn10: '0141439513',
     });
     expect(Object.keys(catalogue.books).length).toBeGreaterThan(10); // the rest is kept
     expect((await readdir(dash.lib)).filter((f) => f.endsWith('.part'))).toEqual([]);
