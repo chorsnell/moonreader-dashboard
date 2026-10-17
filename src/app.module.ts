@@ -6,6 +6,7 @@ import { AdminModule } from './admin/admin.module';
 import { appConfig } from './config/app.config';
 import { DavModule } from './dav/dav.module';
 import { RebuildModule } from './rebuild/rebuild.module';
+import { StatsModule } from './stats/stats.module';
 import { StatusModule } from './status/status.module';
 import { UploadModule } from './upload/upload.module';
 import { WebModule } from './web/web.module';
@@ -17,6 +18,7 @@ import { WebModule } from './web/web.module';
     ScheduleModule.forRoot(),
     RebuildModule,
     StatusModule,
+    StatsModule,
     UploadModule,
     AdminModule,
     DavModule,

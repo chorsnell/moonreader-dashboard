@@ -9,7 +9,7 @@ window.dash = (() => {
   const calcs = [];
   const subs = [];
   const PARAMS_KEY = 'moonreader-dashboard:params';
-  let params = {}, covers = {};
+  let params = {}, covers = {}, server = null;
   try { params = JSON.parse(localStorage.getItem(PARAMS_KEY) || '{}') || {}; } catch (e) { params = {}; }
   const setAll = (status, extra) => Object.keys(files).concat(calcs.map(([id]) => id)).forEach((k) => (state[k] = { status, data: [], ...extra }));
   Object.keys(files).forEach((k) => (state[k] = { status: 'loading', data: [] }));
@@ -23,6 +23,9 @@ window.dash = (() => {
     if (config.has_data === false || config.can_read === false) { setAll('missing'); notify(); return config; }
     // covers are optional: without them the page shows placeholders
     const coverList = fetch('api/covers', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+    // calcs the server has already worked out for this viewer: those aren't run here. Without
+    // them (static hosting, an older server, ?stats=client) every calc runs in the page
+    const precomputed = stats();
     try {
       const v = '?v=' + Date.now();
       const entries = await Promise.all(Object.entries(files).map(async ([id, url]) => {
@@ -33,6 +36,7 @@ window.dash = (() => {
       }));
       entries.forEach(([id, rows]) => (state[id] = { status: 'ok', data: rows }));
       covers = await coverList;
+      server = await precomputed;
     } catch (e) {
       console.error(e);
       setAll('error', { message: String(e) });
@@ -40,6 +44,7 @@ window.dash = (() => {
       return config;
     }
     for (const [id, o] of calcs) {
+      if (server && Object.hasOwn(server, id)) { state[id] = { status: 'ok', data: server[id] }; continue; }
       if (o.inputs.some((i) => !state[i] || state[i].status !== 'ok')) { state[id] = { status: 'error', data: [] }; continue; }
       try { state[id] = { status: 'ok', data: o.fn(...o.inputs.map((i) => state[i].data)) }; }
       catch (e) { console.error(id, e); state[id] = { status: 'error', data: [], message: String(e) }; }
@@ -59,6 +64,18 @@ window.dash = (() => {
       el.textContent = `Data from ${m.backup_file}, updated ${when}` + (m.synced_positions ? `, plus ${m.synced_positions} position${m.synced_positions === 1 ? '' : 's'} synced from Moon+.` : '.');
     }
     return config;
+  }
+
+  async function stats() {
+    server = null;
+    try {
+      if (new URLSearchParams(location.search).get('stats') === 'client') return null;
+      const r = await fetch('api/stats/page', { cache: 'no-cache' });
+      const body = r.ok ? await r.json() : null;
+      return body && body.calcs && typeof body.calcs === 'object' ? body.calcs : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   let lastW = window.innerWidth, t;
@@ -85,6 +102,8 @@ window.dash = (() => {
       visit(id);
       return out;
     },
+    // ids of the calcs the server worked out for this load (for checks and timing)
+    precomputed: () => Object.keys(server || {}),
     onData: (fn) => { subs.push(fn); try { fn(); } catch (e) { console.error(e); } },
     cover: (id) => covers[id] || null,
     params: () => ({ ...params }),
