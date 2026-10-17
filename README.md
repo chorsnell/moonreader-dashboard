@@ -254,7 +254,8 @@ The server also has three JSON endpoints: `/healthz`, which Docker uses as its h
 - **Time of day:** the reading log only records which days you read, not what time, so the diary is per day. Highlights and notes do carry a time, so time-of-day views use them as a stand-in for when you read.
 - **Highlights:** the backup records a chapter and position for each highlight but not the book's length, so how far in (%) is estimated from your progress on the day you made it. See [docs/moonplus-backup.md](docs/moonplus-backup.md) for what a backup holds.
 - **Data checks:** a first or last day 30+ days from the rest of a read counts as stray; a 60+ day gap mid-read is a pause; a read is thinly spread when it spans 60+ days but was opened on under 15% of them. The thresholds are in `CHECK` in `web/calcs.js`.
-- **Changing the rules:** the thresholds are at the top of `src/backup-import/reading-history.ts`, and every chart's calculation is in `web/calcs.js`.
+- **Changing the rules:** the thresholds are at the top of `src/backup-import/reading-history.ts`, and every chart's calculation is in `web/calcs.js` (or the feature script that draws it).
+- **Where they're worked out:** the server runs those same calculations after every rebuild, for each kind of viewer from only what they may see, so the page loads ready-made numbers instead of crunching the whole history on your phone. The same numbers are a JSON API (`/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`) for friends' dashboards and other tools: see [docs/api.md](docs/api.md).
 
 ## Development
 
@@ -303,6 +304,7 @@ src/upload/                 the admin page's backup upload
 src/admin/                  the admin page's API: data and backups, rebuild now, catalogue edits, covers
 src/dav/                    the WebDAV server Moon+ syncs to
 src/status/                 /healthz, /api/config and /api/covers
+src/stats/                  runs the page's calcs on the server, per viewer, and the /api/stats API (docs/api.md)
 src/web/                    serves the page, its data and the covers
 src/demo/                   builds the demo site from made-up data
 web/                        the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js (sign-in), pages/, features/ (admin.js is the admin page)
