@@ -92,6 +92,7 @@ interface Item {
   subgenre: string | null;
   year: number | null;
   runtime: number | null;
+  adapts: string | null;
   unitsTotal: number | null;
   ext: MediaItemRow['ext'];
   sources: Set<MediaSource>;
@@ -233,6 +234,7 @@ function newItem(
     subgenre: firstOf(c.subgenre, m.genres?.[1]),
     year: firstOf(c.year, m.year, ev.year),
     runtime: firstOf(c.runtime, m.runtime),
+    adapts: firstOf(c.book),
     unitsTotal: null,
     ext: { ...m.ext },
     sources: new Set(),
@@ -391,6 +393,7 @@ function buildItem(item: Item, out: MediaHistory): void {
     first: allDates[0] ?? null,
     last: allDates[allDates.length - 1] ?? null,
     sources: [...item.sources].sort(),
+    adapts: item.adapts,
     ext: {
       tmdb_id: item.ext.tmdb_id ?? null,
       imdb_id: item.ext.imdb_id ?? null,

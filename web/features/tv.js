@@ -165,6 +165,7 @@
     if (box.classList.contains('blank') && size === 'lg') box.replaceChildren(el('b', null, m.media === 'tv' ? m.series : m.title), el('small', null, m.media === 'tv' ? `Season ${m.series_no}` : m.year ? String(m.year) : ''));
     return box;
   }
+  rh.mediaPoster = poster; // for watching-and-reading.js
   // a season or film in a list: poster, title linked to its show or film, a note, progress
   function itemRow(m, meta, note, prog) {
     const li = el('li'), a = el('div', 'ttl');

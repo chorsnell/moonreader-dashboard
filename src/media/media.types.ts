@@ -94,6 +94,8 @@ export interface MediaCatalogueEntry {
   episodes?: Record<string, number>;
   /** Film runtime, or a typical episode runtime, in minutes. */
   runtime?: number;
+  /** The title of the book (in your library) this adapts, when the titles differ. */
+  book?: string;
   exclude?: boolean;
 }
 
@@ -122,6 +124,8 @@ export interface MediaItemRow {
   first: string | null;
   last: string | null;
   sources: MediaSource[];
+  /** The book it adapts, from the media catalogue; null means "match by title". */
+  adapts: string | null;
   ext: ExternalIds;
 }
 

@@ -80,6 +80,12 @@ export const DEMO_FILMS: DemoFilm[] = [
   { title: 'The Little Shop of Horrors', year: 1960, creator: 'Roger Corman', genre: 'Comedy', subgenre: 'Horror', runtime: 72 },
 ];
 
+/** Adaptations whose titles differ from the book's (the rest match by title). */
+const ADAPTS: Record<string, string> = {
+  Nosferatu: 'Dracula',
+  'Dr. Jekyll and Mr. Hyde': 'Strange Case of Dr Jekyll and Mr Hyde',
+};
+
 /** The media catalogue the demo writes: genres, creators, years and episode counts. */
 export function demoMediaCatalogue(): MediaCatalogue {
   const out: MediaCatalogue = {};
@@ -95,6 +101,7 @@ export function demoMediaCatalogue(): MediaCatalogue {
   }
   for (const f of DEMO_FILMS) {
     out[f.title.toLowerCase()] = {
+      ...(ADAPTS[f.title] ? { book: ADAPTS[f.title] } : {}),
       creator: f.creator,
       genre: f.genre,
       subgenre: f.subgenre,
@@ -213,8 +220,12 @@ export function simulateNetflix(
   for (let day = 0; day < days && (qi < queue.length || active.length); day++) {
     const date = new Date((firstDay + day) * 86_400_000);
     const weekend = date.getUTCDay() === 0 || date.getUTCDay() === 6 || date.getUTCDay() === 5;
-    const reading = readingMinutes.get(day) ?? 0;
-    const chance = (weekend ? 0.62 : 0.4) * (reading > 70 ? 0.35 : reading > 35 ? 0.7 : 1.1);
+    // a big reading week leaves less time for TV
+    const monday = day - ((date.getUTCDay() + 6) % 7);
+    let weekReading = 0;
+    for (let d = monday; d < monday + 7; d++) weekReading += readingMinutes.get(d) ?? 0;
+    const chance =
+      (weekend ? 0.62 : 0.4) * (weekReading > 150 ? 0.2 : weekReading > 60 ? 0.6 : 1.5);
     while (active.length < 2 && qi < queue.length && turn(qi) <= day)
       active.push({ ...queue[qi++] });
     if (rng.random() > chance) continue;
