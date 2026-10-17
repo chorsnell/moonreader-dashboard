@@ -20,6 +20,7 @@ import { publicPrefix } from '../common/http/public-prefix';
 import { COVER_NAME } from '../covers/cover-store.service';
 import { LibraryService } from '../library/library.service';
 import { WEB_DIR } from '../paths';
+import { withFeatures } from './features';
 
 const DATA_FILE = /^[a-z_]+\.json$/;
 
@@ -45,7 +46,7 @@ export class WebController {
   @Header('Content-Type', 'text/html; charset=utf-8')
   @Header('Cache-Control', 'no-cache')
   async index(@Headers() headers: IncomingHttpHeaders): Promise<string> {
-    const page = await readFile(join(WEB_DIR, 'index.html'), 'utf8');
+    const page = await withFeatures(await readFile(join(WEB_DIR, 'index.html'), 'utf8'), WEB_DIR);
     const base = escapeAttribute(`${publicPrefix(headers, this.config.basePath)}/`);
     return page.replace('<head>', `<head>\n<base href="${base}">`);
   }

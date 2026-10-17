@@ -10,11 +10,13 @@ import { WEB_DIR } from '../../src/paths';
 const src = readFileSync(join(WEB_DIR, 'charts.js'), 'utf8');
 const start = src.indexOf('// ---------- links ----------');
 const end = src.indexOf('// ----------', start + 10);
-const pagesDir = join(WEB_DIR, 'pages');
-const pages = readdirSync(pagesDir)
-  .filter((f) => f.endsWith('.js'))
-  .sort()
-  .map((f) => readFileSync(join(pagesDir, f), 'utf8'));
+// pages/*.js and features/*.js draw with the same helpers
+const pages = ['pages', 'features'].flatMap((dir) =>
+  readdirSync(join(WEB_DIR, dir))
+    .filter((f) => f.endsWith('.js'))
+    .sort()
+    .map((f) => readFileSync(join(WEB_DIR, dir, f), 'utf8')),
+);
 const links = src.slice(start, end);
 const rest = [src.slice(0, start) + src.slice(end), ...pages].join('\n');
 const fields = [...links.matchAll(/field: '(\w+)'/g)].map((m) => m[1]).filter((f) => f !== 'title');

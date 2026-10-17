@@ -3,6 +3,8 @@
 // keeps the page's filters, and redraws when data, filters or the width change.
 window.dash = (() => {
   const files = { books: 'data/books.json', reads: 'data/reads.json', daily: 'data/daily.json' };
+  // files a feature can do without (dash.file(id, url, {optional: true})): a 404 loads as []
+  const optional = new Set();
   const state = {};
   const calcs = [];
   const subs = [];
@@ -25,6 +27,7 @@ window.dash = (() => {
       const v = '?v=' + Date.now();
       const entries = await Promise.all(Object.entries(files).map(async ([id, url]) => {
         const r = await fetch(url + v);
+        if (!r.ok && optional.has(id)) return [id, []];
         if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
         return [id, await r.json()];
       }));
@@ -64,6 +67,8 @@ window.dash = (() => {
   });
 
   const api = {
+    // another data file to load; register it before the page loads (from a feature script)
+    file: (id, url, o = {}) => { files[id] = url; state[id] = { status: 'loading', data: [] }; if (o.optional) optional.add(id); },
     calc: (id, o) => { calcs.push([id, o]); state[id] = { status: 'loading', data: [] }; },
     data: (id) => state[id] || { status: 'missing', data: [] },
     onData: (fn) => { subs.push(fn); try { fn(); } catch (e) { console.error(e); } },
