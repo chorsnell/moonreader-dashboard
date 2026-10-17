@@ -51,7 +51,7 @@
   }
 
   rh.card({
-    tab: 'friends', id: 'friends-favourites', title: 'Their favourites you haven’t read', after: 'card-friends-taste', calc: 'books',
+    tab: 'friends', id: 'friends-favourites', title: 'Their favourites you haven’t read', after: 'card-friends-list', calc: 'books',
     note: 'Books a friend tore through (most days, long sittings, done fast) or read more than once, and that aren’t in your library. Most like what you read first.',
     draw(box, _rows, parts) {
       box.replaceChildren();
