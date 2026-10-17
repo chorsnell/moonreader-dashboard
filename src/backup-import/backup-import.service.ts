@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -28,6 +28,12 @@ export interface ImportSummary {
 const PO_READ_LIMIT = 2000;
 
 /**
+ * How far before a build's start meta.json is dated, to allow for file systems that keep
+ * modification times to the second (or two). At worst this costs one extra rebuild.
+ */
+const MTIME_MARGIN_MS = 2000;
+
+/**
  * Turns a Moon+ backup (plus any positions synced over WebDAV) into the data/*.json files
  * the page reads, and saves the covers it finds in the backup.
  */
@@ -39,6 +45,7 @@ export class BackupImportService {
   ) {}
 
   async importBackup(backup: string): Promise<ImportSummary> {
+    const started = new Date();
     const catalogue = JSON.parse(await readFile(this.library.catalogue, 'utf8')) as Catalogue;
     const tmp = await mkdtemp(join(tmpdir(), 'moonreader-'));
     try {
@@ -70,6 +77,11 @@ export class BackupImportService {
         result.untagged.length,
         result.syncedApplied,
       );
+      // The watcher rebuilds when an input is newer than meta.json. Date it to when this
+      // build started reading its inputs, so a position synced (or a catalogue saved) while
+      // it ran is still newer, and gets its own rebuild.
+      const builtFrom = new Date(started.getTime() - MTIME_MARGIN_MS);
+      await utimes(join(this.library.data, 'meta.json'), builtFrom, builtFrom);
       const lines = [
         `${basename(backup)}: ${counts.books} books, ${counts.reads} reads, ${counts.readingDays} reading days` +
           (result.syncedApplied ? `, ${result.syncedApplied} synced position(s) applied` : '') +
@@ -183,7 +195,7 @@ export class BackupImportService {
       },
       true,
     );
-    // written last: its time is what the watcher compares against
+    // written last; its time is what the watcher compares against (see importBackup)
     await this.dump('meta.json', {
       backup_file: backupFile,
       generated,
