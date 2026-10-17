@@ -22,5 +22,17 @@ services:
       # Publication years, page counts and author countries/genders from Open Library and
       # wikidata.org. "off" stops that.
       METADATA_LOOKUP: "on"
+      # How often to check library/inbox/ (seconds) and how many backups to keep.
+      POLL_SECONDS: 30
+      KEEP_BACKUPS: 5
+      # TV, film and audiobooks (all optional; they can also be set on the admin page).
+      # The keys live in .env with UPLOAD_TOKEN.
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      TAUTULLI_URL: ${TAUTULLI_URL:-}
+      TAUTULLI_API_KEY: ${TAUTULLI_API_KEY:-}
+      AUDIOBOOKSHELF_URL: ${AUDIOBOOKSHELF_URL:-}
+      AUDIOBOOKSHELF_TOKEN: ${AUDIOBOOKSHELF_TOKEN:-}
+      MEDIA_POLL_MINUTES: 60
+      # Every other setting is in the README's Settings table.
     volumes:
-      - ./library:/library       # inbox/, data/, dav/, covers/, catalogue.json and update.log
+      - ./library:/library       # everything the app keeps: backups, data, covers, settings
