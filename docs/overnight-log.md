@@ -1,29 +1,42 @@
 # Overnight log: the BOO backlog (17 Oct 2026)
 
-Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by parallel agents, with one PR per ticket (or per small group). PRs were merged once CI was green. This file records the decisions made along the way, so you can review them and reverse any you disagree with.
+Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by parallel agents, with one PR per ticket (or per small group). About 60 PRs (#13 to #74) were merged once CI was green, and each was checked on top of main first. This file records the decisions made along the way, so you can review them and reverse any you disagree with.
 
 ## Status
 
-| Epic                             | State                                                                           |
-| -------------------------------- | ------------------------------------------------------------------------------- |
-| EP-1 Showpiece visualisations    | Done (BOO-1 to 6)                                                               |
-| EP-2 Reading analytics           | Done (BOO-7 to 19, 39)                                                          |
-| EP-3 Highlights & notes          | Done (BOO-20 to 25). The notes table still needs checking against a real backup |
-| EP-4 Book metadata enrichment    | Done (BOO-26 to 29, 55). Lookups not yet run against the live APIs              |
-| EP-5 Friends & comparison        | In progress (BOO-30 to 34, 58, 59)                                              |
-| EP-6 Visual polish               | Done (BOO-35 to 38)                                                             |
-| EP-7 Money & value               | Done (BOO-40 to 46)                                                             |
-| EP-8 Other media verticals       | Done (BOO-47 to 52)                                                             |
-| EP-9 Integrations & data sources | In progress (BOO-53, 54, 57, 64)                                                |
-| EP-10 Platform & architecture    | BOO-56 done; BOO-63's README sweep comes last                                   |
-| EP-11 Admin & privacy            | Done (BOO-60 to 62)                                                             |
+63 of the 64 tickets are **DONE**. **BOO-54** (Anna's Archive) is in REVIEW: I decided not to build it, for the reasons below, and it needs your confirmation.
+
+| Epic                             | State                                                |
+| -------------------------------- | ---------------------------------------------------- |
+| EP-1 Showpiece visualisations    | Done (BOO-1 to 6)                                    |
+| EP-2 Reading analytics           | Done (BOO-7 to 19, 39)                               |
+| EP-3 Highlights & notes          | Done (BOO-20 to 25)                                  |
+| EP-4 Book metadata enrichment    | Done (BOO-26 to 29, 55)                              |
+| EP-5 Friends & comparison        | Done (BOO-30 to 34, 58, 59)                          |
+| EP-6 Visual polish               | Done (BOO-35 to 38)                                  |
+| EP-7 Money & value               | Done (BOO-40 to 46)                                  |
+| EP-8 Other media verticals       | Done (BOO-47 to 52)                                  |
+| EP-9 Integrations & data sources | Done (BOO-53, 57, 64); BOO-54 deliberately not built |
+| EP-10 Platform & architecture    | Done (BOO-56, 63)                                    |
+| EP-11 Admin & privacy            | Done (BOO-60 to 62)                                  |
 
 ## Things for you
 
+- **BOO-54 Anna's Archive**: confirm the decision not to build it (`docs/integrations.md`), then move the ticket to DONE.
 - **Moon+ notes table**: the layout comes from open-source exports, not a real `mrbooks.db`. Check `docs/moonplus-backup.md` against one of your backups.
-- **External lookups**: the sandbox couldn't reach Open Library, Wikidata, TMDB, Tautulli, Audiobookshelf or an Arr instance. All of them were built against their documented APIs and tested with mocks, so give each a real run.
-- **Screenshots**: the committed ones have letter placeholders instead of covers. Run **Actions → screenshots → Run workflow** and commit the artifact to get versions with real covers.
+- **External services**: the sandbox couldn't reach Open Library, Wikidata, TMDB, Tautulli, Audiobookshelf, an Arr instance or a second real installation for federation. All of them were built against their documented APIs and tested with mocks, so give each a real run.
+- **Screenshots**: the committed ones have letter tiles instead of covers. Run **Actions → screenshots → Run workflow**, check the artifact and commit it to get versions with real covers.
 - **Docker**: the image build now runs only when started by hand (Actions → docker). To build it on main again, add `push: branches: [main]` to `.github/workflows/docker.yml`.
+
+## Suggested follow-ups
+
+- A "watching" slide in Wrapped (Wrapped has no extension point yet).
+- Score rating agreement in taste match.
+- Unify the title/author matching duplicated in `src/arr/match.ts` and `src/imports/merge.ts`.
+- Move server stats to a worker thread for very large libraries.
+- Redesign the book page "Day by day" chart, which has two y-axes.
+- Add inputs for published year and author country to the admin catalogue editor.
+- Compare streaming cost per hour with Money's book benchmarks.
 
 ## Coordinator decisions
 
@@ -204,3 +217,64 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
   - The combined year in review is a card on the year page, not new Wrapped slides, because Wrapped has no extension point. A "watching" slide in Wrapped is a follow-up.
 - **Demo**: a made-up Netflix history of classic silent and mid-century films plus invented shows.
 - **BOO-52 (#67)**: Audiobookshelf was chosen as the next source over Spotify. It uses the same URL-plus-token route as Tautulli and gives time and position per session. Audiobooks count as "listening" in the cross-media views. Podcasts and a separate audiobook tab are deliberately left out. `docs/media-verticals.md` §7 lists the steps for adding further sources.
+
+## Integrations: BOO-53 Goodreads (#58), BOO-57 Kobo/Kindle (#66), BOO-54 Anna's Archive (#68), BOO-64 Arr (#71)
+
+- **BOO-53 upload and storage**: a new Admin → Imports section takes the Goodreads or StoryGraph CSV; the Moon+ upload stays `.mrpro`-only. Imports are stored normalised; the CSV isn't kept.
+- **BOO-53 matching**: by ISBN, then by title (series suffix, subtitle and leading article removed) plus surname.
+- **BOO-53 Goodreads-only books**: they get one finished read on the Date Read with no daily rows.
+  - They count in books, genres, authors and series, but not in minutes, speed, streaks or heatmaps.
+  - On their book pages the day cards are hidden.
+  - To-read books are skipped.
+- **BOO-53 views and settings**:
+  - New views: rating vs speed, ratings by genre, "do you rate devoured books higher", and a rating card on book pages.
+  - A new privacy flag `ratings` is on in every preset, since ratings are taste.
+  - The first import's rating wins.
+  - An admin download exports finished books as a Goodreads-import CSV.
+- **BOO-57 file detection**: SQLite means Kobo; `==========` blocks mean My Clippings; a CSV with ASIN and milliseconds means Kindle reading sessions; a CSV with ASIN and title is a title list.
+- **BOO-57 Kobo**: daily data comes only from `AnalyticsEvents`, which the device clears on sync. Without it, a book gets one read with its total time.
+- **BOO-57 Kindle**: reading sessions become minutes per day, but are never marked finished, because Amazon records no progress.
+- **BOO-57 merging and import-only builds**: Moon+ wins for any day it has. Imported highlights go into `highlights.json`. The dashboard can now be built from imports alone, with no Moon+ backup. Data comes in by upload only.
+- **BOO-54 Anna's Archive**: not built. There's no stable metadata API, the dumps run to hundreds of GB, the licence is unclear, it carries legal and reputational risk, and Open Library (CC0) already covers the need. `docs/integrations.md` says what would change that. The ticket stays in REVIEW for you to confirm.
+- **BOO-64 Arr**:
+  - It targets the Readarr v1 API, which Bookshelf and the other forks keep; LazyLibrarian isn't supported.
+  - Books go to the first root folder with its default profiles.
+  - The URL and key live in `settings.json` under `arr`, and the key is never returned to the page.
+  - Buttons show only for the admin, and never in visitor preview.
+  - "Get next in series" uses `series_next`. "Get the rest of this author" sets all of their books as wanted.
+  - Requests are logged and recorded, and a book page notes when a requested book arrives.
+  - The friends' favourites button isn't wired yet.
+- **Fix in #71**: `AccessSettingsService.save` used to rewrite all of `settings.json`, wiping other features' sections. It now keeps them.
+- **Follow-up**: title/author matching is duplicated in `src/arr/match.ts` and `src/imports/merge.ts` and could be unified.
+
+## Friends: BOO-30 (#59), 31 (#60), 32 (#62), 33 (#64), 34 (#65), 59 (#69), 58 (#72)
+
+- **BOO-30 profiles and sharing**: a friend is a profile in `library/friends/<slug>/` with the same row shapes as your own data. You share by exporting one JSON file (`moonreader-dashboard/share` v1, described in `docs/friends.md`) filtered by a new "friends" privacy role.
+  - By default friends get everything except money and highlights.
+  - Friends' data is visible only to the admin by default; you can open it to readers or the public.
+  - Uploaded rows are cleaned again on the way in.
+  - Any calc can run on a friend's data through `dash.calcWith`.
+  - Books are matched across libraries by ISBN, then work id, then normalised title and author.
+- **BOO-31**: the taste-match score is 50% genre cosine, 30% author overlap and 20% books in common. Goodreads ratings are shown but not scored. Scoring rating agreement is a possible follow-up.
+- **BOO-32**: one progress lane per reader on the book page, by date or from each reader's day 1. Progress never goes down.
+- **BOO-33**: a "favourite" is a book a friend devoured or re-read. They're ranked by your genre share plus a bonus if you know the author. There's an admin-only Arr "Get it" button.
+- **BOO-34**: a 12-month calendar with a band per person. Leaderboards cover each person's own last 12 months, need two people, and are opt-in per stat.
+- **BOO-59 auth**: federation uses a per-follower random bearer token, stored hashed, revocable at once, and collected once with a claim secret. HTTPS is assumed; `http://` is allowed for home networks.
+- **BOO-59 not ActivityPub**: it's built for public push feeds with key management and gives no per-follower privacy.
+- **BOO-59 sharing**: friends pull the share file rather than `/api/stats`, because the friend views need raw rows. You can offer a follower everything, stats only or chosen views, and hide books per follower.
+- **BOO-59 refresh**: every `FEDERATION_REFRESH_MINUTES` (default 60). A revoked friend's data is deleted; an offline friend is shown "as of" the last pull.
+- **BOO-58 book clubs**: clubs and comments live on the host's server. Comments stay hidden until you reach their position, filtered server-side.
+  - Federated members self-report their progress.
+  - Commenting from your own dashboard needs a mutual follow.
+  - The schedule is in % per week, since there's no chapter data. "On track" means within ±5 points.
+- **Stats**: the friends role was added to the per-role stats. Calcs that take friends' data stay client-side.
+- **Coordinator mistake, fixed in #74**: I merged the stacked friends PRs (#60 to #72) without retargeting them to main first, so they merged into each other's branches and only #59 reached main. PR #74 brings the top of the stack (`boo-58-book-club`, already tested on main) into main.
+
+## BOO-63 README & demo sweep (PR #73)
+
+- **README**: rewritten to cover every tab, page, import, admin section, privacy audience, setting (including the new env vars), the API, and development. Config files were synced too. The README wrongly said port 8080; docker-compose publishes 9080.
+- **Screenshots**: all retaken, with new ones for TV, Money and Friends. They still have letter tiles instead of covers (see "Things for you").
+- **Demo sweep fixes**:
+  - "1 days" now reads "1 day".
+  - The forecast's "0 books a day" now reads "a book every N days".
+  - `#tab` links no longer open scrolled under the sticky bar.
