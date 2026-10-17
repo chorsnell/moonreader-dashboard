@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { LibraryService } from '../library/library.service';
@@ -45,6 +45,13 @@ export class CoverStore {
     await writeFile(`${path}.part`, data);
     await rename(`${path}.part`, path);
     return true;
+  }
+
+  /** Saves a cover the admin chose, in place of any the book had. */
+  async replace(bookId: string, image: Buffer): Promise<boolean> {
+    if (!imageExt(image) || !BOOK_ID.test(bookId)) return false;
+    for (const ext of ['jpg', 'png']) await rm(join(this.dir, `${bookId}.${ext}`), { force: true });
+    return this.save(bookId, image);
   }
 
   /** {book id: URL} for every saved cover; the mtime in the URL lets browsers cache them for good. */

@@ -1181,6 +1181,21 @@
     tabs = [...document.querySelectorAll('.rh-tabs button')];
     return page;
   }
+  // a page with no tab, opened by its link (#id): rh.page(id, draw); draw runs on every redraw
+  // while it's shown, so it should only rebuild what changed
+  const hiddenPages = {};
+  function addPage(id, draw) {
+    let page = document.getElementById(id);
+    if (!page) {
+      page = el('section', 'rh-page');
+      page.id = id; page.hidden = true;
+      document.getElementById('entity').after(page);
+    }
+    hiddenPages[id] = draw;
+    return page;
+  }
+  // sections of the admin page (web/features/admin.js draws them); see web/features/README.md
+  const adminSections = [];
   document.addEventListener('animationend', (e) => e.target.classList?.remove('in-l', 'in-r'));
 
   // ---------- swipe between tabs (touch) ----------
@@ -1196,7 +1211,7 @@
   const rh = $('.rh');
   rh.addEventListener('touchstart', (e) => {
     sw = null;
-    if (e.touches.length !== 1 || nav.hidden || onPage() || top.contains(e.target) || scrollsX(e.target)) return;
+    if (e.touches.length !== 1 || nav.hidden || onPage() || hiddenPages[tab] || top.contains(e.target) || scrollsX(e.target)) return;
     const t = e.touches[0];
     sw = { x: t.clientX, y: t.clientY, dx: 0, mode: null, page: document.getElementById(tab) };
   }, { passive: true });
@@ -1253,6 +1268,7 @@
       list('#stalled', 'stalled', (r) => ({ meta: 'last ' + fShort(pDate(r.last_read)), prog: r.progress }));
     } else if (tab === 'book') drawBook();
     else if (tab === 'entity') drawEntity();
+    else if (hiddenPages[tab]) { try { hiddenPages[tab](document.getElementById(tab)); } catch (e) { console.error(tab, e); } }
     else drawTables();
     drawFeatureCards(tab);
   }
@@ -1263,7 +1279,8 @@
     if (i > 0 && LINKS[named.slice(0, i)]) {
       if (history.state && history.state.from) prevTab = history.state.from;
       go(named.slice(0, i), named.slice(i + 1));
-    } else show(named && !['book', 'entity'].includes(named) && document.getElementById(named)?.classList.contains('rh-page') ? named : 'overview', false);
+    } else if (i > 0 && hiddenPages[named.slice(0, i)]) show(named.slice(0, i), false);
+    else show(named && !['book', 'entity'].includes(named) && document.getElementById(named)?.classList.contains('rh-page') ? named : 'overview', false);
   }
   window.addEventListener('popstate', route);
   // after pages/*.js have registered
@@ -1282,6 +1299,9 @@
     bookCard: (o) => { const parts = cardShell(o); bookCards.push({ ...o, parts, placed: false }); return parts; },
     extend: (kind, fn) => { (extensions[kind] = extensions[kind] || []).push(fn); },
     tab: addTab,
+    page: addPage,
+    adminSection: (o) => { adminSections.push(o); window.dispatchEvent(new CustomEvent('rh:admin-section', { detail: o })); },
+    adminSections: () => adminSections.slice().sort((a, b) => (a.order ?? 50) - (b.order ?? 50)),
     show: (name) => show(name),
     current: () => tab,
     redraw: () => redraw(),
