@@ -30,6 +30,10 @@ import { ACTIVITY_TYPES, ActivityLogService } from '../library/activity-log.serv
 import { LibraryService } from '../library/library.service';
 import { StatusService } from '../library/status.service';
 import { RebuildService } from '../rebuild/rebuild.service';
+import { AccessSettingsService } from '../access/access-settings.service';
+import { publicPrefix } from '../common/http/public-prefix';
+import { hiddenCategories, PRESETS, toPrivacySettings } from '../privacy/privacy';
+import { PREVIEW_COOKIE } from '../privacy/privacy.service';
 import { CatalogueService, toCatalogueChange } from './catalogue.service';
 
 const MAX_COVER_BYTES = 5 * 1024 * 1024;
@@ -76,6 +80,7 @@ export class AdminController {
     private readonly store: CoverStore,
     private readonly lookup: CoverLookupService,
     private readonly activity: ActivityLogService,
+    private readonly settings: AccessSettingsService,
   ) {}
 
   /** The current data and the backups kept, for the Data section. */
@@ -142,6 +147,49 @@ export class AdminController {
   async saveBook(@Body() body: unknown) {
     await this.catalogue.save(toCatalogueChange(body));
     return { ok: true };
+  }
+
+  /** What visitors may see: a policy per role, private books and genres. */
+  @Get('privacy')
+  @Header('Cache-Control', 'no-store')
+  async getPrivacy() {
+    return { privacy: (await this.settings.load()).privacy, presets: PRESETS };
+  }
+
+  @Put('privacy')
+  @HttpCode(200)
+  async setPrivacy(@Body() body: unknown) {
+    const privacy = toPrivacySettings((body ?? {}) as Record<string, unknown>);
+    await this.settings.save({ ...(await this.settings.load()), privacy });
+    this.activity.record({
+      type: 'settings',
+      message: 'Changed what visitors can see',
+      trigger: 'admin',
+      details: {
+        public_hides: hiddenCategories(privacy.public),
+        reader_hides: hiddenCategories(privacy.reader),
+        private_books: privacy.private_books.length,
+        private_genres: privacy.private_genres,
+        private_mode: privacy.private_mode,
+      },
+    });
+    return { ok: true, privacy };
+  }
+
+  /** Preview the dashboard as a visitor would see it ({as: 'public' | 'reader'}), or stop ({}). */
+  @Post('preview')
+  @HttpCode(200)
+  preview(@Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const as = (body as { as?: unknown } | null)?.as;
+    const role = as === 'public' || as === 'reader' ? as : null;
+    const secure =
+      String(req.headers['x-forwarded-proto'] ?? '').toLowerCase() === 'https' ? '; Secure' : '';
+    const path = `${publicPrefix(req.headers, this.config.basePath)}/`;
+    res.setHeader(
+      'Set-Cookie',
+      `${PREVIEW_COOKIE}=${role ?? ''}; Path=${path}; Max-Age=${role ? 86400 : 0}; HttpOnly; SameSite=Strict${secure}`,
+    );
+    return { ok: true, preview: role };
   }
 
   /** The activity log, newest first, filtered; with health at a glance. */

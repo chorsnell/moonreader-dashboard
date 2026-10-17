@@ -3,6 +3,7 @@ import { readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Inject, Injectable } from '@nestjs/common';
 import { appConfig, type AppConfigType } from '../config/app.config';
+import { toPrivacySettings, type PrivacySettings } from '../privacy/privacy';
 
 export type Access = 'public' | 'password';
 
@@ -11,6 +12,8 @@ export interface AccessSettings {
   access: Access;
   /** A pbkdf2 hash of the read password, or ''. */
   read_password: string;
+  /** What visitors who aren't the admin may see. */
+  privacy: PrivacySettings;
 }
 
 const ROUNDS = 200_000;
@@ -54,7 +57,7 @@ export class AccessSettingsService {
     const readPassword = typeof raw.read_password === 'string' ? raw.read_password : '';
     let access: Access = raw.access === 'password' ? 'password' : 'public';
     if (access === 'password' && !readPassword) access = 'public'; // nothing anyone typed would open it
-    return { access, read_password: readPassword };
+    return { access, read_password: readPassword, privacy: toPrivacySettings(raw.privacy) };
   }
 
   /** Saves one at a time, through a .part file. */

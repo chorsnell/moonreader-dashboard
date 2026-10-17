@@ -99,6 +99,17 @@ To choose who can *read* the dashboard, sign in as the admin, open the admin pag
 
 Setting a new read password signs out everyone who used the old one. Changing `UPLOAD_TOKEN` signs out the admin.
 
+**What visitors see.** The same section chooses, separately for the public and for people with the read password, which details they get. Start from a preset (**Everything**, **Everything but exact dates** or **Taste only**), or set each one:
+
+- **Dates:** exact days, or only the week or month.
+- **Day-by-day reading:** the diary, heatmaps and timeline.
+- **What you're reading now** and when you last read.
+- **Streaks and quiet spells.**
+- **Highlights and notes.** These are hidden from the public by default.
+- **Prices and spending.**
+
+You can also mark books or whole genres as private. Visitors then see nothing of them, or see them as "A private book" with no title, author or cover. This is enforced on the server: the data files and API are filtered for each visitor, so hidden details never reach their browser. **Preview as a visitor** shows you exactly what they get. You, as the admin, always see everything.
+
 ## Sync straight from Moon+ (WebDAV)
 
 When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-domain/reading/dav/`. The admin page's **Data** section shows the exact address. Log in with any username, and use your `UPLOAD_TOKEN` as the password.
@@ -217,6 +228,7 @@ src/app.setup.ts            HTTP setup shared with the e2e tests (BASE_PATH, hea
 src/config/                 every setting, read and checked from environment variables
 src/library/                the library folder, update.log and the server's status
 src/access/                 sign-in, sessions, and whether the dashboard is public or needs the read password
+src/privacy/                what visitors may see, and the filter that enforces it on the data they get
 src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
   reading-history.ts        the rules: what counts as a read, finished, and so on
 src/covers/                 saves covers from the backup and looks up missing ones on Open Library
