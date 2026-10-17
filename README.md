@@ -15,7 +15,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 
 **Reading tabs**
 
-- **Overview:** this year against last, streaks, what's on the go, recently finished, a year-end forecast, lifetime words, a quote of the day, personal records, books per year, hours per month, and reading against watching.
+- **Overview:** this year against last, streaks, what's on the go (with when you'll likely finish each book), recently finished, a year-end forecast, lifetime words, a quote of the day, personal records, books per year, hours per month, and reading against watching.
 - **Bookshelf:** every book you've read as a spine on a shelf per year (width is length, height is hours, colour is genre), and your years in colour.
 - **Genres & authors:** genre and subgenre mix and how it shifts, book shapes, ratings by genre, most-read authors and series progress.
 - **Origins:** how old your books are when you read them, where your authors come from (a map) and the gender balance over time.
@@ -31,7 +31,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 
 **Pages.** Click any book, author, series, genre, subgenre or year, anywhere, for its own page with its own link (`#book/<id>`, `#author/<name>`, `#series/<name>`, `#genre/<name>`, `#subgenre/<name>`, `#year/<year>`):
 
-- **Book:** every read, a day-by-day chart, the shape of each read, the rest of its series, your highlights and notes in book order (with where you highlighted and a word cloud), what it cost you, your rating, a race against friends who read it, and every day you opened it.
+- **Book:** every read, when you'll likely finish it (its own pace so far, corrected by how your finished reads went from the same point, with a range), a day-by-day chart, the shape of each read, the rest of its series, your highlights and notes in book order (with where you highlighted and a word cloud), what it cost you, your rating, a race against friends who read it, and every day you opened it.
 - **Author, series, genre and year:** stats, charts, books, money and time for each. A year page has a **Wrapped**: your year in review as swipeable stories.
 - **Show and film** (`#show/<id>`, `#film/<id>`): seasons, binge fingerprint, episodes and sittings.
 
