@@ -20,13 +20,17 @@ const UNOPENED: [title: string, author: string, price: number, store: string][] 
   ['War and Peace', 'Leo Tolstoy', 1.99, 'Kobo'],
   ['The Brothers Karamazov', 'Fyodor Dostoevsky', 0.99, 'Amazon Kindle'],
 ];
-/** Paperbacks: a few bought new, one second-hand. */
+/** Fixed prices: paperbacks (one second-hand) and the re-read books. */
 const PAPERBACKS: Record<string, [price: number, store: string]> = {
   Middlemarch: [9.99, 'Waterstones'],
   'Moby-Dick': [8.99, 'Waterstones'],
   'Anna Karenina': [10.99, 'Blackwell’s'],
   'The Great Gatsby': [2.5, 'Oxfam Books'],
   'Crime and Punishment': [7.99, 'Waterstones'],
+  // re-read, so cost per hour falls
+  'Pride and Prejudice': [8.99, 'Waterstones'],
+  'Treasure Island': [0.99, 'Amazon Kindle'],
+  'A Christmas Carol': [0.49, 'Kobo'],
 };
 const LIBRARY = ['Little Women', 'The Woman in White', 'Wuthering Heights'];
 const GIFTS = ['The Count of Monte Cristo', 'Meditations'];
