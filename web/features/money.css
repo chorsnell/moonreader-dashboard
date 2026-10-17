@@ -1,0 +1,17 @@
+/* Money tab and money cards on entity pages (money.js) */
+.mn-take{margin:0 0 var(--cds-gap-sm);font-size:var(--cds-font-size-body);line-height:1.5;color:var(--color-fg-muted)}
+.mn-take b{color:var(--color-fg);font-weight:600;font-variant-numeric:tabular-nums}
+.chart.mn-chart{min-height:120px}
+.mn-guide{stroke:var(--cds-chart-axis);stroke-dasharray:2 2}
+.mn-bench{font-size:11px}
+.legend .sw.mn-key-ref{width:16px;height:0;border-radius:0;background:none;border-top:1.5px dashed var(--cds-chart-axis);vertical-align:middle}
+.mn-pick{display:flex;gap:6px;flex-wrap:wrap}
+.mn-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr));gap:var(--cds-gap-md) var(--cds-gap-lg)}
+.mn-h3{margin:0 0 var(--cds-gap-xs);font-size:var(--cds-font-size-caption);font-weight:500;color:var(--color-fg-muted);text-transform:uppercase;letter-spacing:.04em}
+.mn-list .meta{white-space:nowrap;font-variant-numeric:tabular-nums}
+.mn-list li[data-link]{cursor:pointer}
+.mn-page .rh-kpis{margin-top:var(--cds-gap-sm)}
+#money.rh-page:not([hidden]){display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,26rem),1fr));align-items:start;gap:var(--cds-gap-md)}
+.chart.mn-box{min-height:0}
+@media (max-width:640px){#money.rh-page:not([hidden]){gap:var(--cds-gap-sm)}}
+.mn-foot{margin:var(--cds-gap-sm) 0 0}.mn-foot b{color:var(--color-fg);font-weight:600}
