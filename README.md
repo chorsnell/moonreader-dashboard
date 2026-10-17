@@ -114,6 +114,7 @@ library/
   friends/         friends' reading, from share files or followed dashboards
   clubs.json       book clubs you host
   federation.json  follow tokens (owner-readable only, never served)
+  notify-state.json what notifications were already sent
   update.log       what happened on each rebuild, upload and sync
   activity.jsonl   the same as JSON lines, for Sync & logs
 ```
@@ -221,6 +222,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Catalogue** | Titles, authors, series, genres and ISBNs; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
 | **Covers** | Books without a cover: look them up again or upload your own |
+| **Notifications** | ntfy, Gotify, Discord or webhook channels with a **Send test** button; which events to send; the streak hour and your year goal |
 | **Book manager** | Your *arr book manager's URL and API key |
 
 ## Who can see it
@@ -261,6 +263,27 @@ Either way, what you share is set by the **friends** audience under Access & pri
 
 Their reading is theirs: by default only you, the admin, see it; you can let people with the read password, or everyone, see it too. The share file format, the follow protocol and the book club API are in [docs/friends.md](docs/friends.md).
 
+## Notifications
+
+Get a message on your phone or in a chat when something happens. In **Admin → Notifications**, add one or more channels:
+
+- **ntfy**: a topic's address on ntfy.sh or your own server, with an optional access token;
+- **Gotify**: your server and an application token;
+- **Discord**: a channel's webhook URL;
+- **Webhook**: any URL, which gets a JSON POST (Home Assistant, n8n…).
+
+**Send test** checks each one. The addresses and tokens stay on the server (in `settings.json`) and are never shown again.
+
+These events can each be switched on or off:
+
+- **Book finished**, when a sync brings one in. More than 5 at once come as one message.
+- **New personal record**: a longer streak, a bigger day, week or month, a faster book…
+- **Streak at risk**: from a chosen hour (21:00 by default), if nothing has been synced today and your streak is at least N days (3 by default). Checked every 10 minutes, and sent once a day.
+- **Year goal reached**: set how many books you want to finish this year.
+- **A friend finished a book you have**: in your library, read or not.
+
+Events are found by comparing each rebuild with what was already sent (`library/notify-state.json`), so a restart or a second rebuild of the same backup never sends anything twice. The very first check only takes note of where things stand, and finishes older than two weeks (an old import) aren't news. Books marked private are never named. Links in the messages need `PUBLIC_URL`.
+
 ## Behind a reverse proxy
 
 Every link is relative, so the dashboard works at a sub-path such as `/reading`:
@@ -279,7 +302,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 |---|---|---|
 | `UPLOAD_TOKEN` | *(empty)* | The admin password. Turns on admin sign-in, uploads and WebDAV |
 | `BASE_PATH` | *(empty)* | Public sub-path, only when the proxy doesn't strip it |
-| `PUBLIC_URL` | *(from the request)* | The dashboard's full address, e.g. `https://books.example.com/reading`, for link previews |
+| `PUBLIC_URL` | *(from the request)* | The dashboard's full address, e.g. `https://books.example.com/reading`, for link previews and the links in notifications |
 | `PORT` | `8080` | Port inside the container |
 | `LIBRARY` | `/library` | Folder for everything the app keeps |
 | `PUID` / `PGID` | `1000` | Who owns the files in `library/` on the host |
@@ -363,6 +386,7 @@ src/prices/          prices, currencies, bundles and subscriptions
 src/friends/         share files and friends' data
 src/federation/      following friends' dashboards, and approving the ones that follow yours
 src/clubs/           book clubs and their spoiler-safe comments
+src/notify/          notifications: finding events, and NotifierService to send them
 src/arr/             requests to the admin's own *arr book manager
 src/rebuild/         watches for new backups, edits and syncs, and rebuilds
 src/upload/, src/admin/, src/dav/, src/status/   uploads, the admin API, WebDAV, /healthz and /api/config
