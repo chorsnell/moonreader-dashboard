@@ -187,7 +187,7 @@ Everything you can click through to (books, authors, series, genres, subgenres, 
 
 ### The demo
 
-`src/demo/` makes up three years of reading (65 public-domain books, with series, a re-read, abandoned books, one on the go, and a few of the oddities the Data checks tab looks for), writes it as a fake Moon+ backup, and runs it through the real backup import. The result is a static copy of the page that works on any static host:
+`src/demo/` makes up three years of reading (65 public-domain books, with series, a few re-reads, books devoured or read in fits and starts, abandoned books, one on the go, and a few of the oddities the Data checks tab looks for), writes it as a fake Moon+ backup, and runs it through the real backup import. The result is a static copy of the page that works on any static host:
 
 ```sh
 npm run demo -- site                            # COVER_LOOKUP=off to skip Open Library
