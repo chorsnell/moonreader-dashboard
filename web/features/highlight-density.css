@@ -1,0 +1,3 @@
+/* highlight density strip on a book page; the flash marks the highlight a click found */
+@keyframes hl-flash{from{background:color-mix(in srgb,var(--hl,var(--color-fg-muted)) 35%,transparent)}to{background:transparent}}
+.hl-flash{animation:hl-flash 1.6s ease-out}
