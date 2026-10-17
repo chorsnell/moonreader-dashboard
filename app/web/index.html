@@ -60,6 +60,10 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 #rh-empty{margin-top:var(--cds-gap-lg)}
 #rh-empty .up-primary{width:auto}
 </style>
+<link rel="stylesheet" href="pages/author.css">
+<link rel="stylesheet" href="pages/series.css">
+<link rel="stylesheet" href="pages/genre.css">
+<link rel="stylesheet" href="pages/year.css">
 </head>
 <body>
 <div id="dash-root">
@@ -188,7 +192,10 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .ck-date{all:unset;cursor:pointer;color:var(--series-1);font-size:var(--cds-font-size-caption);white-space:nowrap;font-variant-numeric:tabular-nums}
 .ck-date:hover{text-decoration:underline}
 @media (max-width:520px){.dy-day{grid-template-columns:1fr;gap:var(--cds-gap-xs)}.dy-date b,.dy-date span{display:inline;margin-right:8px}.dy-gap{padding-left:0}}
-[data-book],[data-day],[data-read]{cursor:pointer}
+[data-book],[data-link],[data-day],[data-read]{cursor:pointer}
+.lk[data-link]:hover,.chip[data-link]:hover{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+[data-link]:focus-visible{outline:2px solid var(--series-1);outline-offset:2px;border-radius:4px}
+.pg-body{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
 [data-book]:focus-visible{outline:2px solid var(--series-1);outline-offset:2px;border-radius:4px}
 .rh-list li[data-book]:hover .ttl,.dy-book[data-book]:hover .t,.go-one[data-book]:hover .go-title,.rh-kpi[data-book]:hover .val{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
 .rh tr[data-book]:hover td,.rh tr[data-day]:hover td,.rh tr[data-read]:hover td{background:var(--color-bg)}
@@ -461,6 +468,12 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
         <thead><tr><th>Day</th><th class="n">Time</th><th class="n hide-sm">Words</th><th class="n hide-sm">WPM</th><th class="n">Progress</th></tr></thead>
         <tbody></tbody></table></div></div>
   </section>
+
+  <!-- AUTHOR, SERIES, GENRE, SUBGENRE, YEAR: drawn by pages/*.js -->
+  <section class="rh-page" id="entity" hidden>
+    <button class="bk-back" id="pg-back">← Back</button>
+    <div class="pg-body" id="pg-body"></div>
+  </section>
 </div>
 
 </div>
@@ -468,6 +481,10 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 <script src="runtime.js"></script>
 <script src="calcs.js"></script>
 <script src="charts.js"></script>
+<script src="pages/author.js"></script>
+<script src="pages/series.js"></script>
+<script src="pages/genre.js"></script>
+<script src="pages/year.js"></script>
 <script src="upload.js"></script>
 </body>
 </html>

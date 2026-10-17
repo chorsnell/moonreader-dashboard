@@ -57,7 +57,7 @@
   const gColor = (g) => { const i = genreOrder.indexOf(g); return i >= 0 && i < C.length ? C[i] : 'var(--cds-chart-muted)'; };
 
   // ---------- horizontal bars ----------
-  function hbars(el, rows, { label, value, color, tipFn }) {
+  function hbars(el, rows, { label, value, color, tipFn, link }) {
     const bh = 22, gap = 6, h = rows.length * (bh + gap) + 4;
     el.style.minHeight = h + 'px';
     const { svg, w, tip } = svgIn(el, h);
@@ -70,6 +70,7 @@
     g.append('rect').attr('x', lw).attr('height', bh).attr('rx', 4).attr('width', (d) => Math.max(2, x(value(d)))).attr('fill', color);
     g.append('text').attr('class', 'lbl-in').attr('x', (d) => lw + x(value(d)) + 6).attr('y', bh / 2).attr('dy', '0.35em').text((d) => fmt(value(d)));
     g.append('rect').attr('width', w).attr('height', bh + gap).attr('fill', 'transparent')
+      .each(function (d) { if (link) linkPage(this, ...link(d)); })
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipFn(t, d))).on('mouseleave', () => hideTip(tip));
   }
 
@@ -89,7 +90,7 @@
     g.append('rect').attr('y', (d) => y(d.first_reads)).attr('height', (d) => y(0) - y(d.first_reads)).attr('width', bw).attr('fill', C[0]);
     g.append('rect').attr('y', (d) => y(d.finished)).attr('height', (d) => y(d.first_reads) - y(d.finished)).attr('width', bw).attr('fill', C[1]);
     g.append('text').attr('class', 'lbl-in').attr('x', bw / 2).attr('y', (d) => y(d.finished) - 5).attr('text-anchor', 'middle').text((d) => (d.finished ? d.finished : ''));
-    g.append('rect').attr('x', -off).attr('width', x.step()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent')
+    g.append('rect').attr('x', -off).attr('width', x.step()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent').attr('data-link', (d) => 'year/' + d.year)
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, String(d.year), [[C[0], 'First reads', d.first_reads], [C[1], 'Re-reads', d.rereads], [null, 'Reads started', d.started], [null, 'Hours logged', d.hours ? fmt(d.hours) : '—']])))
       .on('mouseleave', () => hideTip(tip));
   }
@@ -116,15 +117,15 @@
 
   function drawGenre() {
     const el = $('#ch-genre'), rows = state(el, 'genre_counts'); if (!rows) return;
-    hbars(el, rows, { label: (r) => r.genre, value: (r) => r.books, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.genre, [[null, 'Books finished', d.books], [null, 'Hours', fmt(d.hours)]]) });
+    hbars(el, rows, { label: (r) => r.genre, value: (r) => r.books, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.genre, [[null, 'Books finished', d.books], [null, 'Hours', fmt(d.hours)]]), link: (d) => ['genre', d.genre] });
   }
   function drawSub() {
     const el = $('#ch-sub'), rows = state(el, 'subgenres'); if (!rows) return;
-    hbars(el, rows, { label: (r) => r.subgenre, value: (r) => r.books, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.subgenre, [[gColor(d.genre), d.genre, d.books + ' books']]) });
+    hbars(el, rows, { label: (r) => r.subgenre, value: (r) => r.books, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.subgenre, [[gColor(d.genre), d.genre, d.books + ' books']]), link: (d) => ['subgenre', d.subgenre] });
   }
   function drawAuthors() {
     const el = $('#ch-authors'), rows = state(el, 'authors'); if (!rows) return;
-    hbars(el, rows, { label: (r) => r.author, value: (r) => r.finished, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.author, [[null, 'Books finished', d.finished], [null, 'Hours', fmt(d.hours)]]) });
+    hbars(el, rows, { label: (r) => r.author, value: (r) => r.finished, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.author, [[null, 'Books finished', d.finished], [null, 'Hours', fmt(d.hours)]]), link: (d) => ['author', d.author] });
   }
 
   function drawGenreYear() {
@@ -143,7 +144,7 @@
     axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).tickValues(tbl.filter((r, i) => i % every === 0).map((r) => r.year)).tickFormat(String).tickSize(0).tickPadding(8));
     svg.append('g').selectAll('g').data(series).join('g').attr('fill', (s) => gColor(s.key))
       .selectAll('rect').data((s) => s).join('rect').attr('x', (d) => x(d.data.year)).attr('width', x.bandwidth()).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1]) - 1));
-    svg.append('g').selectAll('rect').data(tbl).join('rect').attr('x', (d) => x(d.year)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent')
+    svg.append('g').selectAll('rect').data(tbl).join('rect').attr('x', (d) => x(d.year)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent').attr('data-link', (d) => 'year/' + d.year)
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, `${d.year} · ${d.total} finished`, genres.filter((g) => d[g]).map((g) => [gColor(g), g, d[g]]))))
       .on('mouseleave', () => hideTip(tip));
   }
@@ -452,7 +453,7 @@
     const leftOf = (d) => avg && d.wpm < avg && x(d.wpm) - lab > 40; // room for the number between name and dot?
     g.append('text').attr('class', 'lbl-in').attr('x', (d) => (leftOf(d) ? x(d.wpm) - 10 : avg && d.wpm < avg ? x(avg) + 8 : x(d.wpm) + 10)).attr('dy', '0.35em')
       .attr('text-anchor', (d) => (leftOf(d) ? 'end' : 'start')).text((d) => d.wpm);
-    g.append('rect').attr('x', 0).attr('y', -rh / 2).attr('width', w0).attr('height', rh).attr('fill', 'transparent')
+    g.append('rect').attr('x', 0).attr('y', -rh / 2).attr('width', w0).attr('height', rh).attr('fill', 'transparent').attr('data-link', (d) => d.kind + '/' + d.name)
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.name, [[gColor(d.genre), 'Speed', `${d.wpm} wpm`], [null, 'vs average', avg ? vsAvg(d.wpm / avg - 1) : '—'], [null, 'Timed', `${fmt(d.hours)} h · ${d.books} book${d.books === 1 ? '' : 's'}`]])))
       .on('mouseleave', () => hideTip(tip));
   }
@@ -525,7 +526,7 @@
         bk.append(cover(r.book_id, r.title, r.genre, 'xs'));
         t.append(document.createTextNode(r.title));
         if (r.event) t.append(el('span', 'ev ' + r.event, r.event === 'finished' ? 'Finished' : r.event === 'reread' ? 'Started re-read' : 'Started'));
-        if (r.author) { t.append(document.createElement('br')); t.append(el('small', null, r.author)); }
+        if (r.author) { t.append(document.createElement('br')); t.append(linkPage(el('small', 'lk', r.author), 'author', r.author)); }
         const bits = [];
         if (r.minutes) bits.push(mins(r.minutes));
         if (r.words) bits.push(fmt(r.words) + ' words');
@@ -553,7 +554,7 @@
     }
   }
 
-  function vbars(el, rows, key, val, color, unit) {
+  function vbars(el, rows, key, val, color, unit, link) {
     const h = 220, { svg, w, tip } = svgIn(el, h), m = { t: 18, r: 4, b: 24, l: 30 };
     const x = d3.scaleBand(rows.map(key), [m.l, w - m.r]).padding(0.3);
     const y = d3.scaleLinear([0, d3.max(rows, val) || 1], [h - m.b, m.t]).nice();
@@ -565,10 +566,11 @@
     g.append('rect').attr('y', (d) => y(val(d))).attr('height', (d) => y(0) - y(val(d))).attr('width', bw).attr('rx', 4).attr('fill', color);
     g.append('text').attr('class', 'lbl-in').attr('x', bw / 2).attr('y', (d) => y(val(d)) - 5).attr('text-anchor', 'middle').text((d) => fmt(val(d)));
     g.append('rect').attr('x', -off).attr('width', x.step()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent')
+      .each(function (d) { if (link) linkPage(this, ...link(d)); })
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, String(key(d)), [[null, unit, fmt(val(d))]]))).on('mouseleave', () => hideTip(tip));
   }
   function drawWeek() { const el = $('#ch-week'), rows = state(el, 'weekday'); if (rows) vbars(el, rows, (r) => r.weekday, (r) => r.avg_minutes, C[0], 'Avg minutes'); }
-  function drawSpeed() { const el = $('#ch-speed'), rows = state(el, 'speed_year'); if (rows) vbars(el, rows, (r) => r.year, (r) => r.wpm, C[2], 'Words per minute'); }
+  function drawSpeed() { const el = $('#ch-speed'), rows = state(el, 'speed_year'); if (rows) vbars(el, rows, (r) => r.year, (r) => r.wpm, C[2], 'Words per minute', (r) => ['year', r.year]); }
 
   // ---------- covers ----------
   // the book's cover, or a tile with its first letter in the genre's colour
@@ -661,7 +663,8 @@
     const q = $('#lib-q').value.trim().toLowerCase(), gsel = $('#lib-genre').value, ssel = $('#lib-status').value, rr = $('#lib-reread').value;
     const n = table('#tbl-books', 'books', [
       { f: 'title', render: (td, r) => { const w = el('div', 'tt'); w.append(cover(r.id, r.title, r.genre, 'sm'), el('span', null, r.title)); td.append(w); } },
-      { f: 'author', render: txt('author'), cls: 'hide-sm' }, { f: 'genre', render: txt('genre'), cls: 'hide-sm' },
+      { f: 'author', render: (td, r) => td.append(linkPage(el('span', 'lk', r.author ?? '—'), 'author', r.author)), cls: 'hide-sm' },
+      { f: 'genre', render: (td, r) => td.append(linkPage(el('span', 'lk', r.genre ?? '—'), 'genre', r.genre)), cls: 'hide-sm' },
       { f: 'last_read', render: txt('last_read', date) }, { f: 'times_read', num: true, render: txt('times_read') }, { f: 'hours', num: true, render: txt('hours', (v) => (v ? fmt(v) : '—')), cls: 'hide-sm' },
       { f: 'wpm', num: true, cls: 'hide-sm', get: (r) => speedOf(r.id), render: (td, r) => { const v = speedOf(r.id); td.textContent = v ?? '—'; } },
       { f: 'progress', num: true, render: txt('progress', pct) },
@@ -676,8 +679,9 @@
       { f: 'days_read', num: true, render: txt('days_read'), cls: 'hide-sm' }, { f: 'hours', num: true, render: txt('hours', (v) => (v ? v : '—')), cls: 'hide-sm' }, { f: 'progress', num: true, render: txt('progress', pct) },
     ], { book: (r) => r.book_id });
     table('#tbl-series', 'series', [
-      { f: 'series', render: txt('series') }, { f: 'author', render: txt('author'), cls: 'hide-sm' }, { f: 'finished', num: true, render: (td, r) => { td.textContent = `${r.finished} of ${r.books}`; } }, { f: 'hours', num: true, render: txt('hours', fmt) },
+      { f: 'series', render: txt('series') }, { f: 'author', render: (td, r) => td.append(linkPage(el('span', 'lk', r.author ?? '—'), 'author', r.author)), cls: 'hide-sm' }, { f: 'finished', num: true, render: (td, r) => { td.textContent = `${r.finished} of ${r.books}`; } }, { f: 'hours', num: true, render: txt('hours', fmt) },
     ]);
+    $('#tbl-series').querySelectorAll('tbody tr').forEach((tr) => linkPage(tr, 'series', tr.dataset.key));
   }
   ['#lib-q', '#lib-genre', '#lib-status', '#lib-reread'].forEach((s) => $(s).addEventListener('input', () => drawTables()));
 
@@ -778,28 +782,47 @@
     } else ['data-book', 'role', 'tabindex'].forEach((a) => node.removeAttribute(a));
     return node;
   }
-  let bookId = null, bookRead = null, prevTab = 'overview';
-  function openBook(id) {
-    if (!id) return;
-    if (tab !== 'book') prevTab = tab;
-    if (id !== bookId) bookRead = null;
-    bookId = id;
-    try { history.pushState({ book: id, from: prevTab }, '', '#book/' + encodeURIComponent(id)); } catch (e) { /* sandboxed */ }
-    show('book', false);
+  // any element with data-link="<kind>/<id>" opens that page: author, series, genre, subgenre, year
+  function linkPage(node, kind, id) {
+    if (!node || id == null || id === '') return node;
+    node.setAttribute('data-link', kind + '/' + id);
+    if (!(node instanceof SVGElement)) { node.tabIndex = 0; node.setAttribute('role', 'link'); }
+    return node;
+  }
+  // pages/*.js register { draw(id, root) } for each kind; the page renders everything into root
+  const pages = {};
+  let bookId = null, bookRead = null, prevTab = 'overview', pageKind = null, pageId = null;
+  const onPage = () => tab === 'book' || tab === 'entity';
+  function openLink(kind, id) {
+    if (id == null || id === '') return;
+    if (!onPage()) prevTab = tab;
+    try { history.pushState({ link: kind + '/' + id, from: prevTab }, '', '#' + kind + '/' + encodeURIComponent(id)); } catch (e) { /* sandboxed */ }
+    go(kind, String(id));
     window.scrollTo(0, 0);
   }
+  function go(kind, id) {
+    if (kind === 'book') { if (id !== bookId) bookRead = null; bookId = id; show('book', false); }
+    else { pageKind = kind; pageId = id; show('entity', false); }
+  }
+  const openBook = (id) => openLink('book', id);
   document.addEventListener('click', (e) => {
-    const t = e.target.closest && e.target.closest('[data-book],[data-day],[data-read]');
+    const t = e.target.closest && e.target.closest('[data-book],[data-link],[data-day],[data-read]');
     if (!t || e.target.closest('button,input,select,a')) return;
     if (t.hasAttribute('data-book')) openBook(t.getAttribute('data-book'));
+    else if (t.hasAttribute('data-link')) { const s = t.getAttribute('data-link'), i = s.indexOf('/'); openLink(s.slice(0, i), s.slice(i + 1)); }
     else if (t.hasAttribute('data-day')) openDiary(t.getAttribute('data-day'));
     else { bookRead = +t.getAttribute('data-read'); drawBook(); $('#card-bk-days').scrollIntoView({ block: 'nearest' }); }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' || !e.target.hasAttribute || !e.target.hasAttribute('data-book')) return;
-    openBook(e.target.getAttribute('data-book'));
+    if (e.key !== 'Enter' || !e.target.hasAttribute || !(e.target.hasAttribute('data-book') || e.target.hasAttribute('data-link'))) return;
+    e.target.click();
   });
-  $('#bk-back').addEventListener('click', () => { if (history.state && history.state.book) history.back(); else show(prevTab); });
+  document.querySelectorAll('.bk-back').forEach((b) => b.addEventListener('click', () => { if (history.state && (history.state.book || history.state.link)) history.back(); else show(prevTab); }));
+  function drawEntity() {
+    const root = $('#pg-body'), p = pages[pageKind];
+    if (!p) { document.title = 'Reading history'; root.replaceChildren(el('div', 'dy-empty', 'Nothing to show here.')); return; }
+    try { p.draw(pageId, root); } catch (e) { console.error(pageKind, e); root.replaceChildren(el('div', 'fail', 'Failed to load')); }
+  }
   $('#bk-read').addEventListener('change', (e) => { bookRead = +e.target.value; drawBook(); });
 
   const okDay = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
@@ -822,11 +845,14 @@
     // header: cover, title, author, series, genre, status and progress
     const info = el('div', 'go-info');
     info.append(el('div', 'bk-title', b.title));
-    info.append(el('div', 'go-sub', [b.author, b.series ? b.series + (b.series_no != null ? ' #' + b.series_no : '') : null].filter(Boolean).join(' · ')));
+    const sub = el('div', 'go-sub');
+    if (b.author) sub.append(linkPage(el('span', 'lk', b.author), 'author', b.author));
+    if (b.series) { if (b.author) sub.append(' · '); sub.append(linkPage(el('span', 'lk', b.series), 'series', b.series), b.series_no != null ? ' #' + b.series_no : ''); }
+    info.append(sub);
     const chips = el('div', 'bk-chips');
     chips.append(el('span', 'chip' + (b.status === 'finished' ? ' ok' : ''), STATUS[b.status] || b.status));
     if (b.times_read > 1) chips.append(el('span', 'chip', `Read ${b.times_read} times`));
-    [b.genre, b.subgenre].filter(Boolean).forEach((g) => { const c = el('span', 'chip', g); c.style.color = gColor(b.genre); chips.append(c); });
+    [['genre', b.genre], ['subgenre', b.subgenre]].filter(([, g]) => g).forEach(([k, g]) => { const c = linkPage(el('span', 'chip', g), k, g); c.style.color = gColor(b.genre); chips.append(c); });
     info.append(chips);
     if (b.progress != null) {
       const prog = el('div', 'go-prog'), bar = el('div', 'pbar'), fill = el('i');
@@ -886,7 +912,7 @@
     const rel = ser.length > 1 ? ser.sort((x, y) => (x.series_no ?? 1e9) - (y.series_no ?? 1e9) || x.title.localeCompare(y.title))
       : books.filter((x) => x.author && x.author === b.author && x.id !== b.id).sort((x, y) => ((x.last_read || '') < (y.last_read || '') ? 1 : -1));
     $('#card-bk-related').hidden = !rel.length;
-    $('#bk-rel-h').textContent = ser.length > 1 ? b.series : `More by ${b.author}`;
+    $('#bk-rel-h').replaceChildren(linkPage(el('span', 'lk', ser.length > 1 ? b.series : `More by ${b.author}`), ser.length > 1 ? 'series' : 'author', ser.length > 1 ? b.series : b.author));
     $('#bk-rel-note').textContent = ser.length > 1 ? `${fmt(ser.filter((x) => x.status === 'finished').length)} of ${fmt(ser.length)} in the series finished.` : `${plural(rel.length, 'other book')} in your library.`;
     $('#bk-related').replaceChildren(...rel.map((x) => {
       const li = el('li', x.id === b.id ? 'cur' : null), a = el('div', 'ttl');
@@ -968,8 +994,8 @@
     tab = name;
     tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     document.querySelectorAll('.rh-page').forEach((p) => (p.hidden = p.id !== name));
-    if (name !== 'book') document.title = 'Reading history';
-    $('#bk-back').textContent = '← Back to ' + ($('#tab-' + prevTab)?.textContent || 'Overview');
+    if (!onPage()) document.title = 'Reading history';
+    document.querySelectorAll('.bk-back').forEach((b) => (b.textContent = '← Back to ' + ($('#tab-' + prevTab)?.textContent || 'Overview')));
     if (link) dash.setLink(name);
     redraw();
   }
@@ -993,18 +1019,28 @@
       list('#big', 'big_reads', (r) => [r.title, r.author, `${r.hours} h · ${r.days_read} days`, null, r.book_id]);
       list('#stalled', 'stalled', (r) => [r.title, r.author, 'last ' + fShort(pDate(r.last_read)), r.progress, r.id]);
     } else if (tab === 'book') drawBook();
+    else if (tab === 'entity') drawEntity();
     else drawTables();
   }
   dash.onData(redraw);
-  // #speed, #diary… open a tab; #book/<id> opens a book
+  // #speed, #diary… open a tab; #book/<id>, #author/<name>… open a page
   function route() {
-    const named = decodeURIComponent(location.hash.slice(1));
-    if (named.startsWith('book/')) {
+    const named = decodeURIComponent(location.hash.slice(1)), i = named.indexOf('/');
+    if (i > 0) {
       if (history.state && history.state.from) prevTab = history.state.from;
-      if (named.slice(5) !== bookId) bookRead = null;
-      bookId = named.slice(5); show('book', false);
-    } else show(named && named !== 'book' && document.getElementById(named)?.classList.contains('rh-page') ? named : 'overview', false);
+      go(named.slice(0, i), named.slice(i + 1));
+    } else show(named && !['book', 'entity'].includes(named) && document.getElementById(named)?.classList.contains('rh-page') ? named : 'overview', false);
   }
   window.addEventListener('popstate', route);
-  route();
+  // after pages/*.js have registered
+  document.addEventListener('DOMContentLoaded', route);
+
+  // what pages/*.js build with
+  window.rh = {
+    register: (kind, page) => { pages[kind] = page; if (tab === 'entity' && pageKind === kind) redraw(); },
+    D, state, el, fmt, pDate, iso, fDay, fShort, C, gColor, genres: () => genreOrder.slice(),
+    svgIn, measure, showTip, hideTip, tipLines, axis, legend, hbars, vbars, cover,
+    linkBook: linkTo, linkPage, openLink, openDiary, setTitle: (s) => (document.title = s ? `${s} · Reading history` : 'Reading history'),
+    mins, pct, date, plural, span, okDay, speedFrom, avgWpm, vsAvg, STATUS,
+  };
 })();
