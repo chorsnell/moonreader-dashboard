@@ -170,15 +170,15 @@ export function buildContext(
 ): FilterContext {
   const genres = new Set(settings.private_genres.map((g) => g.toLowerCase()));
   const ids = new Set(settings.private_books);
-  const privateIds = books
+  // every book marked private, also ones not in the reading data (a priced book never opened)
+  const byGenre = books
     .filter(
       (b) =>
-        ids.has(b.id) ||
         (b.genre && genres.has(b.genre.toLowerCase())) ||
         (b.subgenre && genres.has(b.subgenre.toLowerCase())),
     )
-    .map((b) => b.id)
-    .sort();
+    .map((b) => b.id);
+  const privateIds = [...new Set([...ids, ...byGenre])].sort();
   const anonymise = settings.private_mode === 'anonymise';
   const priv = new Map(privateIds.map((id, i) => [id, anonymise ? `private-${i + 1}` : '']));
   const recentFrom = new Date(Date.parse(asOf.slice(0, 10)) - CURRENT_DAYS * DAY_MS)
@@ -323,6 +323,12 @@ const ANON_KEEP = new Set([
   'date',
   'days_read',
   'finished',
+  // what it cost (prices.json), so the totals still add up
+  'price',
+  'list_price',
+  'paid',
+  'paid_currency',
+  'acquisition',
 ]);
 
 function anonymised(
