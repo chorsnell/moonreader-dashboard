@@ -1,5 +1,5 @@
 # runtime state: your reading data, backups and logs live here, never in git
-library/
+/library/
 *.mrpro
 node_modules/
 dist/
