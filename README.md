@@ -57,7 +57,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Open `http://SERVER_IP:8080/`, click **Update data** and upload a Moon+ backup. To make one in Moon+, go to **Options → Backup & Restore → Backup**; it produces a `.mrpro` file. The dashboard builds itself in a few seconds.
+Open `http://SERVER_IP:8080/`, click **Admin**, sign in with your `UPLOAD_TOKEN`, then click **Update data** and upload a Moon+ backup. To make one in Moon+, go to **Options → Backup & Restore → Backup**; it produces a `.mrpro` file. The dashboard builds itself in a few seconds.
 
 To update to a newer version later:
 
@@ -69,6 +69,7 @@ Everything the container keeps lives in `./library/`, which is ignored by git:
 
 ```
 library/
+  settings.json    who can see the dashboard (the read password is stored hashed)
   inbox/           backups (.mrpro); the newest is used, the 5 newest are kept
   data/            the generated data the page reads
   dav/             what Moon+ syncs over WebDAV
@@ -81,10 +82,21 @@ library/
 
 There are four ways, and all of them trigger a rebuild automatically:
 
-1. **The Update data button** on the dashboard. It's only shown when `UPLOAD_TOKEN` is set, and asks for that token, which your browser then remembers.
+1. **The Update data button** on the dashboard. It's only shown to the admin: click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`.
 2. **WebDAV from Moon+** (below). This keeps progress current without making backups.
 3. **Drop a backup into `library/inbox/`**, by hand, with `scp`, or with Syncthing.
 4. **Edit `library/catalogue.json`.** Saving it rebuilds the data with your changes.
+
+## Who can see it
+
+`UPLOAD_TOKEN` is the admin password. Only the admin can upload, sync, or change settings. Visitors see a small **Admin** link and nothing else they can use.
+
+To choose who can *read* the dashboard, sign in as the admin, open **Update data**, and use **Who can see this dashboard**:
+
+- **Anyone with the link** (the default).
+- **Only people with the read password.** Visitors get a password box instead of your stats, and the data, covers and API all refuse them until they enter it. Give the password to your friends; their browser remembers it for a year.
+
+Setting a new read password signs out everyone who used the old one. Changing `UPLOAD_TOKEN` signs out the admin.
 
 ## Sync straight from Moon+ (WebDAV)
 
@@ -106,7 +118,7 @@ Every link in the page is relative and resolves against the public path, so the 
 
 Allow request bodies of at least 200 MB, because backups are often over 100 MB. Traefik has no limit by default. In Nginx, use `client_max_body_size 200m;`.
 
-Use HTTPS when sharing it, because the upload token travels with every upload and sync.
+Use HTTPS when sharing it, because passwords travel with every sign-in, upload and sync.
 
 ## New books and genres
 
@@ -139,7 +151,7 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 
 | Variable | Default | What it does |
 |---|---|---|
-| `UPLOAD_TOKEN` | *(empty)* | Turns on the Update data button and WebDAV, and is the password for both |
+| `UPLOAD_TOKEN` | *(empty)* | The admin password. Turns on admin sign-in, uploads and WebDAV |
 | `BASE_PATH` | *(empty)* | Public sub-path, only when the proxy doesn't strip it |
 | `PUID` / `PGID` | `1000` | Who owns the files in `library/` on the host |
 | `POLL_SECONDS` | `30` | How often to check the inbox |
@@ -147,7 +159,7 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 | `COVER_LOOKUP` | `on` | Set to `off` to stop looking up missing covers on Open Library |
 | `TZ` | UTC | Time zone for the log |
 
-The server also has three JSON endpoints: `/healthz`, which Docker uses as its health check, `/api/config`, which reports the last rebuild and any error, and `/api/covers`, which lists the saved covers.
+The server also has three JSON endpoints: `/healthz`, which Docker uses as its health check, `/api/config`, which reports who you're signed in as and the last rebuild, and `/api/covers`, which lists the saved covers.
 
 ## How the numbers are worked out
 
@@ -178,7 +190,7 @@ python3 -m http.server 8000 --directory site
 The [`demo` workflow](.github/workflows/pages.yml) does the same on every push to `main`, and weekly, and publishes it to GitHub Pages.
 
 ```
-app/server.py        web server, rebuild watcher, uploads, WebDAV
+app/server.py        web server, sign-in and access, rebuild watcher, uploads, WebDAV
 app/update.py        turns a .mrpro backup (plus synced positions) into data/*.json, and saves its covers
 app/covers.py        looks up missing covers on Open Library
 app/web/             the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js

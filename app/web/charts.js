@@ -990,9 +990,16 @@
   }
 
   // ---------- tabs ----------
-  const tabs = document.querySelectorAll('.rh-tabs button');
-  function show(name, link = true) {
-    if (!document.getElementById(name)) return;
+  const tabs = [...document.querySelectorAll('.rh-tabs button')];
+  const top = $('.rh-top'), nav = $('.rh-tabs');
+  // keep scroll-margin in step with the sticky bar so scrollIntoView lands below it
+  const syncTopH = () => document.documentElement.style.setProperty('--top-h', top.offsetHeight + 8 + 'px');
+  new ResizeObserver(syncTopH).observe(top); syncTopH();
+
+  function show(name, link = true, dir = 0) {
+    const page = document.getElementById(name);
+    if (!page) return;
+    const changed = name !== tab;
     tab = name;
     tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     document.querySelectorAll('.rh-page').forEach((p) => (p.hidden = p.id !== name));
@@ -1000,8 +1007,69 @@
     document.querySelectorAll('.bk-back').forEach((b) => (b.textContent = '← Back to ' + ($('#tab-' + prevTab)?.textContent || 'Overview')));
     if (link) dash.setLink(name);
     redraw();
+    // bring the active tab into view inside the (horizontally scrolling) tab strip
+    const b = tabs.find((t) => t.dataset.tab === name);
+    if (b) nav.scrollTo({ left: b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2, behavior: 'smooth' });
+    // if we were scrolled past the top of the content, start the new tab at its top
+    if (changed) {
+      const y = page.getBoundingClientRect().top + scrollY - top.offsetHeight - 8;
+      if (scrollY > y) scrollTo(0, Math.max(0, y));
+      if (dir) { page.classList.remove('in-l', 'in-r'); void page.offsetWidth; page.classList.add(dir > 0 ? 'in-r' : 'in-l'); }
+    }
   }
   tabs.forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
+  document.addEventListener('animationend', (e) => e.target.classList?.remove('in-l', 'in-r'));
+
+  // ---------- swipe between tabs (touch) ----------
+  const scrollsX = (el) => {
+    for (; el && el !== document.body; el = el.parentElement) {
+      if (el.matches('input,select,textarea,dialog')) return true;
+      const ox = getComputedStyle(el).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth) return true;
+    }
+    return false;
+  };
+  let sw = null;
+  const rh = $('.rh');
+  rh.addEventListener('touchstart', (e) => {
+    sw = null;
+    if (e.touches.length !== 1 || nav.hidden || tab === 'book' || top.contains(e.target) || scrollsX(e.target)) return;
+    const t = e.touches[0];
+    sw = { x: t.clientX, y: t.clientY, dx: 0, mode: null, page: document.getElementById(tab) };
+  }, { passive: true });
+  rh.addEventListener('touchmove', (e) => {
+    if (!sw) return;
+    const t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+    if (!sw.mode) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      sw.mode = Math.abs(dx) > Math.abs(dy) * 1.5 ? 'x' : 'y';
+      if (sw.mode === 'x') sw.page.classList.add('drag');
+    }
+    if (sw.mode !== 'x') return;
+    const i = tabs.findIndex((b) => b.dataset.tab === tab);
+    const edge = (dx > 0 && i === 0) || (dx < 0 && i === tabs.length - 1);
+    sw.dx = dx;
+    const off = edge ? dx / 4 : dx / 2;  // resist at the first/last tab
+    sw.page.style.transform = `translateX(${off}px)`;
+    sw.page.style.opacity = String(1 - Math.min(Math.abs(off) / 400, 0.4));
+  }, { passive: true });
+  const endSwipe = () => {
+    if (!sw || sw.mode !== 'x') { sw = null; return; }
+    const { page, dx } = sw; sw = null;
+    page.classList.remove('drag');
+    const i = tabs.findIndex((b) => b.dataset.tab === tab);
+    const j = Math.abs(dx) > Math.min(80, innerWidth / 5) ? i + (dx < 0 ? 1 : -1) : i;
+    if (j !== i && tabs[j]) {
+      page.style.transform = page.style.opacity = '';
+      show(tabs[j].dataset.tab, true, dx < 0 ? 1 : -1);
+    } else {
+      page.classList.add('settle');
+      page.style.transform = page.style.opacity = '';
+      setTimeout(() => page.classList.remove('settle'), 200);
+    }
+  };
+  rh.addEventListener('touchend', endSwipe);
+  rh.addEventListener('touchcancel', endSwipe);
 
   function redraw() {
     const gc = D('genre_counts');

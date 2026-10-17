@@ -29,7 +29,7 @@
 }}
 *{box-sizing:border-box}
 body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans);-webkit-font-smoothing:antialiased}
-#dash-root{padding:clamp(16px,4vw,40px)}
+#dash-root{--root-pad:clamp(16px,4vw,40px);padding:var(--root-pad);overflow-x:clip}
 .rh-src{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin:var(--cds-gap-xs) 0 0}
 .rh-src a{color:inherit}
 .dash-skeleton{color:transparent!important;position:relative}
@@ -57,8 +57,17 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .up-dav{display:flex;gap:8px;align-items:center;margin:4px 0 10px}
 .up-dav code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;padding:7px 9px;border-radius:8px;background:var(--color-bg);border:1px solid var(--color-border-line)}
 .up-copy{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg);cursor:pointer}
-#rh-empty{margin-top:var(--cds-gap-lg)}
+#rh-empty,#rh-locked{margin-top:var(--cds-gap-lg)}
 #rh-empty .up-primary{width:auto}
+#rh-locked form{max-width:20rem}
+#rh-locked label,.up-dialog label{display:block;font-size:12px;color:var(--color-fg-muted);margin:12px 0 4px}
+#rh-locked input{width:100%;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg)}
+.up-link{font:inherit;font-size:13px;border:0;background:none;color:var(--color-fg-muted);cursor:pointer;padding:4px 2px;text-decoration:underline;text-underline-offset:3px}
+.up-link:hover{color:var(--color-fg)}
+.up-dialog label.up-radio{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--color-fg);margin:8px 0;cursor:pointer}
+.up-dialog .up-radio input{width:auto;margin:0}
+.up-hint{margin-top:6px}
+.up-dialog section.up-foot{padding:10px 20px;text-align:right}
 </style>
 <link rel="stylesheet" href="pages/author.css">
 <link rel="stylesheet" href="pages/series.css">
@@ -72,12 +81,23 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .rh-head h1{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0}
 .rh-take{color:var(--color-fg-muted);font-size:var(--cds-font-size-body);margin:var(--cds-gap-xs) 0 0;line-height:1.5}
 .rh-take b,.rh .num b{font-weight:600;color:var(--color-fg)}
-.rh-tabs{display:flex;gap:var(--cds-gap-xs);border-bottom:1px solid var(--color-border-line);overflow-x:auto}
+.rh-top{position:sticky;top:0;z-index:10;display:flex;flex-direction:column;gap:var(--cds-gap-sm);margin-top:calc(-1 * var(--root-pad));padding-top:var(--cds-pad-md);background:var(--color-bg);box-shadow:0 0 0 100vmax var(--color-bg);clip-path:inset(0 -100vmax)}
+.rh-intro{margin-top:calc(-1 * var(--cds-gap-sm))}
+.rh-intro .rh-take{margin:0}
+.rh-tabs{display:flex;gap:var(--cds-gap-xs);border-bottom:1px solid var(--color-border-line);overflow-x:auto;scrollbar-width:none}
+.rh-tabs::-webkit-scrollbar{display:none}
 .rh-tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:var(--cds-pad-sm) var(--cds-pad-md);font:inherit;font-size:var(--cds-font-size-body);color:var(--color-fg-muted);cursor:pointer;white-space:nowrap}
 .rh-tabs button[aria-selected=true]{color:var(--color-fg);border-bottom-color:var(--color-fg)}
 .rh-tabs[hidden]{display:none}
 .rh-page{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
 .rh-page[hidden]{display:none}
+.rh-page.in-l{animation:in-l .22s ease-out}.rh-page.in-r{animation:in-r .22s ease-out}
+@keyframes in-l{from{transform:translateX(-40px);opacity:0}}
+@keyframes in-r{from{transform:translateX(40px);opacity:0}}
+.rh-page.drag{transition:none!important}
+.rh-page.settle{transition:transform .18s ease-out,opacity .18s ease-out}
+.rh-page,.dy-day,.rh-card{scroll-margin-top:var(--top-h,110px)}
+@media (prefers-reduced-motion:reduce){.rh-page.in-l,.rh-page.in-r{animation:none}}
 .rh-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:var(--cds-gap-md)}
 .rh-kpi{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-md) var(--cds-pad-lg)}
 .rh-kpi .lbl{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
@@ -191,6 +211,22 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .ck-strip span{position:absolute;inset:0;opacity:.16}
 .ck-date{all:unset;cursor:pointer;color:var(--series-1);font-size:var(--cds-font-size-caption);white-space:nowrap;font-variant-numeric:tabular-nums}
 .ck-date:hover{text-decoration:underline}
+@media (max-width:640px){
+  #dash-root{--root-pad:12px}
+  .rh{gap:var(--cds-gap-md)}
+  .rh-top{gap:var(--cds-gap-xs);padding-top:var(--cds-pad-sm)}
+  .rh-head h1{font-size:22px}
+  .rh-update{padding:6px 12px;font-size:13px}
+  .rh-intro{margin-top:calc(-1 * var(--cds-gap-xs))}
+  .rh-tabs{margin-inline:calc(-1 * var(--root-pad));padding-inline:var(--root-pad);gap:0;scroll-padding-inline:var(--root-pad)}
+  .rh-tabs button{padding:10px 12px}
+  .rh-page,.rh-grid{gap:var(--cds-gap-sm)}
+  .rh-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--cds-gap-sm)}
+  .rh-kpi{padding:var(--cds-pad-sm) var(--cds-pad-md)}
+  .rh-kpi .val{font-size:22px}
+  .rh-card{padding:var(--cds-pad-md) 14px}
+  .chart.tall{min-height:260px}
+}
 @media (max-width:520px){.dy-day{grid-template-columns:1fr;gap:var(--cds-gap-xs)}.dy-date b,.dy-date span{display:inline;margin-right:8px}.dy-gap{padding-left:0}}
 [data-book],[data-link],[data-day],[data-read]{cursor:pointer}
 .lk[data-link]:hover,.chip[data-link]:hover{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
@@ -214,10 +250,9 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 </style>
 
 <div class="rh">
-  <header class="rh-head" id="top">
+  <div class="rh-top" id="top">
+  <header class="rh-head">
     <h1>Reading history</h1>
-    <p class="rh-take dash-skeleton" id="takeaway" data-source="kpis" data-field="value" data-where="metric=takeaway">—</p>
-    <p class="rh-src" id="rh-source"></p>
   </header>
 
   <nav class="rh-tabs" role="tablist">
@@ -229,6 +264,12 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
     <button role="tab" data-tab="library" id="tab-library" aria-selected="false">Library</button>
     <button role="tab" data-tab="checks" id="tab-checks" aria-selected="false">Data checks</button>
   </nav>
+  </div>
+
+  <div class="rh-intro">
+    <p class="rh-take dash-skeleton" id="takeaway" data-source="kpis" data-field="value" data-where="metric=takeaway">—</p>
+    <p class="rh-src" id="rh-source"></p>
+  </div>
 
   <!-- OVERVIEW -->
   <section class="rh-page" id="overview">
