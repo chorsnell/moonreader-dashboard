@@ -93,9 +93,16 @@ export function simulate(rng: Random): { log: Map<string, DemoDay[]>; days: numb
       const weekend = (date + 3) % 7 >= 5; // day 0 is a Thursday
       if (rng.random() > (weekend ? 0.86 : 0.72) * chance) continue;
       if (style === 'stopstart' && rng.random() < 0.2) day += rng.randint(4, 12); // put down for a week or so
-      const minutes = Math.max(6.0, rng.lognormal(weekend ? 3.65 : 3.3, 0.45) * length);
-      const w = Math.floor(minutes * wpm * rng.uniform(0.85, 1.15));
-      done = Math.min(words, done + w);
+      // a sag in the middle and a sprint for the last fifth
+      const at = done / words,
+        pull = at >= 0.8 ? 1.6 : at >= 0.35 && at < 0.6 ? 0.85 : 1;
+      let minutes = Math.max(6.0, rng.lognormal(weekend ? 3.65 : 3.3, 0.45) * length * pull);
+      let w = Math.floor(minutes * wpm * rng.uniform(0.85, 1.15));
+      if (done + w > words) {
+        minutes = Math.max(3, (minutes * (words - done)) / w); // the last day stops at the end
+        w = words - done;
+      }
+      done += w;
       let progress = round1((done / words) * 100);
       if (!paused && progress >= PAUSE[title]) {
         paused = true;
