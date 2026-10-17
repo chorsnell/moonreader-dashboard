@@ -1,7 +1,7 @@
 // The admin page's Sync & logs section: health at a glance (last sync, a warning when syncing
 // seems to have stopped, last rebuild) and the activity log, filtered by type, date and text.
 (() => {
-  const TYPES = { sync: 'Sync', rebuild: 'Rebuild', upload: 'Upload', import: 'Imports', cover: 'Covers', metadata: 'Metadata', prune: 'Old backups', settings: 'Settings' };
+  const TYPES = { sync: 'Sync', rebuild: 'Rebuild', upload: 'Upload', import: 'Imports', request: 'Requests', cover: 'Covers', metadata: 'Metadata', prune: 'Old backups', settings: 'Settings' };
   const secs = (ms) => (ms < 1000 ? `${ms} ms` : ms < 60000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 60000)} min`);
   const label = (k) => k.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
   const show = (v) => (v == null || v === '' ? '—' : Array.isArray(v) ? (v.length ? v.join('\n') : '—') : typeof v === 'object' ? JSON.stringify(v) : String(v));

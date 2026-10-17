@@ -10,7 +10,32 @@ considered, which were built, and why some were not.
 | Wikidata | author country and gender | live lookup, cached | built |
 | Goodreads, StoryGraph | ratings, shelves, books read elsewhere | your export file, uploaded in Admin → Imports | built (BOO-53) |
 | Kobo, Kindle | reads, days and highlights from e-readers | your files, uploaded in Admin → Imports | built (BOO-57) |
+| Your *arr book manager (Readarr API: Bookshelf…) | asking for the next book in a series or the rest of an author | your own instance, admin only | built (BOO-64) |
 | Anna's Archive | filling gaps in book metadata | — | **not built** (below) |
+
+## Your book manager: the *arr stack (BOO-64)
+
+Admin → Book manager connects the dashboard to a book manager in your own *arr stack.
+Readarr itself is retired; forks such as **Bookshelf** keep its v1 API, and that API is
+what the dashboard speaks (`/api/v1/book`, `/api/v1/author`, `/api/v1/book/lookup`,
+`/api/v1/queue`, `/api/v1/command`, with the `X-Api-Key` header).
+
+- **Admin only.** The URL and API key are kept in `library/settings.json` and are never sent
+  to the page, to visitors, readers or friends. Every call goes from the dashboard's server
+  to your instance (`/api/admin/arr/*`, admin-only endpoints), and none of its buttons or
+  badges are drawn for anyone else, nor while the admin previews as a visitor.
+- **Requests only.** The dashboard asks *your* book manager to monitor and search for a book
+  or an author; the book manager does whatever searching and downloading you've set it up to
+  do. The dashboard never searches for, links to or downloads books itself.
+- **What it does:** status badges (available, downloading, wanted, in your book manager) on
+  book, series and author pages; **Get next in series** where the next number isn't in your
+  library (from the `series_next` calc); **Get the rest of this author** on author pages,
+  which adds the author with all their books wanted, or, for one already there, wants their
+  missing books and searches. Books on the server that you haven't read are marked.
+- **Matching:** ISBN first, then title and author (surname), then series and number.
+- **Logged:** every request (and failure) is in Sync & logs under Requests, and kept in
+  `library/arr-requests.json`. A book page notes when a requested book has arrived.
+- Not done yet: requesting friends' favourites (needs the friends feature).
 
 ## Anna's Archive (BOO-54)
 

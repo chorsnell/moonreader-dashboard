@@ -11,6 +11,7 @@ export const ACTIVITY_TYPES = [
   'rebuild',
   'upload',
   'import',
+  'request',
   'cover',
   'metadata',
   'prune',
