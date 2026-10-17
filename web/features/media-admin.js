@@ -1,9 +1,9 @@
-// The admin's "TV & film" section: upload a Netflix export and pick your profiles, connect
+// The admin's "Other media" section (TV, film, audiobooks): upload a Netflix export and pick your profiles, connect
 // Plex through Tautulli (test, save, sync now), the optional TMDB key, and the media build's status.
 (() => {
   const URL_ = 'api/admin/media';
 
-  rh.adminSection({ id: 'media', title: 'TV & film', order: 25, draw(box, a) {
+  rh.adminSection({ id: 'media', title: 'Other media', order: 25, draw(box, a) {
     const { h, block, msg, when, ago } = a;
     let st = null;
 
@@ -12,7 +12,7 @@
       for (let i = 0; i < 120; i++) {
         await new Promise((r) => setTimeout(r, 1500));
         let s; try { s = await a.get(URL_); } catch (e) { continue; }
-        if (s.building || s.tautulli.pulling) { say('Building your TV and film stats…'); continue; }
+        if (s.building || s.tautulli.pulling || (s.audiobookshelf && s.audiobookshelf.pulling)) { say('Building your TV and film stats…'); continue; }
         if (s.last_build !== before.last_build || s.last_error !== before.last_error) {
           say(s.last_error ? `The media build failed: ${s.last_error}` : `Done. ${(s.last_lines || []).slice(-1)[0] || ''}`);
           await window.dash.reload();
@@ -130,6 +130,38 @@
       sync.disabled = false;
     });
 
+    // ---------- Audiobookshelf ----------
+    const aUrl = h('input', { id: 'ad-abs-url', type: 'url', placeholder: 'http://audiobookshelf:13378', autocomplete: 'off' });
+    const aToken = h('input', { id: 'ad-abs-token', type: 'password', autocomplete: 'off' });
+    const aMsg = msg(), aFacts = h('p', { class: 'up-note' });
+    const aTest = h('button', { class: 'up-copy', type: 'button' }, 'Test');
+    const aSave = h('button', { class: 'up-primary ad-auto', type: 'submit' }, 'Save');
+    const aSync = h('button', { class: 'up-copy', type: 'button' }, 'Sync now');
+    const aConn = () => ({ url: aUrl.value.trim(), token: aToken.value.trim() });
+    aTest.addEventListener('click', async () => {
+      aTest.disabled = true; aMsg.textContent = 'Testing…';
+      try { const r = await a.post(`${URL_}/audiobookshelf/test`, aConn()); aMsg.textContent = `Connected as ${r.user}. Save to import your listening.`; }
+      catch (e) { aMsg.textContent = e.message; }
+      aTest.disabled = false;
+    });
+    aSync.addEventListener('click', async () => {
+      aSync.disabled = true; aMsg.textContent = 'Pulling listening sessions…';
+      try { const before = st; const r = await a.post(`${URL_}/audiobookshelf/sync`); aMsg.textContent = `${plural(r.new_rows, 'new session')} (${r.total} in all). Building…`; await waitForMedia(before, (t) => (aMsg.textContent = t)); }
+      catch (e) { aMsg.textContent = e.message; }
+      aSync.disabled = false;
+    });
+    const aForm = h('form', { class: 'ad-form', onsubmit: async (e) => {
+      e.preventDefault();
+      aSave.disabled = true; aMsg.textContent = 'Saving…';
+      try { const before = st; await a.post(`${URL_}/audiobookshelf`, aConn()); aToken.value = ''; aMsg.textContent = 'Saved. Pulling your listening…'; await waitForMedia(before, (t) => (aMsg.textContent = t)); }
+      catch (err) { aMsg.textContent = err.message; }
+      aSave.disabled = false;
+    } },
+    h('label', { for: aUrl.id }, 'Audiobookshelf address'), aUrl,
+    h('label', { for: aToken.id }, 'API token'), aToken,
+    h('div', { class: 'ad-actions' }, aSave, aTest, aSync), aMsg, aFacts);
+    const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
     // ---------- TMDB ----------
     const key = h('input', { id: 'ad-tmdb', type: 'password', autocomplete: 'off' });
     const kMsg = msg();
@@ -191,6 +223,11 @@
         (t.last_pull ? `Last pulled ${ago(t.last_pull)}; new plays are pulled every ${t.poll_minutes} minutes.` : t.url ? 'Not pulled yet.' : '') +
         (t.last_error ? ` Last error: ${t.last_error}` : '');
       if (!subs.length || !subList.querySelector('input')) { subs = (st.subscriptions || []).map((x) => ({ ...x })); drawSubs(); }
+      const ab = st.audiobookshelf || {};
+      if (document.activeElement !== aUrl) aUrl.value = ab.url || '';
+      aToken.placeholder = ab.has_token ? 'Saved (leave blank to keep it)' : 'In Audiobookshelf: Settings → Users → your user';
+      aSync.disabled = !(ab.url && ab.has_token);
+      aFacts.textContent = (ab.from_env ? 'Set with AUDIOBOOKSHELF_URL. ' : '') + (ab.last_pull ? `Last pulled ${ago(ab.last_pull)}.` : '') + (ab.last_error ? ` Last error: ${ab.last_error}` : '');
       key.placeholder = st.tmdb.configured ? (st.tmdb.from_env ? 'Set with TMDB_API_KEY' : 'Saved (save blank to remove it)') : 'Optional';
     }
 
@@ -200,6 +237,7 @@
       block('Netflix', 'On Netflix, go to Account → Security & privacy → Download your personal information. Upload the zip it sends (or its CONTENT_INTERACTION/ViewingActivity.csv). A profile\'s "Download all" file also works, but has dates only.',
         h('label', { for: file.id }, 'Netflix export'), file, h('div', { class: 'ad-actions' }, go), bar, upMsg, profiles),
       block('Plex (through Tautulli)', 'Tautulli keeps every Plex play with how long you watched. The dashboard reads its API with the key, never your Plex password.', tForm),
+      block('Audiobooks (Audiobookshelf)', 'Your listening sessions from a self-hosted Audiobookshelf: when you listened, for how long and how far you got. Podcasts aren\u2019t imported yet.', aForm),
       block('Streaming subscriptions', 'What you pay for each service, for the cost per hour on the TV & film tab. A service named Netflix is matched to your Netflix history, Plex to Tautulli; others count all watching. Leave To empty while it runs.',
         subList, h('div', { class: 'ad-actions' }, saveSubs, addSub), sMsg),
       block('Posters and genres (TMDB)', 'Optional: a free key from themoviedb.org adds genres, episode counts and posters to Netflix titles. Everything works without it.', kForm));
