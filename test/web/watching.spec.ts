@@ -24,15 +24,18 @@ const item = (id: string, media: string, title: string, first: string, extra: ob
 });
 
 describe('reading and watching', () => {
-  it('splits hours per month by medium, with empty months', () => {
+  it('splits hours per month by medium (audiobooks as listening), with empty months', () => {
     const rows = run('x_split_month', {
       daily: [{ date: '2025-01-05', book_id: 'a', title: 'A', minutes: 120 }],
-      media_daily: [{ date: '2025-03-01', item_id: 'f', media: 'film', title: 'F', minutes: 90 }],
+      media_daily: [
+        { date: '2025-02-10', item_id: 'b', media: 'audiobook', title: 'B', minutes: 30 },
+        { date: '2025-03-01', item_id: 'f', media: 'film', title: 'F', minutes: 90 },
+      ],
     });
     expect(rows).toEqual([
-      { month: '2025-01', reading: 2, watching: 0 },
-      { month: '2025-02', reading: 0, watching: 0 },
-      { month: '2025-03', reading: 0, watching: 1.5 },
+      { month: '2025-01', reading: 2, watching: 0, listening: 0 },
+      { month: '2025-02', reading: 0, watching: 0, listening: 0.5 },
+      { month: '2025-03', reading: 0, watching: 1.5, listening: 0 },
     ]);
   });
 

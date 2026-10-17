@@ -4,6 +4,7 @@
  * are invented (two are imagined adaptations of books in the demo library).
  */
 import type { MediaCatalogue } from '../media/media.types';
+import type { AbsCache, AbsSession } from '../media/sources/audiobookshelf';
 import { Random } from './random';
 
 type Style = 'binge' | 'steady' | 'weekly';
@@ -285,4 +286,58 @@ export function simulateNetflix(
     if (rng.random() < 0.1) add('Family', at, 25 * 60, 'Cartoon Hour: Season 1: Bubbles');
   }
   return rows.join('\n') + '\n';
+}
+
+// prettier-ignore
+const DEMO_AUDIOBOOKS: [title: string, author: string, genre: string, hours: number, year: number][] = [
+  ['The Adventures of Tom Sawyer', 'Mark Twain', 'Adventure', 7.5, 1876],
+  ['The Jungle Book', 'Rudyard Kipling', 'Classics', 6, 1894],
+  ['Heart of Darkness', 'Joseph Conrad', 'Classics', 4, 1899],
+  ['The Wind in the Willows', 'Kenneth Grahame', 'Fantasy', 6.5, 1908],
+];
+
+/**
+ * A few audiobooks heard on the commute, as Audiobookshelf listening sessions (what the
+ * Audiobookshelf pull would have cached); the last one is still going.
+ */
+export function simulateAudiobookshelf(seed: number, firstDay: number, days: number): AbsCache {
+  const rng = new Random(seed * 17 + 3);
+  const sessions: AbsSession[] = [];
+  DEMO_AUDIOBOOKS.forEach(([title, author, genre, hours, year], b) => {
+    const last = b === DEMO_AUDIOBOOKS.length - 1;
+    let day = last ? days - 30 : Math.floor(((b + 0.5) / DEMO_AUDIOBOOKS.length) * days);
+    const duration = hours * 3600;
+    const stop = last ? duration * 0.45 : duration;
+    let at = 0;
+    while (at < stop && day < days - 1) {
+      const date = new Date((firstDay + day) * 86_400_000);
+      const weekday = date.getUTCDay() >= 1 && date.getUTCDay() <= 5;
+      if (weekday && rng.random() < 0.8) {
+        const listened = Math.min(stop - at, rng.randint(22, 48) * 60);
+        at += listened;
+        const start = new Date(
+          date.getUTCFullYear(),
+          date.getUTCMonth(),
+          date.getUTCDate(),
+          8,
+          rng.randint(0, 25),
+        );
+        sessions.push({
+          id: `ls_${b}_${day}`,
+          libraryItemId: `li_demo_${b}`,
+          mediaType: 'book',
+          displayTitle: title,
+          displayAuthor: author,
+          mediaMetadata: { title, genres: [genre], series: [], publishedYear: String(year) },
+          duration,
+          timeListening: listened,
+          currentTime: at,
+          startedAt: start.getTime(),
+          deviceInfo: { clientName: 'Audiobookshelf app' },
+        });
+      }
+      day++;
+    }
+  });
+  return { sessions, pulled: null };
 }

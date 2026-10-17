@@ -8,33 +8,37 @@
   const DAY = 864e5, t = (s) => Date.parse(s + 'T00:00:00Z');
   const hrs = (h) => (h >= 10 ? fmt(Math.round(h)) : String(Math.round(h * 10) / 10));
   const ok = (id) => { const r = dash.data(id); return r.status === 'ok' ? r.data : null; };
-  const hasMedia = () => (ok('media_items') || []).some(isScreen);
-  const MEDIUM = { reading: [C[0], 'Reading'], watching: [C[1], 'Watching'] };
+  const isOther = (m) => isScreen(m) || m.media === 'audiobook';
+  const hasMedia = () => (ok('media_items') || []).some(isOther);
+  const MEDIUM = { reading: [C[0], 'Reading'], watching: [C[1], 'Watching'], listening: [C[2], 'Listening'] };
+  // which of those a day's row counts towards
+  const kindOf = (media) => (media === 'book' ? 'reading' : media === 'audiobook' ? 'listening' : 'watching');
   // Monday of the week a date falls in
   const weekOf = (date) => { const d = new Date(t(date)); return new Date(d - ((d.getUTCDay() + 6) % 7) * DAY).toISOString().slice(0, 10); };
 
   dash.calc('x_all_daily', {
     inputs: ['daily', 'media_daily'], title: 'Every day, every medium',
-    description: 'Minutes per day per book, season or film, tagged with its medium (book, tv or film).',
+    description: 'Minutes per day per book, season, film or audiobook, tagged with its medium (book, tv, film or audiobook).',
     fn: (daily, mediaDaily) => [
       ...daily.filter((d) => d.minutes > 0).map((d) => ({ date: d.date, media: 'book', id: d.book_id, title: d.title, minutes: d.minutes })),
-      ...arr(mediaDaily).filter((d) => isScreen(d) && d.minutes > 0).map((d) => ({ date: d.date, media: d.media, id: d.item_id, title: d.title, minutes: d.minutes })),
+      ...arr(mediaDaily).filter((d) => isOther(d) && d.minutes > 0).map((d) => ({ date: d.date, media: d.media, id: d.item_id, title: d.title, minutes: d.minutes })),
     ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
   });
 
   dash.calc('x_split_month', {
     inputs: ['x_all_daily'], title: 'Reading and watching per month',
-    description: 'Hours read and hours watched (TV and film) in each month from the first to the last day either was logged.',
+    description: 'Hours read, watched (TV and film) and listened to (audiobooks) in each month from the first to the last day any was logged.',
     fn: (all) => {
       if (!all.length) return [];
       const m = new Map();
-      all.forEach((d) => { const k = d.date.slice(0, 7), r = m.get(k) || { reading: 0, watching: 0 }; r[d.media === 'book' ? 'reading' : 'watching'] += d.minutes / 60; m.set(k, r); });
+      const zero = () => ({ reading: 0, watching: 0, listening: 0 });
+      all.forEach((d) => { const k = d.date.slice(0, 7), r = m.get(k) || zero(); r[kindOf(d.media)] += d.minutes / 60; m.set(k, r); });
       const out = [];
       let [y, mo] = all[0].date.slice(0, 7).split('-').map(Number);
       const last = all[all.length - 1].date.slice(0, 7);
       for (;;) {
-        const k = `${y}-${String(mo).padStart(2, '0')}`, r = m.get(k) || { reading: 0, watching: 0 };
-        out.push({ month: k, reading: Math.round(r.reading * 10) / 10, watching: Math.round(r.watching * 10) / 10 });
+        const k = `${y}-${String(mo).padStart(2, '0')}`, r = m.get(k) || zero(), r1 = (v) => Math.round(v * 10) / 10;
+        out.push({ month: k, reading: r1(r.reading), watching: r1(r.watching), listening: r1(r.listening) });
         if (k >= last) break;
         mo++; if (mo > 12) { mo = 1; y++; }
       }
@@ -45,7 +49,8 @@
   dash.calc('x_weeks', {
     inputs: ['x_all_daily'], title: 'TV weeks and reading weeks',
     description: 'Hours read and watched in each week (Monday to Sunday) while both were being logged, how closely they move together (correlation), and the average reading in weeks with no TV against the busiest quarter of TV weeks.',
-    fn: (all) => {
+    fn: (rows0) => {
+      const all = rows0.filter((d) => kindOf(d.media) !== 'listening');
       const books = all.filter((d) => d.media === 'book'), screen = all.filter((d) => d.media !== 'book');
       if (!books.length || !screen.length) return [];
       const from = [books[0].date, screen[0].date].sort()[1], to = [books[books.length - 1].date, screen[screen.length - 1].date].sort()[0];
@@ -106,28 +111,36 @@
   // ---------- hours split by medium (Overview, only with TV or film) ----------
   rh.card({
     tab: 'overview', id: 'x-split', title: 'Reading and watching', calc: 'x_split_month', hidden: () => !hasMedia(),
-    note: 'Hours read and hours of TV and film each month, stacked.',
+    note: 'Hours read, hours of TV and film, and hours of audiobooks each month, stacked.',
     draw(box, rows) {
       if (!rows.length) return empty(box, 'Nothing logged yet.');
-      const last12 = rows.slice(-12), R = d3.sum(last12, (r) => r.reading), W = d3.sum(last12, (r) => r.watching);
+      const keys = ['reading', 'watching', 'listening'].filter((k) => rows.some((r) => r[k] > 0));
+      const last12 = rows.slice(-12), tot = Object.fromEntries(keys.map((k) => [k, d3.sum(last12, (r) => r[k])])), all = d3.sum(keys, (k) => tot[k]);
+      const verb = { reading: 'reading', watching: 'watching', listening: 'listening' };
       const line = el('p', 'x-line');
-      line.append(el('b', null, `${hrs(R)} h`), ' reading and ', el('b', null, `${hrs(W)} h`), ` watching in the last 12 months: ${R + W ? Math.round((R / (R + W)) * 100) : 0}% of it on books.`);
+      keys.forEach((k, i) => { if (i) line.append(i === keys.length - 1 ? ' and ' : ', '); line.append(el('b', null, `${hrs(tot[k])} h`), ` ${verb[k]}`); });
+      line.append(` in the last 12 months: ${all ? Math.round(((tot.reading || 0) / all) * 100) : 0}% of it on books.`);
       const chart = el('div', 'x-chart'), leg = el('div', 'legend');
-      legend(leg, Object.values(MEDIUM));
+      legend(leg, keys.map((k) => MEDIUM[k]));
       box.replaceChildren(line, chart, leg);
       const h = 220, m = { t: 10, r: 6, b: 24, l: 30 }, { svg, w, tip } = svgIn(chart, h);
       const x = d3.scaleBand(rows.map((r) => r.month), [m.l, w - m.r]).padding(0.15);
-      const y = d3.scaleLinear([0, d3.max(rows, (r) => r.reading + r.watching) || 1], [h - m.b, m.t]).nice();
+      const total = (r) => d3.sum(keys, (k) => r[k]);
+      const y = d3.scaleLinear([0, d3.max(rows, total) || 1], [h - m.b, m.t]).nice();
       axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(4).tickSize(-(w - m.l - m.r)));
       svg.selectAll('.domain').remove();
       axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).tickValues(rows.filter((r) => r.month.endsWith('-01')).map((r) => r.month)).tickFormat((s) => s.slice(0, 4)).tickSize(0));
       const bw = x.bandwidth(), rad = Math.min(2, bw / 2);
-      svg.append('g').selectAll('path').data(rows).join('path').attr('fill', MEDIUM.reading[0])
-        .call(grow, 'd', (r) => barPath(x(r.month), y(0), bw, 0, 'up', 0), (r) => barPath(x(r.month), y(r.reading), bw, y(0) - y(r.reading), 'up', r.watching ? 0 : rad));
-      svg.append('g').selectAll('path').data(rows).join('path').attr('fill', MEDIUM.watching[0])
-        .call(grow, 'd', (r) => barPath(x(r.month), y(r.reading), bw, 0, 'up', rad), (r) => barPath(x(r.month), y(r.reading + r.watching), bw, Math.max(0, y(r.reading) - y(r.reading + r.watching) - (r.reading ? 1 : 0)), 'up', rad));
+      d3.stack().keys(keys)(rows).forEach((layer, li) => {
+        svg.append('g').selectAll('path').data(layer).join('path').attr('fill', MEDIUM[layer.key][0])
+          .call(grow, 'd', (d) => barPath(x(d.data.month), y(d[0]), bw, 0, 'up', 0), (d) => {
+            const top = keys.slice(li + 1).every((k) => !d.data[k]);
+            const gap = li && d[0] > 0 ? 1 : 0; // a hairline between stacked parts
+            return barPath(x(d.data.month), y(d[1]), bw, Math.max(0, y(d[0]) - y(d[1]) - gap), 'up', top ? rad : 0);
+          });
+      });
       svg.selectAll('rect.hit').data(rows).join('rect').attr('class', 'hit').attr('x', (r) => x(r.month)).attr('width', bw).attr('y', m.t).attr('height', h - m.t - m.b)
-        .on('mousemove', (e, r) => showTip(tip, chart, e, (tp) => tipLines(tp, fShort(pDate(r.month + '-01')), [[MEDIUM.reading[0], 'Reading', `${r.reading} h`], [MEDIUM.watching[0], 'Watching', `${r.watching} h`]])))
+        .on('mousemove', (e, r) => showTip(tip, chart, e, (tp) => tipLines(tp, fShort(pDate(r.month + '-01')), keys.map((k) => [MEDIUM[k][0], MEDIUM[k][1], `${r[k]} h`]))))
         .on('mouseleave', () => hideTip(tip));
     },
   });
@@ -223,8 +236,9 @@
   rh.extend('year', (id, root) => {
     const items = (ok('media_items') || []).filter(isScreen), days = ok('x_all_daily') || [];
     const year = String(id), inYear = days.filter((d) => d.date.startsWith(year + '-'));
-    const watched = inYear.filter((d) => d.media !== 'book');
-    if (!watched.length) return;
+    const watched = inYear.filter((d) => kindOf(d.media) === 'watching'), heard = inYear.filter((d) => kindOf(d.media) === 'listening');
+    if (!watched.length && !heard.length) return;
+    const L = d3.sum(heard, (d) => d.minutes) / 60;
     const R = d3.sum(inYear.filter((d) => d.media === 'book'), (d) => d.minutes) / 60, W = d3.sum(watched, (d) => d.minutes) / 60;
     const runs = arr(ok('media_runs')).filter((r) => isScreen(r) && r.finished && r.end && r.end.startsWith(year + '-'));
     const showHours = new Map();
@@ -234,8 +248,9 @@
     c.append(el('h2', null, `Reading and watching in ${year}`), el('p', 'note', 'Your books and your TV and film together.'));
     const kpi = (lbl, val, sub, node) => { const d = node || el('div', 'rh-kpi'); d.className = 'rh-kpi'; d.append(el('div', 'lbl', lbl), el('div', 'val' + (val.length > 12 ? ' val-sm' : ''), val)); if (sub) d.append(el('div', 'sub', sub)); return d; };
     k.append(
-      kpi('Hours read', hrs(R), `${R + W ? Math.round((R / (R + W)) * 100) : 0}% of your reading and watching`),
+      kpi('Hours read', hrs(R), `${R + W + L ? Math.round((R / (R + W + L)) * 100) : 0}% of your reading, watching and listening`),
       kpi('Hours watched', hrs(W), `${plural(runs.filter((r) => r.media === 'tv').length, 'season')} and ${plural(runs.filter((r) => r.media === 'film').length, 'film')} finished`));
+    if (L) k.append(kpi('Hours listened', hrs(L), `${plural(new Set(heard.map((d) => d.id)).size, 'audiobook')}`));
     if (topItem) k.append(kpi('Most watched', topItem.series, `${hrs(top[1])} h`, link(el('div'), 'show', topItem.series_id)));
     const adapt = (ok('x_adaptations') || []).filter((a) => a.watched.startsWith(year + '-') || a.read.startsWith(year + '-'));
     c.append(k);

@@ -33,7 +33,10 @@ export interface AppConfig {
   /** Tautulli, for Plex watch history; the admin can also set these on the page. */
   tautulliUrl: string;
   tautulliApiKey: string;
-  /** How often to pull new plays from Tautulli, in minutes. */
+  /** Audiobookshelf, for audiobook listening sessions; the admin can also set these on the page. */
+  audiobookshelfUrl: string;
+  audiobookshelfToken: string;
+  /** How often to pull new plays from Tautulli (and sessions from Audiobookshelf), in minutes. */
   mediaPollMinutes: number;
   /** Who should own the files in the library when the container starts as root. */
   puid: number;
@@ -84,6 +87,8 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     tmdbImageUrl: url(env, 'TMDB_IMAGE_URL', 'https://image.tmdb.org/t/p'),
     tautulliUrl: (env.TAUTULLI_URL ?? '').trim().replace(/\/+$/, ''),
     tautulliApiKey: (env.TAUTULLI_API_KEY ?? '').trim(),
+    audiobookshelfUrl: (env.AUDIOBOOKSHELF_URL ?? '').trim().replace(/\/+$/, ''),
+    audiobookshelfToken: (env.AUDIOBOOKSHELF_TOKEN ?? '').trim(),
     mediaPollMinutes: Math.max(1, integer(env, 'MEDIA_POLL_MINUTES', 60)),
     puid: integer(env, 'PUID', 1000),
     pgid: integer(env, 'PGID', 1000),

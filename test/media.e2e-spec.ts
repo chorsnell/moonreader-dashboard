@@ -362,3 +362,82 @@ describe('Plex through Tautulli', () => {
     expect(calls.find((c) => c.get('cmd') === 'get_history')?.get('after')).toBe('2026-06-03');
   });
 });
+
+describe('audiobooks from Audiobookshelf', () => {
+  let abs: Server;
+  const pages: string[] = [];
+  const sessions = Array.from({ length: 150 }, (_, i) => ({
+    id: `ls_${i}`,
+    libraryItemId: i < 149 ? 'li_time' : 'li_mars',
+    mediaType: 'book',
+    displayTitle: i < 149 ? 'The Time Machine' : 'A Princess of Mars',
+    displayAuthor: i < 149 ? 'H. G. Wells' : 'Edgar Rice Burroughs',
+    mediaMetadata: {
+      title: i < 149 ? 'The Time Machine' : 'A Princess of Mars',
+      genres: ['Science Fiction'],
+      series: i < 149 ? [] : [{ name: 'Barsoom', sequence: '1' }],
+    },
+    duration: 149 * 60,
+    timeListening: i < 149 ? 60 : 600,
+    currentTime: i < 149 ? (i + 1) * 60 : 600,
+    startedAt: Date.parse('2025-01-01T12:00:00Z') + i * 3_600_000,
+  }));
+
+  beforeAll(async () => {
+    abs = createServer((req, res) => {
+      const url = new URL(req.url ?? '/', 'http://x');
+      if (req.headers.authorization !== 'Bearer tok') return void res.writeHead(401).end();
+      const json = (body: unknown) =>
+        res.setHeader('Content-Type', 'application/json').end(JSON.stringify(body));
+      if (url.pathname === '/api/me') return json({ username: 'chris' });
+      if (url.pathname === '/api/me/listening-sessions') {
+        const page = Number(url.searchParams.get('page'));
+        const per = Number(url.searchParams.get('itemsPerPage'));
+        pages.push(String(page));
+        const newestFirst = [...sessions].reverse();
+        return json({
+          total: sessions.length,
+          numPages: Math.ceil(sessions.length / per),
+          page,
+          itemsPerPage: per,
+          sessions: newestFirst.slice(page * per, (page + 1) * per),
+        });
+      }
+      if (url.pathname.startsWith('/api/items/') && url.pathname.endsWith('/cover')) {
+        return void res.setHeader('Content-Type', 'image/jpeg').end(JPEG);
+      }
+      res.writeHead(404).end();
+    });
+    abs.listen(0, '127.0.0.1');
+    await new Promise((r) => abs.once('listening', r));
+  });
+
+  afterAll(() => new Promise((r) => abs.close(r)));
+
+  it('tests the token, pulls every page and builds audiobook items with covers', async () => {
+    const url = `http://127.0.0.1:${(abs.address() as AddressInfo).port}`;
+    const d = (dash = await TestDashboard.start({ coverPauseMs: 0 }));
+    const admin = (path: string, body: object) =>
+      request(d.server).post(`/api/admin/media/${path}`).set('X-Upload-Token', TOKEN).send(body);
+
+    const bad = await admin('audiobookshelf/test', { url, token: 'nope' }).expect(400);
+    expect(bad.body.error).toMatch(/refused/);
+    const ok = await admin('audiobookshelf/test', { url, token: 'tok' }).expect(200);
+    expect(ok.body.user).toBe('chris');
+
+    await admin('audiobookshelf', { url, token: 'tok' }).expect(200);
+    expect(await waitFor(async () => (await items(d)).length === 2)).toBe(true);
+    const rows = await items(d);
+    expect(rows.map((r) => [r.id, r.media, r.status])).toEqual([
+      ['audiobook-the-time-machine', 'audiobook', 'finished'],
+      ['audiobook-a-princess-of-mars', 'audiobook', 'in_progress'],
+    ]);
+    expect(pages).toEqual(['0', '1']);
+    expect(await waitFor(fileExists(d.path('covers', 'audiobook-the-time-machine.jpg')))).toBe(
+      true,
+    );
+    const status = await request(d.server).get('/api/admin/media').set('X-Upload-Token', TOKEN);
+    expect(status.body.audiobookshelf).toMatchObject({ url, has_token: true });
+    expect(JSON.stringify(status.body)).not.toContain('tok"');
+  });
+});
