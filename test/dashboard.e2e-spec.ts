@@ -373,12 +373,11 @@ describe('signing in', () => {
       /^pbkdf2_sha256\$/,
     );
 
-    expect((await get(dash, '/api/config')).body).toEqual({
-      access: 'password',
-      role: null,
-      admin: true,
-      can_read: false,
-    });
+    // which build is running is public too, so the sign-in screen can show it
+    const { version, commit, ...signedOut } = (await get(dash, '/api/config')).body;
+    expect(signedOut).toEqual({ access: 'password', role: null, admin: true, can_read: false });
+    expect(version).toMatch(/^\d+\.\d+\.\d+/);
+    if (commit !== null) expect(commit).toMatch(/^[0-9a-f]{7}$/);
     for (const path of [
       '/data/books.json',
       '/data/meta.json',

@@ -20,6 +20,7 @@ window.dash = (() => {
     let config = { has_data: true };
     try { config = await (await fetch('api/config', { cache: 'no-store' })).json(); } catch (e) { /* static hosting: no API */ }
     window.dispatchEvent(new CustomEvent('dash:config', { detail: config }));
+    showBuild(config);
     if (config.has_data === false || config.can_read === false) { setAll('missing'); notify(); return config; }
     // only other media so far (say, a Netflix upload): the book files load as empty
     const skip = new Set(config.has_books === false ? ['books', 'reads', 'daily'] : []);
@@ -71,6 +72,22 @@ window.dash = (() => {
       el.textContent = `Data from ${from}, updated ${when}` + (m.synced_positions ? `, plus ${m.synced_positions} position${m.synced_positions === 1 ? '' : 's'} synced from Moon+.` : '.');
     }
     return config;
+  }
+
+  // which build is running, at the foot of the page: "v2.0.0 · a1b2c3d", the hash linking to the commit
+  function showBuild({ version, commit }) {
+    const el = document.getElementById('rh-build');
+    if (!el || (!version && !commit)) return;
+    el.replaceChildren();
+    if (version) el.append('v' + version);
+    if (version && commit) el.append(' · ');
+    if (commit) {
+      const a = document.createElement('a');
+      a.href = 'https://github.com/chorsnell/moonreader-dashboard/commit/' + commit;
+      a.textContent = commit;
+      el.append(a);
+    }
+    el.hidden = false;
   }
 
   async function stats() {
