@@ -13,7 +13,11 @@
   --color-ok:#1f7a4d; --color-bad:#b3261e; --color-warn:#9a6700;
   --cds-chart-grid:#ece9e2; --cds-chart-axis:#cfcac0; --cds-chart-muted:#d3cfc6;
   --cds-surface-popover:#ffffff; --cds-border:#e4e1da; --cds-shadow-popover:0 4px 16px rgba(0,0,0,.10); --cds-text-secondary:#6b6862;
-  --series-1:#4e6fd8; --series-2:#e0884a; --series-3:#2f9e8f; --series-4:#c4568b; --series-5:#8a6bd1; --series-6:#b8a033; --series-7:#5c9fd6; --series-8:#9b6b4f;
+  /* categorical slots: fixed order, checked for colour-blind separation on --color-panel in each mode */
+  --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a; --series-4:#eda100; --series-5:#e87ba4; --series-6:#008300; --series-7:#6250d6; --series-8:#e34948;
+  /* shared chart system: marks, spacers, reference lines and hover (see features/README.md) */
+  --cds-chart-reference:#8a867e; --cds-chart-ring:var(--color-panel); --cds-chart-hover:rgba(31,30,28,.05);
+  --cds-chart-gap:2px;
   --cds-font-size-caption:12px; --cds-font-size-body:14px; --cds-font-size-heading:15px; --cds-font-size-title:28px; --cds-font-weight-medium:500;
   --cds-gap-xs:4px; --cds-gap-sm:8px; --cds-gap-md:16px; --cds-gap-lg:24px; --cds-gap-xl:40px;
   --cds-pad-xs:4px; --cds-pad-sm:8px; --cds-pad-md:12px; --cds-pad-lg:20px; --cds-pad-xl:32px;
@@ -25,7 +29,8 @@
   --color-ok:#5fc48e; --color-bad:#f08a80; --color-warn:#e0b44c;
   --cds-chart-grid:#2d2a27; --cds-chart-axis:#4a4641; --cds-chart-muted:#4a4641;
   --cds-surface-popover:#2a2825; --cds-border:#3d3a35; --cds-shadow-popover:0 4px 16px rgba(0,0,0,.45); --cds-text-secondary:#a29e96;
-  --series-1:#7b95f0; --series-2:#f0a26b; --series-3:#4cc2b1; --series-4:#e07aab; --series-5:#a98ef0; --series-6:#d8c05a; --series-7:#7fbbec; --series-8:#c2917a;
+  --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --series-4:#c98500; --series-5:#d55181; --series-6:#008300; --series-7:#9085e9; --series-8:#e66767;
+  --cds-chart-reference:#7a756d; --cds-chart-hover:rgba(255,255,255,.05);
 }}
 *{box-sizing:border-box}
 body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans);-webkit-font-smoothing:antialiased}
@@ -115,12 +120,20 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .chart svg{display:block;overflow:visible}
 .chart text{font-family:var(--font-anthropic-sans)}
 .tick text,.axl{fill:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
-.tick line{stroke:var(--cds-chart-grid)}
-.domain{stroke:var(--cds-chart-axis)}
+.tick text,.lbl-in{font-variant-numeric:tabular-nums}
+.tick line{stroke:var(--cds-chart-grid);stroke-width:1;shape-rendering:crispEdges}
+.domain{stroke:var(--cds-chart-axis);stroke-width:1;shape-rendering:crispEdges}
 .lbl-in{font-size:var(--cds-font-size-caption);fill:var(--color-fg)}
-.tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);white-space:nowrap;z-index:5;display:none;line-height:1.5}
+/* chart marks: thin lines, ringed dots, a wash on the hovered row or column */
+.chart .ref{stroke:var(--cds-chart-reference);stroke-width:1;stroke-dasharray:4 3}
+.chart .ring{stroke:var(--cds-chart-ring);stroke-width:var(--cds-chart-gap)}
+.chart .hit{fill:transparent}
+.chart .hit:hover{fill:var(--cds-chart-hover)}
+.tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);white-space:nowrap;z-index:5;display:none;line-height:1.5;font-variant-numeric:tabular-nums}
 .tip .t{color:var(--cds-text-secondary)}
 .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+/* in a tooltip a series is keyed by a short stroke, not a box */
+.tip .sw{width:10px;height:2px;border-radius:1px;vertical-align:middle}
 .legend{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs) var(--cds-gap-md);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-bottom:var(--cds-gap-sm)}
 .rh-list{display:flex;flex-direction:column;gap:var(--cds-gap-sm);margin:0;padding:0;list-style:none}
 .rh-list li{display:flex;justify-content:space-between;gap:var(--cds-gap-md);font-size:var(--cds-font-size-body);border-bottom:1px solid var(--color-border-line);padding-bottom:var(--cds-gap-sm)}
@@ -159,6 +172,10 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .rh td.n,.rh th.n{text-align:right}.rh th.n button{text-align:right}
 .rh td small{color:var(--color-fg-muted)}
 .chip{display:inline-block;font-size:var(--cds-font-size-caption);padding:0 6px;border-radius:999px;border:1px solid var(--color-border-line);color:var(--color-fg-muted);white-space:nowrap}
+/* a coloured chip (a genre) keeps its text in ink and shows the colour as a dot */
+.chip[style*=color]{-webkit-text-fill-color:var(--color-fg-muted)}
+.chip[style*=color]::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:1px}
+.chip[style*=color][data-link]:hover{-webkit-text-fill-color:var(--color-fg);border-color:var(--color-fg-muted)}
 @media (max-width:640px){.hide-sm{display:none}}
 [data-dash-source-state=refreshing]{opacity:.5;transition:opacity var(--cds-dur-slow)}
 .fail{display:flex;align-items:center;justify-content:center;gap:6px;min-height:inherit;height:100%;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
