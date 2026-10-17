@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Moon+ Reader dashboard server.
 
-Serves the dashboard, rebuilds its data whenever a newer Moon+ backup (.mrpro)
+Serves the dashboard (to everyone, or only to people with the read password, as
+the admin chooses), rebuilds its data whenever a newer Moon+ backup (.mrpro)
 arrives (in /library/inbox, by upload, or over WebDAV) or catalogue.json is
 edited, and accepts reading positions that Moon+ syncs over WebDAV.
 
@@ -10,12 +11,12 @@ Environment:
   LIBRARY       folder holding inbox/, data/, dav/ and catalogue.json (default /library)
   BASE_PATH     the path the dashboard is served under, e.g. /reading (only needed
                 when a reverse proxy forwards that path without stripping it)
-  UPLOAD_TOKEN  turns on uploads and WebDAV sync; it is the password for both
+  UPLOAD_TOKEN  the admin password: turns on uploads, WebDAV sync and the admin sign-in
   POLL_SECONDS  how often to look for new backups (default 30)
   KEEP_BACKUPS  how many backups to keep in inbox/ (default 5)
   COVER_LOOKUP  set to "off" to stop looking up missing book covers on Open Library
 """
-import base64, email.utils, hmac, html, http.server, json, mimetypes, os, re, shutil, socketserver, subprocess, sys
+import base64, email.utils, hashlib, hmac, html, http.server, json, mimetypes, os, re, shutil, socketserver, subprocess, sys
 import threading, time, urllib.parse
 from xml.sax.saxutils import escape as xml_escape
 
@@ -27,6 +28,10 @@ INBOX, DATA, DAV = os.path.join(LIB, 'inbox'), os.path.join(LIB, 'data'), os.pat
 COVERS = os.path.join(LIB, 'covers')
 CATALOGUE = os.path.join(LIB, 'catalogue.json')
 LOG = os.path.join(LIB, 'update.log')
+SETTINGS = os.path.join(LIB, 'settings.json')
+SESSION_KEY = os.path.join(LIB, '.session-key')
+COOKIE = 'mrd_session'
+SESSION_DAYS = {'admin': 30, 'reader': 365}
 PORT = int(os.environ.get('PORT', '8080'))
 POLL = max(5, int(os.environ.get('POLL_SECONDS', '30')))
 KEEP = max(1, int(os.environ.get('KEEP_BACKUPS', '5')))
@@ -57,6 +62,96 @@ def seed():
     if not os.path.exists(CATALOGUE):
         shutil.copy(os.path.join(SEED, 'catalogue.json'), CATALOGUE)
         log('Created catalogue.json from the built-in copy')
+
+
+# ---------------------------------------------------------------- access
+
+settings_lock = threading.Lock()
+
+
+def load_settings():
+    """{'access': 'public' or 'password', 'read_password': a pbkdf2 hash or ''}"""
+    try:
+        with open(SETTINGS, encoding='utf-8') as f:
+            s = json.load(f)
+    except (OSError, ValueError):
+        s = {}
+    access = s.get('access') if s.get('access') in ('public', 'password') else 'public'
+    pw = s.get('read_password') or ''
+    if access == 'password' and not pw:
+        access = 'public'  # nothing anyone could type would open it
+    return {'access': access, 'read_password': pw}
+
+
+def save_settings(new):
+    with settings_lock:
+        tmp = SETTINGS + '.part'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(new, f, indent=2)
+        os.replace(tmp, SETTINGS)
+
+
+def hash_password(pw, salt=None, rounds=200_000):
+    salt = salt or os.urandom(16).hex()
+    return f"pbkdf2_sha256${rounds}${salt}${hashlib.pbkdf2_hmac('sha256', pw.encode(), salt.encode(), rounds).hex()}"
+
+
+def check_password(pw, stored):
+    try:
+        _, rounds, salt, _ = stored.split('$')
+        return hmac.compare_digest(hash_password(pw, salt, int(rounds)), stored)
+    except ValueError:
+        return False
+
+
+_key = None
+
+
+def session_key():
+    """A random key kept in the library, so sign-ins survive restarts."""
+    global _key
+    if _key is None:
+        try:
+            with open(SESSION_KEY, 'rb') as f:
+                _key = f.read()
+        except OSError:
+            _key = b''
+        if len(_key) < 32:
+            _key = os.urandom(32)
+            with open(SESSION_KEY, 'wb') as f:
+                f.write(_key)
+            try:
+                os.chmod(SESSION_KEY, 0o600)
+            except OSError:
+                pass
+    return _key
+
+
+def session_stamp(role):
+    """Changing the admin token or the read password signs out everyone who used the old one."""
+    secret = TOKEN if role == 'admin' else load_settings()['read_password'] if role == 'reader' else ''
+    return hashlib.sha256(secret.encode()).hexdigest() if secret else ''
+
+
+def make_session(role):
+    exp = int(time.time()) + SESSION_DAYS[role] * 86400
+    msg = f'{role}.{exp}'
+    sig = hmac.new(session_key(), f'{msg}.{session_stamp(role)}'.encode(), hashlib.sha256).hexdigest()
+    return f'{msg}.{sig}', SESSION_DAYS[role] * 86400
+
+
+def check_session(value):
+    try:
+        role, exp, sig = value.split('.')
+        if role not in SESSION_DAYS or int(exp) < time.time():
+            return None
+    except ValueError:
+        return None
+    stamp = session_stamp(role)
+    if not stamp:
+        return None
+    good = hmac.new(session_key(), f'{role}.{exp}.{stamp}'.encode(), hashlib.sha256).hexdigest()
+    return role if hmac.compare_digest(sig, good) else None
 
 
 # ---------------------------------------------------------------- rebuilding
@@ -249,6 +344,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             left -= len(chunk)
 
     def authorised(self):
+        """Admin, by token (upload scripts and WebDAV) or by the admin sign-in cookie."""
         if not TOKEN:
             return False
         tok = self.headers.get('X-Upload-Token', '')
@@ -261,7 +357,40 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except ValueError:
                 return False
             return hmac.compare_digest(pw, TOKEN)
-        return False
+        return self.role() == 'admin'
+
+    def role(self):
+        """'admin', 'reader' or None, from the sign-in cookie."""
+        for part in self.headers.get('Cookie', '').split(';'):
+            k, _, v = part.strip().partition('=')
+            if k == COOKIE:
+                role = check_session(v)
+                return None if role == 'admin' and not TOKEN else role
+        return None
+
+    def can_read(self):
+        return load_settings()['access'] == 'public' or self.role() is not None or self.authorised()
+
+    def cookie(self, value, max_age):
+        secure = '; Secure' if self.headers.get('X-Forwarded-Proto', '').lower() == 'https' else ''
+        return f'{COOKIE}={value}; Path={self.prefix()}/; Max-Age={max_age}; HttpOnly; SameSite=Strict{secure}'
+
+    def read_json(self, limit=4096):
+        """A small JSON body, or None. Requiring the JSON content type means other sites
+        can't post here from a visitor's browser without a CORS preflight, which we refuse."""
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+        except ValueError:
+            length = -1
+        ctype = self.headers.get('Content-Type', '').split(';')[0].strip().lower()
+        if ctype != 'application/json' or not 0 <= length <= limit:
+            self.drain()
+            return None
+        try:
+            body = json.loads(self.rfile.read(length) or b'{}')
+        except ValueError:
+            return None
+        return body if isinstance(body, dict) else None
 
     def read_body_to(self, dest, check=None):
         """Stream the request body into dest. Returns an error string or None."""
@@ -333,24 +462,34 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '' and BASE_PATH:
             return self.send(301, '', extra={'Location': BASE_PATH + '/'})
         if path == '/healthz':
-            return self.send_json(200, dict(ok=True, **status))
+            return self.send_json(200, {'ok': True, 'building': status['building']})
         if path == '/api/config':
+            role = 'admin' if self.authorised() else self.role()
+            access = dict(access=load_settings()['access'], role=role, admin=bool(TOKEN))
+            access['can_read'] = access['access'] == 'public' or role is not None
+            if not access['can_read']:
+                return self.send_json(200, access, {'Cache-Control': 'no-store'})
             has_data = os.path.exists(os.path.join(DATA, 'books.json'))
             meta = {}
             try:
                 meta = json.load(open(os.path.join(DATA, 'meta.json'), encoding='utf-8'))
             except (OSError, ValueError):
                 pass
-            return self.send_json(200, dict(uploads=bool(TOKEN), webdav=bool(TOKEN), has_data=has_data, meta=meta,
+            admin = role == 'admin'
+            return self.send_json(200, dict(access, uploads=admin, webdav=admin, has_data=has_data, meta=meta,
                                             building=status['building'], last_build=status['last_build'],
-                                            last_error=status['last_error']), {'Cache-Control': 'no-store'})
+                                            last_error=status['last_error'] if admin else None),
+                                  {'Cache-Control': 'no-store'})
+        if (path == '/api/covers' or path.startswith(('/covers/', '/data/'))) and not self.can_read():
+            return self.send_json(401, {'error': 'Sign in to see this dashboard.'})
         if path == '/api/covers':
             return self.send_json(200, cover_list(), {'Cache-Control': 'no-cache'})
         if path.startswith('/covers/'):
             name = path[len('/covers/'):]
             if not COVER_NAME.match(name):
                 return self.send(404, 'Not found')
-            return self.file(os.path.join(COVERS, name), {'Cache-Control': 'public, max-age=31536000, immutable'})
+            scope = 'public' if load_settings()['access'] == 'public' else 'private'
+            return self.file(os.path.join(COVERS, name), {'Cache-Control': f'{scope}, max-age=31536000, immutable'})
         if path == '/upload':
             return self.send(302, '', extra={'Location': self.prefix() + '/#upload'})
         if path.startswith('/data/'):
@@ -383,6 +522,47 @@ class Handler(http.server.BaseHTTPRequestHandler):
         with open(full, 'rb') as f:
             self.send(200, f.read(), ctype, headers)
 
+    # ----- signing in, and the admin's choice of who can see the dashboard
+    def do_POST(self):
+        path = self.route()
+        if path == '/api/login':
+            pw = str((self.read_json() or {}).get('password', ''))
+            read_pw = load_settings()['read_password']
+            if TOKEN and pw and hmac.compare_digest(pw, TOKEN):
+                role = 'admin'
+            elif read_pw and pw and check_password(pw, read_pw):
+                role = 'reader'
+            else:
+                time.sleep(1)
+                return self.send_json(403, {'error': 'Wrong password.'})
+            value, age = make_session(role)
+            return self.send_json(200, {'ok': True, 'role': role}, {'Set-Cookie': self.cookie(value, age)})
+        if path == '/api/logout':
+            self.drain()
+            return self.send_json(200, {'ok': True}, {'Set-Cookie': self.cookie('', 0)})
+        if path == '/api/access':
+            if not self.authorised():
+                self.drain()
+                return self.send_json(403, {'error': 'Only the admin can change this.'})
+            body = self.read_json()
+            if body is None or body.get('access') not in ('public', 'password'):
+                return self.send_json(400, {'error': 'Choose public or password.'})
+            new = dict(load_settings(), access=body['access'])
+            pw = str(body.get('password') or '')
+            if pw:
+                if len(pw) < 4:
+                    return self.send_json(400, {'error': 'Use a read password of at least 4 characters.'})
+                if TOKEN and hmac.compare_digest(pw, TOKEN):
+                    return self.send_json(400, {'error': 'Use a read password that differs from the admin token.'})
+                new['read_password'] = hash_password(pw)
+            if new['access'] == 'password' and not new['read_password']:
+                return self.send_json(400, {'error': 'Set a read password.'})
+            save_settings(new)
+            log(f"Dashboard is now {new['access']}" + (', with a new read password' if pw else ''))
+            return self.send_json(200, {'ok': True, 'access': new['access']})
+        self.drain()
+        return self.send_json(404, {'error': 'Not found'})
+
     # ----- uploads from the dashboard
     def do_PUT(self):
         path = self.route()
@@ -394,7 +574,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not self.authorised():
             self.drain()
             time.sleep(1)
-            return self.send_json(403, {'error': 'Wrong upload token.'})
+            return self.send_json(403, {'error': 'Sign in as the admin to upload.'})
         q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         name = re.sub(r'[^A-Za-z0-9._-]+', '_', os.path.basename(q.get('name', ['backup.mrpro'])[0]))
         if not name.lower().endswith('.mrpro'):
@@ -415,7 +595,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.route().startswith('/dav'):
             return self.send(200, '', extra={'DAV': '1, 2', 'MS-Author-Via': 'DAV',
                                              'Allow': 'OPTIONS, GET, HEAD, PUT, DELETE, PROPFIND, PROPPATCH, MKCOL, MOVE, COPY, LOCK, UNLOCK'})
-        return self.send(200, '', extra={'Allow': 'OPTIONS, GET, HEAD, PUT'})
+        return self.send(200, '', extra={'Allow': 'OPTIONS, GET, HEAD, PUT, POST'})
 
     def do_PROPFIND(self): self.dav()
     def do_PROPPATCH(self): self.dav()
@@ -612,10 +792,12 @@ def main():
     mimetypes.add_type('application/javascript', '.js')
     drop_privileges()
     seed()
+    session_key()
     threading.Thread(target=watcher, daemon=True).start()
     look_up_covers()  # carry on with any lookups an earlier run didn't finish
     log(f"Serving on port {PORT}{' under ' + BASE_PATH if BASE_PATH else ''}; "
-        f"uploads and WebDAV {'on' if TOKEN else 'off (set UPLOAD_TOKEN to turn them on)'}")
+        f"uploads and WebDAV {'on' if TOKEN else 'off (set UPLOAD_TOKEN to turn them on)'}; "
+        f"the dashboard is {load_settings()['access']}")
     Server(('', PORT), Handler).serve_forever()
 
 

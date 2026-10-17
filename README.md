@@ -1,6 +1,13 @@
 # moonreader-dashboard
 
+[![test](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/test.yml/badge.svg)](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/test.yml)
+[![demo](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/pages.yml/badge.svg)](https://chorsnell.github.io/moonreader-dashboard/)
+
 A self-hosted dashboard for your [Moon+ Reader](https://www.moondownload.com/) reading history.
+
+**[Try the live demo →](https://chorsnell.github.io/moonreader-dashboard/)** It runs on a made-up reading history of public-domain classics, rebuilt every week.
+
+<a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png"><img src="docs/screenshots/overview.png" alt="The Overview tab"></picture></a>
 
 It reads the statistics Moon+ keeps inside its backups (every book, every day you read, minutes, words and progress). It keeps that history even for books whose files are long gone, and turns it into:
 
@@ -11,10 +18,33 @@ It reads the statistics Moon+ keeps inside its backups (every book, every day yo
 - **Diary:** a day-by-day log for any period showing which books you read, minutes, words, and progress from one day to the next, with started and finished markers. Click any heatmap square to jump to that day.
 - **Library:** every book and every re-read, searchable and sortable.
 - **Data checks:** things in the log that look odd. These include a book opened once and then left for weeks (which stretches its dates), reads spread thinly over months, long pauses, days with three or more books, implausible speeds, very long sessions, progress jumps, and untagged books. Click a date to open that day in the diary.
+- **Book pages:** click any book, anywhere (lists, tables, the diary, chart bars and dots), for everything about it: times read, when each read started and finished, how long it took, time spent, words, speed against your average, its longest day, a day-by-day chart of minutes and progress for each read, the rest of its series (or more by the author) and every day you opened it. Each book has its own link (`#book/<id>`).
 
 Every book shows its cover, taken from the backup or looked up on Open Library (see [Book covers](#book-covers)).
 
 It's one small container with no dependencies beyond the Python standard library.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#genres"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/genres-dark.png"><img src="docs/screenshots/genres.png" alt="Genres & authors"></picture></a><br><b>Genres &amp; authors</b></td>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#speed"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/speed-dark.png"><img src="docs/screenshots/speed.png" alt="Speed"></picture></a><br><b>Speed</b></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#timeline"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/timeline-dark.png"><img src="docs/screenshots/timeline.png" alt="Timeline & habits"></picture></a><br><b>Timeline &amp; habits</b></td>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#diary"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/diary-dark.png"><img src="docs/screenshots/diary.png" alt="Diary"></picture></a><br><b>Diary</b></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#library"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/library-dark.png"><img src="docs/screenshots/library.png" alt="Library"></picture></a><br><b>Library</b></td>
+    <td width="50%" valign="top"><a href="https://chorsnell.github.io/moonreader-dashboard/#checks"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/checks-dark.png"><img src="docs/screenshots/checks.png" alt="Data checks"></picture></a><br><b>Data checks</b></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mobile-dark.png"><img src="docs/screenshots/mobile.png" alt="On a phone" width="240"></picture></a><br><b>On a phone</b></td>
+  </tr>
+</table>
+
+All screenshots are from the [demo](https://chorsnell.github.io/moonreader-dashboard/), not anyone's real reading.
 
 ## Run it
 
@@ -26,7 +56,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Open `http://SERVER_IP:8080/`, click **Update data** and upload a Moon+ backup. To make one in Moon+, go to **Options → Backup & Restore → Backup**; it produces a `.mrpro` file. The dashboard builds itself in a few seconds.
+Open `http://SERVER_IP:8080/`, click **Admin**, sign in with your `UPLOAD_TOKEN`, then click **Update data** and upload a Moon+ backup. To make one in Moon+, go to **Options → Backup & Restore → Backup**; it produces a `.mrpro` file. The dashboard builds itself in a few seconds.
 
 To update to a newer version later:
 
@@ -38,6 +68,7 @@ Everything the container keeps lives in `./library/`, which is ignored by git:
 
 ```
 library/
+  settings.json    who can see the dashboard (the read password is stored hashed)
   inbox/           backups (.mrpro); the newest is used, the 5 newest are kept
   data/            the generated data the page reads
   dav/             what Moon+ syncs over WebDAV
@@ -50,10 +81,21 @@ library/
 
 There are four ways, and all of them trigger a rebuild automatically:
 
-1. **The Update data button** on the dashboard. It's only shown when `UPLOAD_TOKEN` is set, and asks for that token, which your browser then remembers.
+1. **The Update data button** on the dashboard. It's only shown to the admin: click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`.
 2. **WebDAV from Moon+** (below). This keeps progress current without making backups.
 3. **Drop a backup into `library/inbox/`**, by hand, with `scp`, or with Syncthing.
 4. **Edit `library/catalogue.json`.** Saving it rebuilds the data with your changes.
+
+## Who can see it
+
+`UPLOAD_TOKEN` is the admin password. Only the admin can upload, sync, or change settings. Visitors see a small **Admin** link and nothing else they can use.
+
+To choose who can *read* the dashboard, sign in as the admin, open **Update data**, and use **Who can see this dashboard**:
+
+- **Anyone with the link** (the default).
+- **Only people with the read password.** Visitors get a password box instead of your stats, and the data, covers and API all refuse them until they enter it. Give the password to your friends; their browser remembers it for a year.
+
+Setting a new read password signs out everyone who used the old one. Changing `UPLOAD_TOKEN` signs out the admin.
 
 ## Sync straight from Moon+ (WebDAV)
 
@@ -75,7 +117,7 @@ Every link in the page is relative and resolves against the public path, so the 
 
 Allow request bodies of at least 200 MB, because backups are often over 100 MB. Traefik has no limit by default. In Nginx, use `client_max_body_size 200m;`.
 
-Use HTTPS when sharing it, because the upload token travels with every upload and sync.
+Use HTTPS when sharing it, because passwords travel with every sign-in, upload and sync.
 
 ## New books and genres
 
@@ -108,7 +150,7 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 
 | Variable | Default | What it does |
 |---|---|---|
-| `UPLOAD_TOKEN` | *(empty)* | Turns on the Update data button and WebDAV, and is the password for both |
+| `UPLOAD_TOKEN` | *(empty)* | The admin password. Turns on admin sign-in, uploads and WebDAV |
 | `BASE_PATH` | *(empty)* | Public sub-path, only when the proxy doesn't strip it |
 | `PUID` / `PGID` | `1000` | Who owns the files in `library/` on the host |
 | `POLL_SECONDS` | `30` | How often to check the inbox |
@@ -116,7 +158,7 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 | `COVER_LOOKUP` | `on` | Set to `off` to stop looking up missing covers on Open Library |
 | `TZ` | UTC | Time zone for the log |
 
-The server also has three JSON endpoints: `/healthz`, which Docker uses as its health check, `/api/config`, which reports the last rebuild and any error, and `/api/covers`, which lists the saved covers.
+The server also has three JSON endpoints: `/healthz`, which Docker uses as its health check, `/api/config`, which reports who you're signed in as and the last rebuild, and `/api/covers`, which lists the saved covers.
 
 ## How the numbers are worked out
 
@@ -135,11 +177,23 @@ python3 -m unittest discover -s tests -v     # builds a fake backup and tests th
 LIBRARY=./library UPLOAD_TOKEN=dev python3 app/server.py   # run without Docker on :8080
 ```
 
+### The demo
+
+`demo/build_demo.py` makes up three years of reading (65 public-domain books, with series, a re-read, abandoned books, one on the go, and a few of the oddities the Data checks tab looks for), writes it as a fake Moon+ backup, and runs it through the real `update.py`. The result is a static copy of the page that works on any static host:
+
+```sh
+python3 demo/build_demo.py site              # COVER_LOOKUP=off to skip Open Library
+python3 -m http.server 8000 --directory site
 ```
-app/server.py        web server, rebuild watcher, uploads, WebDAV
+
+The [`demo` workflow](.github/workflows/pages.yml) does the same on every push to `main`, and weekly, and publishes it to GitHub Pages.
+
+```
+app/server.py        web server, sign-in and access, rebuild watcher, uploads, WebDAV
 app/update.py        turns a .mrpro backup (plus synced positions) into data/*.json, and saves its covers
 app/covers.py        looks up missing covers on Open Library
 app/web/             the page: index.html, calcs.js (all the numbers), charts.js (d3), runtime.js, upload.js
 app/seed/            the starting catalogue.json
 examples/traefik.yml reverse-proxy example
+demo/build_demo.py   builds the demo site from made-up data
 ```

@@ -10,7 +10,8 @@ services:
       TZ: Europe/London
       PUID: 1000                 # owner of the files in ./library on the host
       PGID: 1000
-      # Turns on the "Update data" button and WebDAV sync, and is the password for both.
+      # The admin password: sign in with it (the "Admin" link) to upload, and use it for
+      # WebDAV sync. Whether visitors need a read password is set from the dashboard.
       # Set it in .env (copy .env.example), so the secret stays out of this file.
       UPLOAD_TOKEN: ${UPLOAD_TOKEN:-}
       # Only needed if your reverse proxy forwards /reading/... WITHOUT stripping the

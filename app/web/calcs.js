@@ -332,7 +332,7 @@ dash.calc('stalled', {
 dash.calc('rereads', {
   inputs: ['reads'], title: 'Re-reads',
   description: 'Every read of a book read more than once.',
-  fn: (reads) => reads.filter((r) => r.times_read > 1).map((r) => ({ read_id: r.read_id, title: r.title, author: r.author, read_no: r.read_no, start: r.start, end: r.end, days_read: r.days_read, hours: r.hours, progress: r.progress }))
+  fn: (reads) => reads.filter((r) => r.times_read > 1).map((r) => ({ read_id: r.read_id, book_id: r.book_id, title: r.title, author: r.author, read_no: r.read_no, start: r.start, end: r.end, days_read: r.days_read, hours: r.hours, progress: r.progress }))
     .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : a.read_no - b.read_no)),
 });
 
