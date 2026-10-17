@@ -60,39 +60,6 @@ const asObject = (v: unknown): Record<string, unknown> =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 const text = (v: unknown, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-/** Same book, by ISBN or work id, else by title and author ignoring case and punctuation. */
-export function bookKeys(b: {
-  title?: unknown;
-  author?: unknown;
-  isbn13?: unknown;
-  work_id?: unknown;
-}): string[] {
-  const norm = (s: unknown) =>
-    String(s ?? '')
-      .normalize('NFKD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase();
-  const out: string[] = [];
-  if (b.isbn13) out.push(`isbn:${String(b.isbn13).replace(/[^0-9X]/gi, '')}`);
-  if (b.work_id) out.push(`work:${String(b.work_id)}`);
-  if (b.title) {
-    const t = norm(b.title)
-      .replace(/^(the|a|an)\s+/, '')
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
-    out.push(`ta:${t}|${norm(b.author).replace(/[^a-z]+/g, '')}`);
-  }
-  return out;
-}
-
-export function sameBook<T extends Parameters<typeof bookKeys>[0]>(
-  books: T[],
-  want: Parameters<typeof bookKeys>[0],
-): T | null {
-  const keys = new Set(bookKeys(want));
-  return books.find((b) => bookKeys(b).some((k) => keys.has(k))) ?? null;
-}
-
 /** How far someone is through a book from their books.json row (100 once finished). */
 export function progressOf(row: { status?: unknown; progress?: unknown } | null): number {
   if (!row) return 0;

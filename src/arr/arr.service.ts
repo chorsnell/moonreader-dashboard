@@ -7,7 +7,17 @@ import { parseIsbn } from '../metadata/isbn';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LibraryService } from '../library/library.service';
 import { type ArrAuthor, type ArrBook, ArrClient, ArrError } from './arr.client';
-import { authorKey, bookKey, seriesKey, seriesOf, titleKey } from './match';
+import {
+  authorKey,
+  bookKey as matchKey,
+  seriesKey,
+  seriesOf,
+  titleKey as matchTitle,
+} from '../common/book-match';
+
+// Arr has always kept a series suffix that follows another bracket in the title
+const bookKey = (title: string, author: string) => matchKey(title, author, { series: false });
+const titleKey = (title: string) => matchTitle(title, { series: false });
 
 /** Where a book stands in the book manager. */
 export type ArrStatus = 'available' | 'downloading' | 'wanted' | 'in_library';

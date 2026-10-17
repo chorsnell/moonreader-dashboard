@@ -2,7 +2,8 @@ import { readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { LibraryService } from '../library/library.service';
-import { progressOf, sameBook, type Club } from './clubs';
+import { sameBook } from '../common/book-match';
+import { progressOf, type Club } from './clubs';
 
 /** library/clubs.json: the clubs this installation hosts, with their comments. */
 @Injectable()
