@@ -33,6 +33,8 @@ services:
       AUDIOBOOKSHELF_URL: ${AUDIOBOOKSHELF_URL:-}
       AUDIOBOOKSHELF_TOKEN: ${AUDIOBOOKSHELF_TOKEN:-}
       MEDIA_POLL_MINUTES: 60
+      # How often to refresh friends' dashboards you follow, in minutes (0: only by hand).
+      FEDERATION_REFRESH_MINUTES: 60
       # Every other setting is in the README's Settings table.
     volumes:
       - ./library:/library       # everything the app keeps: backups, data, covers, settings

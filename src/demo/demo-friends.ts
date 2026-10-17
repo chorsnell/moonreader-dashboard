@@ -33,6 +33,10 @@ interface Plan {
   /** Titles they gave up on, and where. */
   abandon: Record<string, number>;
   leaderboards: LeaderboardStat[];
+  /** Followed on their own dashboard (federation) at this address. */
+  url?: string;
+  /** Their dashboard hasn't answered for this many days: their data stops then. */
+  offline_days?: number;
 }
 
 export const FRIEND_PLANS: Plan[] = [
@@ -121,6 +125,8 @@ export const FRIEND_PLANS: Plan[] = [
     ],
     abandon: { 'War and Peace': 31, 'Wuthering Heights': 22 },
     leaderboards: ['books', 'hours', 'days'],
+    url: 'https://reading.ben.example',
+    offline_days: 3,
   },
 ];
 

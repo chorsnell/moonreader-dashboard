@@ -31,6 +31,8 @@ export interface FriendProfile {
   /** The data files they shared. */
   parts: BundlePart[];
   books: number;
+  /** Book clubs they host that you're in (clubs.json). */
+  clubs?: number;
   /** Federation: their installation, and whether the last refresh worked. */
   url?: string;
   status?: 'ok' | 'pending' | 'offline' | 'revoked' | 'rejected';

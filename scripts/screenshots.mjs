@@ -34,7 +34,7 @@ const TZ = 'UTC'; // the demo build and the browser agree on the day
 
 // desktop shots are cropped to these heights, like the hand-taken ones were
 const DESKTOP = { width: 1280, height: 1100 };
-const HEIGHTS = { overview: 1180, speed: 1300, checks: 800, friends: 620 };
+const HEIGHTS = { overview: 1180, speed: 1300, checks: 800 };
 const PHONE = { width: 390, height: 844 };
 
 if (!process.argv.includes('--no-build')) {

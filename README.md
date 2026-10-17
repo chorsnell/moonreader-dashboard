@@ -26,12 +26,12 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 - **Library:** every book and every re-read, searchable and sortable, and where you give up.
 - **TV & film:** hours watched, what's on screen now, dropped seasons, season completion, binge fingerprints, when you watch, genre drift, films, the cost per hour of each subscription, whether TV crowds out reading, and book-to-screen adaptations. It appears once there's something watched.
 - **Money:** spending by month and year, a budget, how you got your books, value for money, the cost to finish a series, whether a subscription paid off, money left on the shelf, and what your reading time is worth at a rate you choose.
-- **Friends:** friends' reading, from share files they send you, to compare with yours.
+- **Friends:** friends' reading next to yours: a taste match, overlaid heatmaps, opt-in leaderboards, their favourites you haven't read, and book clubs. On a book's page, a buddy-read race against every friend who read it.
 - **Data checks:** things in the log that look odd (stray days, long pauses, implausible speeds, progress jumps, untagged books or books without an ISBN).
 
 **Pages.** Click any book, author, series, genre, subgenre or year, anywhere, for its own page with its own link (`#book/<id>`, `#author/<name>`, `#series/<name>`, `#genre/<name>`, `#subgenre/<name>`, `#year/<year>`):
 
-- **Book:** every read, a day-by-day chart, the shape of each read, the rest of its series, your highlights and notes in book order (with where you highlighted and a word cloud), what it cost you, your rating and every day you opened it.
+- **Book:** every read, a day-by-day chart, the shape of each read, the rest of its series, your highlights and notes in book order (with where you highlighted and a word cloud), what it cost you, your rating, a race against friends who read it, and every day you opened it.
 - **Author, series, genre and year:** stats, charts, books, money and time for each. A year page has a **Wrapped**: your year in review as swipeable stories.
 - **Show and film** (`#show/<id>`, `#film/<id>`): seasons, binge fingerprint, episodes and sittings.
 
@@ -110,7 +110,9 @@ library/
   prices.json      what you paid
   goodreads.json, storygraph.json, kobo.json, kindle*.json   imports
   media/           TV, film and audiobook history and its catalogue.json
-  friends/         friends' share files
+  friends/         friends' reading, from share files or followed dashboards
+  clubs.json       book clubs you host
+  federation.json  follow tokens (owner-readable only, never served)
   update.log       what happened on each rebuild, upload and sync
   activity.jsonl   the same as JSON lines, for Sync & logs
 ```
@@ -211,7 +213,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Sync & logs** | Every sync, rebuild, upload, lookup and request, filterable and downloadable, with a warning when syncing seems to have stopped or a login failed |
 | **Other media** | Netflix uploads, Tautulli, Audiobookshelf, TMDB and streaming subscriptions |
 | **Access & privacy** | Who can see the dashboard and what each kind of visitor sees; private books and genres; preview as a visitor |
-| **Friends** | Your share file, friends' share files, and who can see friends' reading |
+| **Friends** | Your share file and leaderboards, friends' share files, dashboards you follow and that follow you, book clubs, and who can see friends' reading |
 | **Catalogue** | Titles, authors, series, genres and ISBNs; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
 | **Covers** | Books without a cover: look them up again or upload your own |
@@ -238,7 +240,20 @@ You can also mark books or whole genres as private: visitors then see nothing of
 
 ## Friends
 
-Add friends' reading to your dashboard to compare notes. Each friend exports a **share file** from their own dashboard (**Friends → Download your share file**), filtered by their **friends** privacy settings and never holding their private books, and you add it under **Add a friend's reading**. Friends then appear on the **Friends** tab. Their reading is theirs: by default only you, the admin, see it; you can let people with the read password, or everyone, see it too. The file format and endpoints are in [docs/friends.md](docs/friends.md).
+Bring friends' reading into your dashboard to compare notes. There are two ways in:
+
+- **Share files.** A friend downloads theirs (**Admin → Friends → Download your share file**) and you add it under **Add a friend's reading**.
+- **Follow their dashboard.** If they run their own, enter its address under **Admin → Friends**. They approve and choose what you get (everything, stats only, or chosen views, minus any books they hide), and your server refreshes it every `FEDERATION_REFRESH_MINUTES`. They can stop sharing at any time, which deletes their data from yours.
+
+Either way, what you share is set by the **friends** audience under Access & privacy (by default everything except prices and highlights), and private books are never shared. Friends' reading shows up as:
+
+- **Taste match:** a compatibility score from genres, authors and books in common, shared authors, and the books you both read.
+- **Overlaid heatmaps** of the last 12 months, and **leaderboards** that each person opts into, stat by stat.
+- **Their favourites you haven't read:** books a friend devoured or re-read that aren't in your library.
+- **Buddy-read race** on a book's page: your progress against every friend who read it.
+- **Book clubs:** a book, friends, a start date and an optional schedule, with everyone's progress against it and comments pinned to a position in the book. A comment stays hidden from anyone who hasn't read that far, and this is enforced on the server. Friends who follow your dashboard can comment from theirs.
+
+Their reading is theirs: by default only you, the admin, see it; you can let people with the read password, or everyone, see it too. The share file format, the follow protocol and the book club API are in [docs/friends.md](docs/friends.md).
 
 ## Behind a reverse proxy
 
@@ -264,6 +279,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `TZ` | UTC | Time zone for the log |
 | `POLL_SECONDS` | `30` | How often to check the inbox (at least 5) |
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
+| `FEDERATION_REFRESH_MINUTES` | `60` | How often to refresh friends' reading from the dashboards you follow (`0`: only when you press **Refresh**) |
 | `COVER_LOOKUP` | `on` | `off` stops looking up missing covers on Open Library |
 | `METADATA_LOOKUP` | `on` | `off` stops looking up publication years, pages and authors on Open Library and Wikidata |
 | `COVER_PAUSE` | `1` | Seconds between Open Library and Wikidata requests |
@@ -284,7 +300,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/api/config`: who you're signed in as and the last rebuild.
 - `/api/covers`: the saved covers.
 - `/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`: every number the page shows, worked out on the server for each viewer from only what they may see. See [docs/api.md](docs/api.md).
-- `/data/friends.json` and the friends endpoints: see [docs/friends.md](docs/friends.md).
+- `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 
 ## How the numbers are worked out
 
@@ -336,6 +352,8 @@ src/covers/          covers from the backup and Open Library
 src/metadata/        ISBNs, Open Library and Wikidata lookups
 src/prices/          prices, currencies, bundles and subscriptions
 src/friends/         share files and friends' data
+src/federation/      following friends' dashboards, and approving the ones that follow yours
+src/clubs/           book clubs and their spoiler-safe comments
 src/arr/             requests to the admin's own *arr book manager
 src/rebuild/         watches for new backups, edits and syncs, and rebuilds
 src/upload/, src/admin/, src/dav/, src/status/   uploads, the admin API, WebDAV, /healthz and /api/config

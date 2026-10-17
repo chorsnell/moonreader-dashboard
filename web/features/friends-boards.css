@@ -1,0 +1,20 @@
+/* overlaid heatmap and leaderboards */
+.chart#ch-friends-heat,.chart#ch-friends-boards{min-height:0}
+#ch-friends-heat .fr-pick{margin-bottom:var(--cds-gap-xs)}
+#ch-friends-heat .fr-pill[aria-pressed=false]{opacity:.55}
+#ch-friends-heat .fr-pill[aria-pressed=true]{border-color:var(--color-fg)}
+.fh-wrap{position:relative;overflow-x:auto;margin-top:var(--cds-gap-xs)}
+.fh-wrap svg{display:block}
+.fh-empty{fill:var(--cds-chart-grid)}
+.lb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:var(--cds-gap-sm)}
+.lb-board{padding:var(--cds-pad-md);border-radius:8px;background:var(--color-bg);min-width:0}
+.lb-quiet{opacity:.75}
+.lb-h{margin:0 0 6px;font-size:var(--cds-font-size-body);font-weight:500}
+.lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.lb-row{display:grid;grid-template-columns:2.2rem 1fr auto;align-items:baseline;gap:2px 8px;font-size:var(--cds-font-size-body)}
+.lb-rank{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.lb-me .lb-name{font-weight:600}
+.lb-val{font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lb-bar{grid-column:2/-1;height:5px;border-radius:3px;background:var(--cds-chart-grid);overflow:hidden}
+.lb-bar i{display:block;height:100%;border-radius:3px}
+.lb-board .fr-note{margin-top:6px}
