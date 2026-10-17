@@ -225,6 +225,10 @@ Books and screen meet in a few places: the Overview gets a **Reading and watchin
 
 The media build runs on its own, beside the book build, and writes `media_items.json` (a TV season or a film), `media_runs.json`, `media_daily.json`, `media_sessions.json` and `media_parts.json` (episodes) to `library/data/`. A season is treated like a book and the show like a series. With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or on the admin page) it also adds genres, creators, episode counts and posters; without one everything still works, from the titles alone. To fix a title, put it in `library/media/catalogue.json`, keyed by the lower-case show or film title: `{"copper valley": {"genre": "Drama", "episodes": {"1": 8}}, "nosferatu": {"book": "Dracula"}, "some trailer": {"exclude": true}}`. Films and shows are matched to your books by title; `book` names the book when the titles differ.
 
+## Your book manager (*arr)
+
+If you run a Readarr-compatible book manager (Readarr's successors such as Bookshelf), connect it in the admin page's **Book manager** section with its URL and API key. As the admin you then see where each book stands there (available, downloading, wanted), a **Get next in series** button where the next book isn't in your library, and **Get the rest of this author** on author pages. The dashboard only sends requests to your own instance; it never searches for or downloads anything itself. Nobody but the admin sees any of it, and the API key never leaves the server. Requests are logged in **Sync & logs**. More in [docs/integrations.md](docs/integrations.md).
+
 ## Settings
 
 All of these are optional environment variables in `docker-compose.yml`. `UPLOAD_TOKEN` is read from `.env` (copied from `.env.example`, and ignored by git) so the secret never lands in the compose file:
@@ -301,6 +305,7 @@ src/media/                  other media (TV and film): Netflix and Tautulli impo
   media-history.ts          the rules: seasons, re-watches, what counts as watched
 src/rebuild/                watches for new backups, catalogue edits and syncs, and rebuilds
 src/upload/                 the admin page's backup upload
+src/arr/                    requests to the admin's own *arr book manager (Readarr v1 API)
 src/admin/                  the admin page's API: data and backups, rebuild now, catalogue edits, covers
 src/dav/                    the WebDAV server Moon+ syncs to
 src/status/                 /healthz, /api/config and /api/covers
