@@ -222,8 +222,9 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Catalogue** | Titles, authors, series, genres and ISBNs; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
 | **Covers** | Books without a cover: look them up again or upload your own |
-| **Notifications** | ntfy, Gotify, Discord or webhook channels with a **Send test** button; which events to send; the streak hour and your year goal |
+| **Notifications** | ntfy, Gotify, Discord or webhook channels with a **Send test** button; which events to send; when to warn about a streak |
 | **Book manager** | Your *arr book manager's URL and API key |
+| **Widgets & devices** | The year's reading goal, the device token for Home Assistant and other devices, and their setup |
 
 ## Who can see it
 
@@ -279,10 +280,105 @@ These events can each be switched on or off:
 - **Book finished**, when a sync brings one in. More than 5 at once come as one message.
 - **New personal record**: a longer streak, a bigger day, week or month, a faster book…
 - **Streak at risk**: from a chosen hour (21:00 by default), if nothing has been synced today and your streak is at least N days (3 by default). Checked every 10 minutes, and sent once a day.
-- **Year goal reached**: set how many books you want to finish this year.
+- **Year goal reached**: the reading goal set under **Widgets & devices**.
 - **A friend finished a book you have**: in your library, read or not.
 
 Events are found by comparing each rebuild with what was already sent (`library/notify-state.json`), so a restart or a second rebuild of the same backup never sends anything twice. The very first check only takes note of where things stand, and finishes older than two weeks (an old import) aren't news. Books marked private are never named. Links in the messages need `PUBLIC_URL`.
+
+## Widgets and devices
+
+Your reading can show up outside the dashboard. Everything here is worked out from what the asker may see, the same as the page, so a visitor's widget never shows private books or anything their audience hides (it comes back empty or `null` instead).
+
+**Reading goal.** Set the books you want to finish this year in **Admin → Widgets & devices**. Home Assistant shows your progress against it and whether you're ahead of the pace that would get you there.
+
+**The device token.** Devices that can't sign in (Home Assistant, a display on a shelf) use a token you make in the same section. It's shown once, kept only as a hash, and opens only the device endpoints (`/api/now` and `/api/now/cover`), never the dashboard, its data or the admin page. Send it as `Authorization: Bearer <token>`, `X-Device-Token: <token>` or, for devices that can't set headers, `?token=<token>`. By default it gets your own view (everything); you can give it a visitor audience's view instead, for a screen other people see. Making a new token or revoking it stops the old one at once. Without a token, `/api/now` follows the dashboard's usual rules: open to anyone when it's public, sign-in needed when it has a read password.
+
+### Home Assistant
+
+`GET /api/now` returns a small JSON summary for Home Assistant's [RESTful integration](https://www.home-assistant.io/integrations/rest/) (no MQTT broker or add-on needed):
+
+```json
+{
+  "today": "2026-10-18", "as_of": "2026-10-17", "generated": "2026-10-17T22:10:04",
+  "reading": [{ "id": "the-count-of-monte-cristo", "title": "The Count of Monte Cristo", "author": "Alexandre Dumas",
+                "genre": "Adventure", "progress": 38, "last_read": "2026-10-17", "cover": "covers/the-count-of-monte-cristo.jpg?v=1760000000" }],
+  "today_minutes": 0, "week_minutes": 124,
+  "streak": { "current": 3, "best": 13, "last_day": "2026-10-17", "read_today": false, "at_risk": true },
+  "year": { "year": 2026, "finished": 9, "goal": 24, "percent": 38, "expected": 19, "ahead": -10 },
+  "quote": { "text": "…", "note": null, "book_id": "emma", "title": "Emma", "author": "Jane Austen" }
+}
+```
+
+- `reading`: books opened in the last 30 days and not finished, most recent first (`null` when "what you're reading now" is hidden from the asker).
+- `today_minutes`, `week_minutes` (Monday on): `null` when the asker doesn't get day-by-day reading.
+- `streak.at_risk`: you have a streak going (read yesterday) and haven't read today yet. "Today" is the server's date (set `TZ`), and the numbers only move when a backup or WebDAV sync arrives, so sync before the evening nudge.
+- `year.expected`: books you'd have finished by today at an even pace to the goal; `ahead` is how far ahead (or behind, negative) you are. All `null` without a goal.
+- `quote`: the same quote of the day as the Overview's card.
+- `/api/now/cover` is the cover of the book you're reading (for an `entity_picture`), or 404.
+
+In `configuration.yaml` (the admin section shows this with your address and new token filled in):
+
+```yaml
+rest:
+  - resource: https://reading.example.com/api/now
+    headers:
+      Authorization: !secret reading_dashboard_auth   # "Bearer <token>" in secrets.yaml
+    scan_interval: 300
+    sensor:
+      - name: "Reading now"
+        unique_id: reading_now
+        value_template: "{{ value_json.reading[0].title if value_json.reading else 'Nothing' }}"
+        json_attributes_path: "$.reading[0]"
+        json_attributes: [author, progress, cover, last_read]
+      - name: "Reading progress"
+        unique_id: reading_progress
+        unit_of_measurement: "%"
+        value_template: "{{ value_json.reading[0].progress if value_json.reading else none }}"
+      - name: "Reading today"
+        unique_id: reading_today
+        unit_of_measurement: "min"
+        value_template: "{{ value_json.today_minutes }}"
+      - name: "Reading this week"
+        unique_id: reading_week
+        unit_of_measurement: "min"
+        value_template: "{{ value_json.week_minutes }}"
+      - name: "Reading streak"
+        unique_id: reading_streak
+        unit_of_measurement: "days"
+        value_template: "{{ value_json.streak.current if value_json.streak else none }}"
+      - name: "Books this year"
+        unique_id: reading_books_year
+        value_template: "{{ value_json.year.finished }}"
+        json_attributes_path: "$.year"
+        json_attributes: [goal, percent, expected, ahead]
+    binary_sensor:
+      - name: "Reading streak at risk"
+        unique_id: reading_streak_at_risk
+        value_template: "{{ value_json.streak.at_risk if value_json.streak else false }}"
+```
+
+And an automation that nudges you at 9pm if you haven't read today:
+
+```yaml
+automation:
+  - alias: "Nudge me to read"
+    trigger:
+      - platform: time
+        at: "21:00:00"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.reading_streak_at_risk
+        state: "on"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "Keep your streak"
+          message: >-
+            {{ states('sensor.reading_streak') }} days in a row so far.
+            {{ states('sensor.reading_now') }} is at {{ states('sensor.reading_progress') }}%.
+```
+
+To show the cover on a card, use a [template image](https://www.home-assistant.io/integrations/template/#image) whose `url` is `https://reading.example.com/api/now/cover?token=<token>`.
 
 ## Behind a reverse proxy
 
@@ -306,7 +402,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `PORT` | `8080` | Port inside the container |
 | `LIBRARY` | `/library` | Folder for everything the app keeps |
 | `PUID` / `PGID` | `1000` | Who owns the files in `library/` on the host |
-| `TZ` | UTC | Time zone for the log |
+| `TZ` | UTC | Time zone for the log, and what "today" means for `/api/now` (today's minutes, streak at risk) |
 | `POLL_SECONDS` | `30` | How often to check the inbox (at least 5) |
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
 | `FEDERATION_REFRESH_MINUTES` | `60` | How often to refresh friends' reading from the dashboards you follow (`0`: only when you press **Refresh**) |
@@ -331,6 +427,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/healthz`: Docker's health check.
 - `/api/config`: who you're signed in as and the last rebuild.
 - `/api/covers`: the saved covers.
+- `/api/now`, `/api/now/cover`: what you're reading, today's minutes, the streak and the year's goal, for Home Assistant and other devices (see [Widgets and devices](#widgets-and-devices) and [docs/api.md](docs/api.md)).
 - `/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`: every number the page shows, worked out on the server for each viewer from only what they may see. See [docs/api.md](docs/api.md).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 

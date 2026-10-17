@@ -82,7 +82,6 @@
       const hour = h('select', { id: 'nt-hour', onchange: () => save({ streak_hour: Number(hour.value) }) },
         Array.from({ length: 24 }, (_, i) => h('option', { value: String(i), selected: i === s.streak_hour }, hourLabel(i))));
       const min = h('input', { type: 'number', id: 'nt-min', min: '1', max: '365', step: '1', value: String(s.streak_min), onchange: () => save({ streak_min: Number(min.value) }) });
-      const goal = h('input', { type: 'number', id: 'nt-goal', min: '1', max: '10000', step: '1', placeholder: 'No goal', value: s.year_goal ?? '', onchange: () => save({ year_goal: goal.value ? Number(goal.value) : null }) });
       const checkMsg = msg();
       const check = h('button', { class: 'up-link', type: 'button', onclick: async () => {
         checkMsg.textContent = 'Looking…';
@@ -99,8 +98,8 @@
           ...toggles,
           h('div', { class: 'nt-grid' },
             h('div', {}, h('label', { for: 'nt-hour' }, 'Streak at risk: from'), hour),
-            h('div', {}, h('label', { for: 'nt-min' }, 'for streaks of at least (days)'), min),
-            h('div', {}, h('label', { for: 'nt-goal' }, 'Books to finish this year'), goal)),
+            h('div', {}, h('label', { for: 'nt-min' }, 'for streaks of at least (days)'), min)),
+          h('p', { class: 'up-note' }, 'Your year goal is set under ', h('a', { class: 'up-link', href: '#admin/outbound' }, 'Widgets & devices'), '.'),
           evMsg, h('div', { class: 'ad-actions nt-check' }, check), checkMsg));
     }
     load();

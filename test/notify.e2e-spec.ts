@@ -183,9 +183,11 @@ describe('events', () => {
 
   it('follow the toggles in admin', async () => {
     const put = await as('put', '/api/admin/notify')
-      .send({ events: { streak_at_risk: false }, streak_hour: 20, streak_min: 1, year_goal: 1 })
+      .send({ events: { streak_at_risk: false }, streak_hour: 20, streak_min: 1 })
       .expect(200);
-    expect(put.body).toMatchObject({ streak_hour: 20, streak_min: 1, year_goal: 1 });
+    expect(put.body).toMatchObject({ streak_hour: 20, streak_min: 1 });
+    // the year goal is the one set under Widgets & devices (BOO-71)
+    await as('put', '/api/admin/outbound/goal').send({ goal: 1 }).expect(200);
     // 7 March: read yesterday, not today, but "streak at risk" is off; the goal of 1 is met
     const sent = await watch().check('test', evening(7));
     expect(sent.map((e) => [e.kind, e.title])).toEqual([

@@ -15,6 +15,7 @@ import { appConfig, type AppConfigType } from '../config/app.config';
 import { FriendStore } from '../friends/friend-store.service';
 import { LIBRARY_REBUILT } from '../library/library.events';
 import { LibraryService } from '../library/library.service';
+import { OutboundService } from '../outbound/outbound.service';
 import { PrivacyService } from '../privacy/privacy.service';
 import { StatsService } from '../stats/stats.service';
 import {
@@ -59,6 +60,7 @@ export class NotifyWatchService implements OnApplicationBootstrap, OnApplication
     private readonly privacy: PrivacyService,
     private readonly settings: AccessSettingsService,
     private readonly scheduler: SchedulerRegistry,
+    private readonly outbound: OutboundService,
   ) {
     this.file = join(library.root, 'notify-state.json');
   }
@@ -105,7 +107,8 @@ export class NotifyWatchService implements OnApplicationBootstrap, OnApplication
     const prev = await this.readState();
     // nowhere to send them: keep up to date, so turning them on later doesn't send old news
     const snap = await this.snapshot(localDate(now));
-    const { events, next } = detect(prev, snap, s.year_goal);
+    const { goal } = await this.outbound.config();
+    const { events, next } = detect(prev, snap, goal);
     const streak = streakWarning(
       rows(snap.daily),
       { date: localDate(now), hour: now.getHours() },

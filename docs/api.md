@@ -41,6 +41,27 @@ add calcs or fields; check the index rather than assuming.
 and are gzipped for clients that accept it. Every response carries `X-Stats-Version`, which
 changes whenever the numbers could (new data, new privacy settings, new page code).
 
+### Now: for Home Assistant and other devices
+
+`GET /api/now` is a small summary for things that poll (Home Assistant's REST sensor, a
+display): `{today, as_of, generated, reading, today_minutes, week_minutes, streak, year,
+quote}`. The README's [Widgets and devices](../README.md#widgets-and-devices) section
+describes each field. It's worked out by `src/outbound/` from the same per-viewer data as
+the stats, so whatever the asker's audience hides is `null` (`reading` without "what
+you're reading now", the minutes without day-by-day reading, `streak` without streaks or
+exact days). `GET /api/now/cover` is the current book's cover, or `404`.
+
+Besides the usual sign-in, these two accept the **device token** made in **Admin → Widgets &
+devices** (`Authorization: Bearer …`, `X-Device-Token: …` or `?token=…`). It gets the
+audience the admin chose for it (by default the admin's own view) and opens nothing else.
+Both are `Cache-Control: private, no-store`.
+
+The admin's settings: `GET /api/admin/outbound` (`{goal, device_token, device_token_created,
+device_audience}`; the token itself is never returned), `PUT /api/admin/outbound/goal`
+(`{goal: 1–1000 | null}`), `PUT /api/admin/outbound/audience` (`{audience: 'admin' |
+'public' | 'reader' | 'friends'}`), `POST /api/admin/outbound/token` (a new token, returned
+this once) and `DELETE /api/admin/outbound/token`.
+
 ### Calcs the server leaves out
 
 - `client_only`: calcs that read something besides their inputs (the viewer's filters or
@@ -87,8 +108,8 @@ Admin endpoints (`@AdminOnly`) behind **Admin → Notifications** (BOO-72). Chan
 
 | Method and path | Does |
 | --- | --- |
-| `GET /api/admin/notify` | `{channels, events: {<kind>: on}, kinds: [{kind, label, note}], streak_hour, streak_min, year_goal}` |
-| `PUT /api/admin/notify` | Any of `{events: {<kind>: bool}, streak_hour: 0–23, streak_min, year_goal: n \| null}` |
+| `GET /api/admin/notify` | `{channels, events: {<kind>: on}, kinds: [{kind, label, note}], streak_hour, streak_min}` |
+| `PUT /api/admin/notify` | Any of `{events: {<kind>: bool}, streak_hour: 0–23, streak_min}` |
 | `POST /api/admin/notify/channels` | `{type: "ntfy" \| "gotify" \| "discord" \| "webhook", url, token?, name?}` |
 | `DELETE /api/admin/notify/channels/<id>` | Removes one |
 | `POST /api/admin/notify/channels/<id>/test` | Sends a test message to that channel: `{ok}` or `{ok: false, error}` |
@@ -143,5 +164,5 @@ The built-in events and their `data` are:
 - `book_finished`: `{book_id, read_id, title, author, end}`, or `{count}` for a digest.
 - `new_record`: `{record, value, previous}`.
 - `streak_at_risk`: `{streak, last_read}`.
-- `year_goal`: `{year, goal, finished}`.
+- `year_goal`: `{year, goal, finished}`. The goal is the one under **Widgets & devices** (`PUT /api/admin/outbound/goal`).
 - `friend_finished`: `{friend, book_id, title}`.

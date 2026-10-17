@@ -6,6 +6,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import { bookKeys } from '../clubs/clubs';
+import { streakOf } from '../outbound/now';
 
 // ---------- events ----------
 
@@ -44,7 +45,7 @@ export const NOTIFY_EVENTS: { kind: string; label: string; note: string }[] = [
   {
     kind: 'year_goal',
     label: 'Year goal reached',
-    note: 'When you finish as many books this year as your goal.',
+    note: 'When you finish as many books this year as your goal (set under Widgets & devices).',
   },
   {
     kind: 'friend_finished',
@@ -76,8 +77,6 @@ export interface NotifySettings {
   streak_hour: number;
   /** …when the streak is at least this many days. */
   streak_min: number;
-  /** Books to finish this year, or null for no goal. */
-  year_goal: number | null;
 }
 
 export const DEFAULT_NOTIFY: NotifySettings = {
@@ -85,7 +84,6 @@ export const DEFAULT_NOTIFY: NotifySettings = {
   events: {},
   streak_hour: 21,
   streak_min: 3,
-  year_goal: null,
 };
 
 export const MAX_CHANNELS = 10;
@@ -132,13 +130,11 @@ export function toNotifySettings(raw: unknown): NotifySettings {
   for (const [k, v] of Object.entries(asObject(o.events))) {
     if (KIND.test(k) && typeof v === 'boolean') events[k] = v;
   }
-  const goal = Number(o.year_goal);
   return {
     channels,
     events,
     streak_hour: intIn(o.streak_hour, 0, 23, DEFAULT_NOTIFY.streak_hour),
     streak_min: intIn(o.streak_min, 1, 365, DEFAULT_NOTIFY.streak_min),
-    year_goal: Number.isInteger(goal) && goal > 0 && goal <= 10_000 ? goal : null,
   };
 }
 
@@ -193,24 +189,21 @@ export function publicSettings(s: NotifySettings) {
     kinds: NOTIFY_EVENTS,
     streak_hour: s.streak_hour,
     streak_min: s.streak_min,
-    year_goal: s.year_goal,
   };
 }
 
-/** {events, streak_hour, streak_min, year_goal} from the admin, onto the current settings. */
+/** {events, streak_hour, streak_min} from the admin, onto the current settings. */
 export function withOptions(s: NotifySettings, body: unknown): NotifySettings {
   const o = asObject(body);
   const events = { ...s.events };
   for (const [k, v] of Object.entries(asObject(o.events))) {
     if (KIND.test(k) && typeof v === 'boolean') events[k] = v;
   }
-  const goal = o.year_goal === null || o.year_goal === '' ? null : Number(o.year_goal);
   return toNotifySettings({
     ...s,
     events,
     streak_hour: o.streak_hour ?? s.streak_hour,
     streak_min: o.streak_min ?? s.streak_min,
-    year_goal: o.year_goal === undefined ? s.year_goal : goal,
   });
 }
 
@@ -565,33 +558,6 @@ export function detect(
 
 // ---------- streaks ----------
 
-const addDays = (d: string, n: number) =>
-  new Date(Date.parse(d) + n * DAY_MS).toISOString().slice(0, 10);
-
-/**
- * The run of consecutive reading days ending today or yesterday, as of `today`:
- * `{days, read_today}`; days is 0 when the last reading day was before yesterday.
- */
-export function currentStreak(
-  daily: Row[],
-  today: string,
-): { days: number; read_today: boolean; last: string | null } {
-  const days = new Set(
-    daily
-      .filter((d) => (num(d.minutes) ?? 0) > 0 || (num(d.words) ?? 0) > 0)
-      .map((d) => str(d.date).slice(0, 10)),
-  );
-  const last = [...days].sort().pop() ?? null;
-  const readToday = days.has(today);
-  let day = readToday ? today : addDays(today, -1);
-  let n = 0;
-  while (days.has(day)) {
-    n++;
-    day = addDays(day, -1);
-  }
-  return { days: n, read_today: readToday, last };
-}
-
 /** "Streak at risk", when it's time to send it, or null. */
 export function streakWarning(
   daily: Row[],
@@ -600,14 +566,20 @@ export function streakWarning(
   warned: string | null,
 ): NotifyEvent | null {
   if (now.hour < s.streak_hour || warned === now.date) return null;
-  const st = currentStreak(daily, now.date);
-  if (st.read_today || st.days < s.streak_min) return null;
+  // the streak as the "now" summary (BOO-71) works it out, so both always agree
+  const st = streakOf(
+    daily
+      .filter((d) => (num(d.minutes) ?? 0) > 0 || (num(d.words) ?? 0) > 0)
+      .map((d) => str(d.date).slice(0, 10)),
+    now.date,
+  );
+  if (!st.at_risk || st.current < s.streak_min) return null;
   return {
     kind: 'streak_at_risk',
-    title: `Your ${st.days}-day streak is at risk`,
+    title: `Your ${st.current}-day streak is at risk`,
     message: `Nothing's been synced today. Read a few pages (and sync) before midnight to keep it going.`,
     tags: ['fire'],
     priority: 'high',
-    data: { streak: st.days, last_read: st.last },
+    data: { streak: st.current, last_read: st.last_day },
   };
 }

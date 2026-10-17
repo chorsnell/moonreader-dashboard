@@ -1,5 +1,4 @@
 import {
-  currentStreak,
   detect,
   publicSettings,
   requestFor,
@@ -188,16 +187,6 @@ describe('streaks', () => {
     (date) => ({ date, minutes: 20 }),
   );
 
-  it('counts the run ending today or yesterday', () => {
-    expect(currentStreak(daily, '2026-03-10')).toEqual({
-      days: 5,
-      read_today: false,
-      last: '2026-03-09',
-    });
-    expect(currentStreak(daily, '2026-03-09')).toMatchObject({ days: 5, read_today: true });
-    expect(currentStreak(daily, '2026-03-11').days).toBe(0);
-  });
-
   it('warns in the evening, once a day, when nothing was read today', () => {
     const s = { streak_hour: 21, streak_min: 3 };
     expect(streakWarning(daily, { date: '2026-03-10', hour: 20 }, s, null)).toBeNull();
@@ -292,15 +281,13 @@ describe('channels', () => {
     const s = withOptions(toNotifySettings({}), {
       streak_hour: 30,
       streak_min: 2,
-      year_goal: '24',
       events: { new_record: false, 'Bad Kind': true },
     });
     expect(s).toMatchObject({
       streak_hour: 21,
       streak_min: 2,
-      year_goal: 24,
       events: { new_record: false },
     });
-    expect(withOptions(s, { year_goal: null }).year_goal).toBeNull();
+    expect(withOptions(s, { streak_min: 0 }).streak_min).toBe(3);
   });
 });

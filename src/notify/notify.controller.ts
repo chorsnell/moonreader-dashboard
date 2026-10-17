@@ -36,7 +36,7 @@ export class NotifyController {
     return publicSettings(await this.notifier.load());
   }
 
-  /** {events?, streak_hour?, streak_min?, year_goal?} */
+  /** {events?, streak_hour?, streak_min?} */
   @Put()
   @HttpCode(200)
   async options(@Body() body: unknown) {
