@@ -25,12 +25,8 @@ import { MediaFiles } from '../media/media-files.service';
 import { writeDemoBackup } from './demo-backup';
 import { simulateHighlights } from './demo-highlights';
 import { DemoModule } from './demo.module';
-<<<<<<< HEAD
-import { BOOKS, fileName } from './demo-books';
-import { demoMediaCatalogue, simulateNetflix } from './demo-media';
-=======
 import { BOOKS, fileName, ISBN } from './demo-books';
->>>>>>> origin/main
+import { demoMediaCatalogue, simulateNetflix } from './demo-media';
 import { Random } from './random';
 import { simulate } from './simulate';
 
