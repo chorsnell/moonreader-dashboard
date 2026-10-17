@@ -244,7 +244,7 @@ npm run demo -- site                            # COVER_LOOKUP=off to skip Open 
 npx http-server site -p 8000
 ```
 
-The [`demo` workflow](.github/workflows/pages.yml) does the same on every push to `main`, and weekly, and publishes it to GitHub Pages.
+The [`demo` workflow](.github/workflows/pages.yml) does the same on every push to `main`, and weekly, and publishes it to GitHub Pages. `npm run screenshots` retakes the screenshots above from it; see [docs/contributing.md](docs/contributing.md) for that, feature scripts and the checks to run.
 
 ### Layout
 
