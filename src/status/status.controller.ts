@@ -55,6 +55,8 @@ export class StatusController {
       uploads: admin,
       webdav: admin,
       has_data: await this.library.hasData(),
+      has_books: await this.library.hasBooks(),
+      has_media: await this.library.hasMedia(),
       meta: ctx ? filterDataFile('meta.json', meta, ctx) : meta,
       // what's hidden from this viewer (null: nothing), and the role an admin is previewing as
       privacy: await this.privacy.summary(viewer, ctx),
