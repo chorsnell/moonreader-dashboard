@@ -100,7 +100,7 @@
         ? h('p', { class: 'note' }, 'Upload a Moon+ Reader backup (.mrpro) to build your dashboard.')
         : h('p', { class: 'note' }, 'Put a Moon+ Reader backup (.mrpro) in the library/inbox folder on the server, or set UPLOAD_TOKEN to upload one from here.'));
     if (config.uploads) box.append(h('button', { class: 'up-primary', type: 'button', style: 'max-width:14rem', onclick: openDialog }, 'Upload a backup'));
-    $('.rh-tabs').after(box);
+    $('.rh-top').after(box);
   }
 
   window.addEventListener('dash:config', (e) => {
