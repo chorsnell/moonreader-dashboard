@@ -36,7 +36,27 @@ export function shrinkPng(data: Buffer, maxWidth = COVER_WIDTH): Buffer {
   }
 }
 
-function shrink(data: Buffer, maxWidth: number): Buffer | null {
+type Pixel = [number, number, number, number];
+
+/** A decoded PNG: its size, and each pixel as [r, g, b, a]. */
+export interface PngImage {
+  width: number;
+  height: number;
+  alpha: boolean;
+  pixel: (x: number, y: number) => Pixel;
+}
+
+/** Decodes the common 8-bit, non-interlaced kinds of PNG; null for anything else. */
+export function readPng(data: Buffer): PngImage | null {
+  try {
+    return read(data);
+  } catch {
+    return null;
+  }
+}
+
+function read(data: Buffer): PngImage | null {
+  if (!data.subarray(0, 8).equals(SIGNATURE)) return null;
   let header: Header | null = null;
   const idat: Buffer[] = [];
   let palette: Buffer = Buffer.alloc(0);
@@ -63,7 +83,7 @@ function shrink(data: Buffer, maxWidth: number): Buffer | null {
   if (!header) return null;
   const { width: w, height: h, depth, colourType, interlace } = header;
   const bpp = BYTES_PER_PIXEL[colourType];
-  if (w <= maxWidth || depth !== 8 || interlace || bpp === undefined) return null;
+  if (depth !== 8 || interlace || bpp === undefined) return null;
 
   const raw = inflateSync(Buffer.concat(idat));
   const stride = w * bpp;
@@ -72,7 +92,7 @@ function shrink(data: Buffer, maxWidth: number): Buffer | null {
   const alpha =
     colourType === 4 || colourType === 6 || (colourType === 3 && transparency.length > 0);
 
-  const pixel = (x: number, y: number): [number, number, number, number] => {
+  const pixel = (x: number, y: number): Pixel => {
     const r = rows[y];
     switch (colourType) {
       case 2:
@@ -91,6 +111,14 @@ function shrink(data: Buffer, maxWidth: number): Buffer | null {
       }
     }
   };
+  return { width: w, height: h, alpha, pixel };
+}
+
+function shrink(data: Buffer, maxWidth: number): Buffer | null {
+  if (data.length < 24 || data.readUInt32BE(16) <= maxWidth) return null; // IHDR's width
+  const img = read(data);
+  if (!img) return null;
+  const { width: w, height: h, alpha, pixel } = img;
 
   // each new pixel averages a few samples from a k x k block
   const k = Math.ceil(w / maxWidth);

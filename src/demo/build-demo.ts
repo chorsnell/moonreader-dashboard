@@ -10,6 +10,8 @@
  * yesterday, so "this year" is never empty. DEMO_SEED picks another made-up history, and
  * DEMO_TODAY=YYYY-MM-DD builds it as if run on that day (for repeatable screenshots).
  * MIXPANEL_TOKEN (and MIXPANEL_API_HOST) turn on the page's analytics, as on the server.
+ * DEMO_URL (the site's public address) makes the link preview tags absolute, as most sites
+ * that show previews need.
  */
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -20,6 +22,8 @@ import { localDate } from '../common/time';
 import { WEB_DIR } from '../paths';
 import { loadPageCalcs } from '../stats/page-sandbox';
 import { bundleJson, computeStats, readInputs } from '../stats/stats';
+import { collage } from '../share/collage';
+import { shareCard, shareTags, withShareTags } from '../share/share-card';
 import { withFeatures } from '../web/features';
 import { writeStaticClubs, writeStaticFriends } from './demo-friends-site';
 import { buildDemoLibrary } from './demo-library';
@@ -105,6 +109,7 @@ async function main(): Promise<void> {
     for (const [id, value] of Object.entries(stats.rows)) {
       await writeFile(join(out, 'api', 'stats', id), JSON.stringify(value));
     }
+    await writeShareCard(out, coverUrls, stats.rows.as_of);
     const friends = await writeStaticFriends(lib, out);
     await writeStaticClubs(lib, out);
     await writeFile(join(out, '.nojekyll'), '');
@@ -117,6 +122,27 @@ async function main(): Promise<void> {
   } finally {
     await rm(lib, { recursive: true, force: true });
   }
+}
+
+/** The link preview: tags in index.html and the collage beside it, as the server makes them. */
+async function writeShareCard(
+  out: string,
+  coverUrls: Record<string, string>,
+  asOfRows: unknown,
+): Promise<void> {
+  const read = async (name: string): Promise<unknown> =>
+    JSON.parse(await readFile(join(out, 'data', name), 'utf8'));
+  const asOf = (asOfRows as { date?: string }[] | undefined)?.[0]?.date ?? null;
+  const card = shareCard(await read('books.json'), await read('reads.json'), asOf);
+  const files = card.coverIds.flatMap((id) => (coverUrls[id] ? [coverUrls[id]] : [])).slice(0, 32);
+  const jpeg = collage(await Promise.all(files.map((f) => readFile(join(out, f)))));
+  if (jpeg) await writeFile(join(out, 'share.jpg'), jpeg);
+  const site = process.env.DEMO_URL?.trim().replace(/\/+$/, '');
+  const url = site ? `${site}/` : null;
+  const image = jpeg ? `${url ?? ''}share.jpg` : null;
+  const page = await readFile(join(out, 'index.html'), 'utf8');
+  const tags = shareTags({ title: card.title, description: card.description, url, image });
+  await writeFile(join(out, 'index.html'), withShareTags(page, tags));
 }
 
 main().catch((e: unknown) => {

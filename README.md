@@ -241,6 +241,8 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 
 You can also mark books or whole genres as private: visitors then see nothing of them, or "A private book" with no title, author or cover. This is enforced on the server: the data files, stats and API are filtered for each visitor, so hidden details never reach their browser. **Preview as a visitor** shows exactly what each one gets.
 
+**Link previews.** A link to a public dashboard, pasted into Slack, Discord, WhatsApp, iMessage, Bluesky, X or anywhere else that shows previews, comes with a title and a line of headline numbers (books finished, this year so far, hours, words, authors, the latest finishes), and a collage of recent covers (`/share.jpg`). Both are built from what the public may see, so private books never appear. A dashboard behind the read password shows only its name. Previews need the dashboard's full address: it's worked out from the `Host` and `X-Forwarded-Proto` headers your proxy sends, or set it with `PUBLIC_URL`. Links to a page inside the dashboard (`#book/…`) show the same preview, because the part after `#` never reaches the server.
+
 ## Friends
 
 Bring friends' reading into your dashboard to compare notes. There are two ways in:
@@ -276,6 +278,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 |---|---|---|
 | `UPLOAD_TOKEN` | *(empty)* | The admin password. Turns on admin sign-in, uploads and WebDAV |
 | `BASE_PATH` | *(empty)* | Public sub-path, only when the proxy doesn't strip it |
+| `PUBLIC_URL` | *(from the request)* | The dashboard's full address, e.g. `https://books.example.com/reading`, for link previews |
 | `PORT` | `8080` | Port inside the container |
 | `LIBRARY` | `/library` | Folder for everything the app keeps |
 | `PUID` / `PGID` | `1000` | Who owns the files in `library/` on the host |
@@ -297,7 +300,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `MIXPANEL_TOKEN` | *(empty)* | A Mixpanel project token: sends anonymous page views and clicks (no titles, names or dates) to Mixpanel. Off when empty |
 | `MIXPANEL_API_HOST` | `https://api-js.mixpanel.com` | Mixpanel's address, e.g. `https://api-eu.mixpanel.com` for EU data residency |
 
-The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", `YYYY-MM-DD`) and `DEMO_SEED`; see [docs/contributing.md](docs/contributing.md).
+The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", `YYYY-MM-DD`) and `DEMO_SEED`, and the demo build `DEMO_URL` (its public address, for link previews); see [docs/contributing.md](docs/contributing.md).
 
 ## The API
 
@@ -364,6 +367,7 @@ src/rebuild/         watches for new backups, edits and syncs, and rebuilds
 src/upload/, src/admin/, src/dav/, src/status/   uploads, the admin API, WebDAV, /healthz and /api/config
 src/stats/           runs the page's calcs on the server per viewer; /api/stats
 src/web/             serves the page, its data, feature scripts and covers
+src/share/           link previews: the Open Graph tags and the cover collage
 src/demo/            builds the demo site from made-up data
 web/                 the page: index.html, calcs.js, charts.js, runtime.js, pages/, features/
 docs/                backup format, API, friends, integrations, media model, contributing

@@ -26,6 +26,9 @@ jobs:
       - run: npm ci
       - name: Build the demo site
         run: npm run demo -- site
+        env:
+          # absolute link preview tags (og:image) for the published site
+          DEMO_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
