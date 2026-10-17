@@ -1,0 +1,13 @@
+/* reading clock on Timeline & habits */
+.chart.ck-box{min-height:0;display:flex;flex-wrap:wrap;align-items:center;gap:var(--cds-gap-lg) var(--cds-gap-xl)}
+.ck-dial{position:relative;flex:none;max-width:100%}
+.ck-dial svg{display:block;max-width:100%;height:auto}
+.ck-side{flex:1;min-width:220px;max-width:420px}
+.ck-verdict{font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-title);line-height:1.2}
+.ck-sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin-top:var(--cds-gap-xs)}
+.ck-parts{display:grid;grid-template-columns:auto 1fr;gap:var(--cds-gap-sm) var(--cds-gap-md);align-items:center;margin:var(--cds-gap-lg) 0 var(--cds-gap-md)}
+.ck-parts dt{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);white-space:nowrap}
+.ck-parts dd{margin:0;display:flex;align-items:center;gap:var(--cds-gap-sm)}
+.ck-parts .pbar{flex:1;margin:0}
+.ck-parts b{font-weight:400;font-variant-numeric:tabular-nums;min-width:3ch;text-align:right;font-size:var(--cds-font-size-caption)}
+@media (max-width:520px){.ck-dial{margin:0 auto}}
