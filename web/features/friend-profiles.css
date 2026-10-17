@@ -21,3 +21,9 @@
 /* admin → Friends */
 .ad-page a.up-primary{display:inline-block;text-decoration:none;text-align:center}
 .ad-page .fr-save{white-space:nowrap}
+/* admin → Friends: federation */
+.fd-item{display:block!important}
+.fd-item .ad-meta{margin:4px 0}
+.fd-scope{display:flex;flex-direction:column;gap:8px;margin:6px 0;padding:var(--cds-pad-md);border-radius:8px;background:var(--color-bg);max-width:36rem}
+.fd-scope input,.fd-scope select{background:var(--color-panel)!important}
+.fd-edit{margin-top:6px}

@@ -68,7 +68,17 @@ export class ShareService {
         generated: typeof filteredMeta.generated === 'string' ? filteredMeta.generated : null,
         leaderboards: opts.leaderboards === false ? [] : friends.leaderboards,
       },
-      privacy: { hidden: hiddenCategories(policy), dates: policy.dates },
+      privacy: {
+        // what the policy hides, and what this friend doesn't get
+        hidden: [
+          ...new Set([
+            ...hiddenCategories(policy),
+            ...(allowed.has('daily') ? [] : ['diary']),
+            ...(allowed.has('highlights') ? [] : ['highlights']),
+          ]),
+        ],
+        dates: policy.dates,
+      },
       books: (await part('books')) ?? [],
       reads: (await part('reads')) ?? [],
       daily: (await part('daily')) ?? [],

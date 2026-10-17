@@ -38,6 +38,8 @@ export interface AppConfig {
   audiobookshelfToken: string;
   /** How often to pull new plays from Tautulli (and sessions from Audiobookshelf), in minutes. */
   mediaPollMinutes: number;
+  /** How often to refresh friends' data from their installations, in minutes; 0 is never. */
+  federationRefreshMinutes: number;
   /** Who should own the files in the library when the container starts as root. */
   puid: number;
   pgid: number;
@@ -90,6 +92,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     audiobookshelfUrl: (env.AUDIOBOOKSHELF_URL ?? '').trim().replace(/\/+$/, ''),
     audiobookshelfToken: (env.AUDIOBOOKSHELF_TOKEN ?? '').trim(),
     mediaPollMinutes: Math.max(1, integer(env, 'MEDIA_POLL_MINUTES', 60)),
+    federationRefreshMinutes: Math.max(0, integer(env, 'FEDERATION_REFRESH_MINUTES', 60)),
     puid: integer(env, 'PUID', 1000),
     pgid: integer(env, 'PGID', 1000),
   };

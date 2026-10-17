@@ -49,3 +49,56 @@ read the dashboard). Anyone else gets an empty list from `data/friends.json` and
 the files.
 
 The static demo ships the same URLs as plain files.
+
+## Federation: following a friend's dashboard
+
+When a friend runs their own installation, you can follow it instead of passing share
+files around. Their dashboard (the *host*) approves you and chooses what you get; yours (the
+*follower*) pulls their share file with a token and keeps it in `library/friends/<slug>/`
+like an uploaded one, so every friends view works the same.
+
+1. **Ask.** Your server sends `POST {host}/api/federation/follow` with
+   `{"name": "Sam", "url": "https://your-dashboard", "claim": "<random secret>"}`. The host
+   keeps the request as *pending* with a hash of the claim and answers
+   `202 {"id": "<request id>", "status": "pending"}`. It answers `404` when it has no admin
+   (`UPLOAD_TOKEN` unset), `403` when its admin turned follow requests off, `429` when 50
+   requests are already waiting.
+2. **Approve.** The host's admin approves in **Admin → Friends → Dashboards that follow
+   you**, choosing **everything** (what the friends policy allows), **stats only** (books
+   and reads, no day-by-day reading) or **specific views** (what you read, your days,
+   leaderboards, highlights), and any books to hide from this follower. Approving issues a
+   bearer token; the host keeps only its sha256 hash, and the token itself just until it's
+   collected.
+3. **Collect.** Your server polls `POST {host}/api/federation/follow/{id}/status` with
+   `{"claim": "…"}` and gets `{"status": "pending" | "approved" | "rejected" | "revoked",
+   "name": "<their share name>"}`, plus `"token"` the first time after approval. A wrong
+   claim gets `404`.
+4. **Pull.** `GET {host}/api/federation/share` with `Authorization: Bearer <token>` returns
+   the share file above, filtered by the host's friends policy, then by this follower's
+   scope and hidden books (`privacy.hidden` says what's missing). `401` once access is
+   revoked (or for any other token).
+5. Your server refreshes every `FEDERATION_REFRESH_MINUTES` (default 60) and when you press
+   **Refresh now**.
+
+**Revoking** deletes the token's hash on the host, so the very next pull fails; your server
+then marks the friend *revoked* and deletes their data. **Offline:** when the host doesn't
+answer (or answers with an error), your server keeps what it had and marks the friend
+*offline*; the Friends tab shows their reading "as of" the last refresh. **Unfollowing**
+forgets the token and their data.
+
+`library/federation.json` holds both sides (the tokens you use, hashes of the ones you
+issued) and is written readable by the owner only; it's never served.
+
+Decisions:
+- **Bearer tokens, not signatures.** Each follower gets its own random token over HTTPS,
+  stored hashed by the host and revocable on the spot. Requests needn't be signed: there's
+  one caller per token and nothing is pushed.
+- **Not ActivityPub.** ActivityPub is made for public, push-based social feeds: actors,
+  inboxes, HTTP-signed deliveries to many servers. This is private, per-follower filtered
+  data pulled between two installations. ActivityPub would bring actor discovery, key
+  management and signing, and still not give per-follower privacy, so it's out of scope.
+- **HTTPS assumed.** Plain `http://` addresses are accepted for home networks and tests;
+  over the internet, put the dashboard behind HTTPS (see the README's reverse proxy section).
+- The host's stats API (`docs/api.md`) is for the host's own visitors; friends get the share
+  file, which carries the rows the friends views need. Server-side stats could later sit
+  behind `/api/federation/share` without changing it.
