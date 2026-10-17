@@ -191,7 +191,7 @@ The country is the author's citizenship, or, for a country that no longer exists
 }
 ```
 
-or once per author, under `"authors"` next to `"books"`: `"authors": { "Author Name": { "country": "Ireland", "gender": "male" } }`. Countries can be an ISO code (`GB`) or an English name; genders are `female`, `male`, `non-binary` or `other`. Set `METADATA_LOOKUP: "off"` to never look anything up.
+or once per author, under `"authors"` next to `"books"`: `"authors": { "Author Name": { "country": "Ireland", "gender": "male" } }`. Countries can be an ISO code (`GB`) or an English name; genders are `female`, `male`, `non-binary` or `other`. Set `METADATA_LOOKUP: "off"` to never look anything up. Which other sources were considered, and why there is no Anna's Archive lookup, is in [docs/integrations.md](docs/integrations.md).
 
 ## TV and film (Netflix, Plex)
 
