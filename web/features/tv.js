@@ -395,7 +395,7 @@
 
   rh.card({
     tab: 'tv', id: 'tv-cost', chartClass: 'tv-auto', title: 'Cost per hour', wide: false, calc: 'tv_cost',
-    note: 'What each streaming subscription cost you per hour actually watched, by year. Set your subscriptions on the admin page, under TV & film.',
+    note: 'What each streaming subscription cost you per hour actually watched, by year. Set your subscriptions on the admin page, under Other media.',
     draw(box, rows) {
       if (!rows.length) return empty(box, 'No subscriptions set. Add them on the admin page to see what an hour of watching costs you.');
       const tbl = el('table', 'tv-cost'), head = el('tr');

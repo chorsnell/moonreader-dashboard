@@ -7,6 +7,7 @@ import { ActivityLogService } from '../library/activity-log.service';
 import { LIBRARY_CHANGED } from '../library/library.events';
 import { MediaBuildService } from './media-build.service';
 import { MediaFiles } from './media-files.service';
+import { AudiobookshelfClient } from './sources/audiobookshelf';
 import { TautulliClient, type PullResult } from './sources/tautulli.client';
 
 const POLL_INTERVAL = 'media-poll';
@@ -23,6 +24,7 @@ export interface MediaStatus {
     last_error: string | null;
     last_new: number;
   };
+  audiobookshelf: MediaStatus['tautulli'];
 }
 
 /**
@@ -44,8 +46,10 @@ export class MediaService implements OnApplicationBootstrap, OnApplicationShutdo
     last_error: null,
     last_lines: [],
     tautulli: { pulling: false, last_pull: null, last_error: null, last_new: 0 },
+    audiobookshelf: { pulling: false, last_pull: null, last_error: null, last_new: 0 },
   };
   private pulling: Promise<PullResult | null> | null = null;
+  private listening: Promise<PullResult | null> | null = null;
 
   constructor(
     @Inject(appConfig.KEY) private readonly config: AppConfigType,
@@ -54,20 +58,25 @@ export class MediaService implements OnApplicationBootstrap, OnApplicationShutdo
     private readonly scheduler: SchedulerRegistry,
     private readonly files: MediaFiles,
     private readonly tautulli: TautulliClient,
+    private readonly abs: AudiobookshelfClient,
   ) {}
 
   onApplicationBootstrap(): void {
     const timer = setInterval(() => void this.check(), this.config.pollSeconds * 1000);
     this.scheduler.addInterval(POLL_INTERVAL, timer);
-    const pull = setInterval(() => void this.pullTautulli(), this.config.mediaPollMinutes * 60_000);
+    const pull = setInterval(() => {
+      void this.pullTautulli();
+      void this.pullAudiobookshelf();
+    }, this.config.mediaPollMinutes * 60_000);
     this.scheduler.addInterval(TAUTULLI_INTERVAL, pull);
     void this.check();
     void this.pullTautulli();
+    void this.pullAudiobookshelf();
   }
 
   async onApplicationShutdown(): Promise<void> {
     this.stop.abort();
-    await Promise.all([this.running, this.pulling]);
+    await Promise.all([this.running, this.pulling, this.listening]);
   }
 
   /**
@@ -104,11 +113,43 @@ export class MediaService implements OnApplicationBootstrap, OnApplicationShutdo
     return this.pulling;
   }
 
+  /** Pulls listening sessions from Audiobookshelf, when it's set up; like pullTautulli. */
+  pullAudiobookshelf(): Promise<PullResult | null> {
+    this.listening ??= (async () => {
+      const conn = await this.files.audiobookshelf();
+      if (!conn || this.stop.signal.aborted) return null;
+      const t = this.state.audiobookshelf;
+      t.pulling = true;
+      try {
+        const r = await this.abs.pull(conn, this.stop.signal);
+        t.last_pull = logTimestamp();
+        t.last_error = null;
+        t.last_new = r.new_rows;
+        if (r.new_rows) {
+          this.activity.log(`Pulled ${r.new_rows} new listening session(s) from Audiobookshelf`);
+        }
+        void this.check(); // sessions in progress change too: the cache's time says if it's new
+        return r;
+      } catch (e) {
+        const why = (e as Error).message;
+        if (t.last_error !== why && !this.stop.signal.aborted) {
+          this.activity.log(`Audiobookshelf pull failed: ${why}`);
+        }
+        t.last_error = why;
+        return null;
+      } finally {
+        t.pulling = false;
+      }
+    })().finally(() => (this.listening = null));
+    return this.listening;
+  }
+
   status(): MediaStatus {
     return {
       ...this.state,
       last_lines: [...this.state.last_lines],
       tautulli: { ...this.state.tautulli },
+      audiobookshelf: { ...this.state.audiobookshelf },
     };
   }
 
