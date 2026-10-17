@@ -68,6 +68,7 @@ dash.calc('per_month', {
     const m = {};
     daily.filter((d) => d.minutes).forEach((d) => (m[d.date.slice(0, 7)] = (m[d.date.slice(0, 7)] || 0) + d.minutes));
     const keys = Object.keys(m).sort();
+    if (!keys.length) return [];
     const out = [];
     let [y, mo] = keys[0].split('-').map(Number);
     const last = keys[keys.length - 1];

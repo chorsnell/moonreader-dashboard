@@ -22,12 +22,13 @@ window.dash = (() => {
     window.dispatchEvent(new CustomEvent('dash:config', { detail: config }));
     if (config.has_data === false || config.can_read === false) { setAll('missing'); notify(); return config; }
     // only other media so far (say, a Netflix upload): the book files load as empty
-    if (config.has_books === false) ['books', 'reads', 'daily'].forEach((k) => optional.add(k));
+    const skip = new Set(config.has_books === false ? ['books', 'reads', 'daily'] : []);
     // covers are optional: without them the page shows placeholders
     const coverList = fetch('api/covers', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
     try {
       const v = '?v=' + Date.now();
       const entries = await Promise.all(Object.entries(files).map(async ([id, url]) => {
+        if (skip.has(id)) return [id, []];
         const r = await fetch(url + v);
         if (!r.ok && optional.has(id)) return [id, []];
         if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);

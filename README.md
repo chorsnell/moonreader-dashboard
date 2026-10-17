@@ -161,8 +161,8 @@ The dashboard can also show what you watch, from Netflix and from Plex (through 
 ### Netflix
 
 1. On Netflix, go to Account → Security & privacy → **Download your personal information**. A day or so later you get a zip; it holds `CONTENT_INTERACTION/ViewingActivity.csv`.
-2. Upload the zip (or just that .csv) as the admin: `curl -T netflix.zip -H "X-Upload-Token: $UPLOAD_TOKEN" "http://your-server/upload?source=netflix&name=netflix.zip"`.
-3. Netflix accounts are shared, so nothing is imported until you choose your profile(s): `POST /api/admin/media/netflix` with `{"profiles": ["Chris"]}`. An export with only one profile is imported straight away.
+2. Upload the zip (or just that .csv) on the admin page, under **TV & film** (or from a script: `curl -T netflix.zip -H "X-Upload-Token: $UPLOAD_TOKEN" "http://your-server/upload?source=netflix&name=netflix.zip"`).
+3. Netflix accounts are shared, so nothing is imported until you tick your profile(s) there (`POST /api/admin/media/netflix` with `{"profiles": ["Chris"]}`). An export with only one profile is imported straight away.
 
 A profile's "Viewing activity" page also has a **Download all** link that gives `NetflixViewingHistory.csv`. It works, but it only has titles and dates, so time watched is estimated; the full export is better.
 
@@ -171,14 +171,14 @@ A profile's "Viewing activity" page also has a **Download all** link that gives 
 [Tautulli](https://tautulli.com) keeps every Plex play with how long it was watched, so it's the source the dashboard reads; it never needs your Plex token or password.
 
 1. In Tautulli, copy the API key from Settings → Web Interface.
-2. Set `TAUTULLI_URL` (such as `http://tautulli:8181`) and `TAUTULLI_API_KEY`, or send them as the admin: `POST /api/admin/media/tautulli/test` with `{"url": "…", "api_key": "…"}` lists the Plex users, then `POST /api/admin/media/tautulli` with `{"url": "…", "api_key": "…", "user_id": "1"}` saves them (leave `user_id` empty for everyone).
-3. The dashboard pulls the whole history once, then new plays every `MEDIA_POLL_MINUTES` (60); `POST /api/admin/media/tautulli/sync` pulls now. Posters come through Tautulli's image proxy.
+2. On the admin page, under **TV & film**, enter Tautulli's address (such as `http://tautulli:8181`) and the key, press **Test**, pick your Plex user and **Save**. Or set `TAUTULLI_URL` and `TAUTULLI_API_KEY`.
+3. The dashboard pulls the whole history once, then new plays every `MEDIA_POLL_MINUTES` (60); **Sync Plex now** pulls straight away. Posters come through Tautulli's image proxy.
 
 History starts when Tautulli was installed. Plex on its own only keeps a "watched" log with no time watched, so it isn't read yet.
 
 ### How it's built
 
-The media build runs on its own, beside the book build, and writes `media_items.json` (a TV season or a film), `media_runs.json`, `media_daily.json`, `media_sessions.json` and `media_parts.json` (episodes) to `library/data/`. A season is treated like a book and the show like a series. With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or `POST /api/admin/media/tmdb` with `{"api_key": "…"}`) it also adds genres, creators, episode counts and posters; without one everything still works, from the titles alone. To fix a title, put it in `library/media/catalogue.json`, keyed by the lower-case show or film title: `{"copper valley": {"genre": "Drama", "episodes": {"1": 8}}, "some trailer": {"exclude": true}}`.
+The media build runs on its own, beside the book build, and writes `media_items.json` (a TV season or a film), `media_runs.json`, `media_daily.json`, `media_sessions.json` and `media_parts.json` (episodes) to `library/data/`. A season is treated like a book and the show like a series. With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or on the admin page) it also adds genres, creators, episode counts and posters; without one everything still works, from the titles alone. To fix a title, put it in `library/media/catalogue.json`, keyed by the lower-case show or film title: `{"copper valley": {"genre": "Drama", "episodes": {"1": 8}}, "some trailer": {"exclude": true}}`.
 
 ## Settings
 

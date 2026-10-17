@@ -32,7 +32,10 @@ export interface CatalogueChange {
   files: string[];
   /** True to list the files as "not a book" instead. */
   exclude: boolean;
-  entry: Required<CatalogueEntry>;
+  /** The fields the admin page edits; others in catalogue.json (ISBNs) are kept. */
+  entry: Required<
+    Pick<CatalogueEntry, 'title' | 'author' | 'series' | 'series_no' | 'genre' | 'subgenre'>
+  >;
 }
 
 const MAX_TEXT = 300;
@@ -144,7 +147,7 @@ export class CatalogueService {
           delete catalogue.books[key];
         } else {
           exclude.delete(key);
-          catalogue.books[key] = { ...change.entry };
+          catalogue.books[key] = { ...catalogue.books[key], ...change.entry };
         }
       }
       catalogue.exclude = [...exclude].sort();
