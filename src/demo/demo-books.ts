@@ -221,9 +221,18 @@ export const ABANDON: Record<string, number> = {
   Middlemarch: 23.0,
   'On the Origin of Species': 17.0,
   'The Princess and the Goblin': 41.0,
+  'The Autobiography of Benjamin Franklin': 8.0,
+  'The Phantom of the Opera': 12.0,
+  'Little Women': 31.0,
+  'Crime and Punishment': 64.0,
 };
-/** Read again near the end. */
-export const REREAD = 'Pride and Prejudice';
+/** Read early on and again years later (a little faster the second time). */
+export const REREADS = [
+  'Pride and Prejudice',
+  'The Time Machine',
+  'A Christmas Carol',
+  'Treasure Island',
+];
 /** The book on the go, left part way through. */
 export const CURRENT = 'The Count of Monte Cristo';
 // a few quirks real logs have, so the Data checks tab has something to show
@@ -233,6 +242,27 @@ export const STRAY: Record<string, number> = { 'Jane Eyre': 52, 'The Moonstone':
 export const PAUSE: Record<string, number> = {
   'Anna Karenina': 50.0,
   'The Three Musketeers': 60.0,
+};
+
+/**
+ * How a book gets read: devoured (long sessions most days), slow (short sessions), stop-start
+ * (breaks of a week or so) or steady. Each genre has its own odds; titles here are fixed.
+ */
+export type Style = 'devour' | 'slow' | 'stopstart' | 'steady';
+export const STYLE_ODDS: Record<string, [devour: number, slow: number, stopstart: number]> = {
+  'Science Fiction': [0.3, 0.15, 0.15],
+  Mystery: [0.6, 0.05, 0.1],
+  Classics: [0.1, 0.4, 0.2],
+  Adventure: [0.45, 0.1, 0.15],
+  Fantasy: [0.35, 0.15, 0.2],
+  Horror: [0.5, 0.1, 0.1],
+  'Non-fiction': [0, 0.6, 0.3],
+};
+export const STYLE: Record<string, Style> = {
+  'The Time Machine': 'devour',
+  'A Study in Scarlet': 'devour',
+  Walden: 'stopstart',
+  'Moby-Dick': 'slow',
 };
 
 export const fileName = (title: string, author: string) => `${title} - ${author}.epub`;

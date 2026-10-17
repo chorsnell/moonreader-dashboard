@@ -19,7 +19,7 @@ const BETA = '/sdcard/Books/Beta - Bob Writer.epub';
 /**
  * A minimal .mrpro: a zip with _names.list, the mrbooks.db database, positions10.xml and
  * Alpha's cover (Beta has none). Alpha is read on 3 days in March and finished; Beta on 2
- * days, half way.
+ * days, half way. Alpha has a highlight and a note, Beta a bookmark.
  */
 export async function makeBackup(path: string): Promise<void> {
   const tmp = await mkdtemp(join(tmpdir(), 'fake-backup-'));
@@ -33,8 +33,10 @@ export async function makeBackup(path: string): Promise<void> {
       create table tmpbooks as select * from books where 0;
       create table statistics (_id integer primary key, filename text, usedTime numeric,
         readWords numeric, dates text);
-      create table notes (_id integer primary key, book text, filename text, time numeric,
-        note text, original text);
+      create table notes (_id integer primary key, book text, filename text, lowerFilename text,
+        lastChapter numeric, lastSplitIndex numeric, lastPosition numeric,
+        highlightLength numeric, highlightColor numeric, time numeric, bookmark text,
+        note text, original text, underline numeric, strikethrough numeric, bak text);
     `);
     db.prepare("insert into books (book, filename, author) values ('Alpha', ?, 'Ann Author')").run(
       ALPHA,
@@ -58,6 +60,40 @@ export async function makeBackup(path: string): Promise<void> {
     );
     stats.run(ALPHA, 4500000, 22000, `${alpha}\n`);
     stats.run(BETA, 1500000, 7000, `${beta}\n`);
+    // Alpha: a highlight on its second evening and a note on the last day; Beta: a bookmark
+    const notes = db.prepare(
+      `insert into notes (book, filename, lowerFilename, lastChapter, lastSplitIndex,
+        lastPosition, highlightLength, highlightColor, time, bookmark, note, original)
+        values (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    const at = (day: number, hour: number) => (DAY0 + day) * 86_400_000 + hour * 3_600_000;
+    notes.run(
+      'Alpha',
+      ALPHA,
+      ALPHA.toLowerCase(),
+      4,
+      120,
+      21,
+      -256,
+      at(1, 21),
+      '',
+      '',
+      'It was a dark<BR>and stormy night.',
+    );
+    notes.run(
+      'Alpha',
+      ALPHA,
+      ALPHA.toLowerCase(),
+      9,
+      40,
+      9,
+      -28160,
+      at(2, 7),
+      '',
+      'Ending!',
+      'The end.',
+    );
+    notes.run('Beta', BETA, BETA.toLowerCase(), 2, 0, 0, 0, at(5, 12), 'Chapter 3', '', '');
     db.close();
 
     const xml =

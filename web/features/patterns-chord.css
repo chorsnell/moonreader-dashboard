@@ -1,0 +1,12 @@
+/* what you read next */
+#card-chord .card-head{display:flex;justify-content:space-between;align-items:center;gap:var(--cds-gap-md)}
+#card-chord select{font:inherit;font-size:var(--cds-font-size-caption);padding:3px 6px;border:1px solid var(--color-border-line);border-radius:6px;background:var(--color-bg);color:var(--color-fg)}
+.ch-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(14rem,20rem);gap:var(--cds-gap-lg);align-items:center}
+.ch-plot{display:flex;justify-content:center;min-width:0}
+.ch-plot svg{overflow:visible}
+.ch-side h3{font-size:var(--cds-font-size-caption);font-weight:500;color:var(--color-fg-muted);margin:var(--cds-gap-md) 0 var(--cds-gap-xs)}
+.ch-side h3:first-child{margin-top:0}
+.ch-side .rh-list li{padding-bottom:var(--cds-gap-xs)}
+.ch-side .ch-none{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.ch-side .note{margin-top:var(--cds-gap-md)}
+@media (max-width:720px){.ch-wrap{grid-template-columns:minmax(0,1fr)}}
