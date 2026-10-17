@@ -211,14 +211,7 @@
     });
   } });
 
-  // ---------- Sync & logs (filled in by the activity log) ----------
-  rh.adminSection({ id: 'logs', title: 'Sync & logs', order: 20, draw(box, a) {
-    const facts = h('p', { class: 'note' }, '');
-    a.status().then((s) => {
-      facts.textContent = s.last_sync ? `Last reading position synced ${ago(s.last_sync)} (${when(s.last_sync)}).` : 'No reading position synced since the server started.';
-    }).catch(() => {});
-    box.append(facts, h('p', { class: 'up-note' }, 'A log of every sync, rebuild, upload and cover lookup is on its way. Until then, see update.log in the library folder.'));
-  } });
+  // Sync & logs: admin-logs.js
 
   // ---------- Access & privacy ----------
   rh.adminSection({ id: 'access', title: 'Access & privacy', order: 30, draw(box, a) {

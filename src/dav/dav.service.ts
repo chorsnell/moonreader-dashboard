@@ -119,7 +119,7 @@ export class DavService {
       if (e instanceof RequestBodyError) return text(400, e.message);
       throw e;
     }
-    await this.afterWrite(full);
+    await this.afterWrite(full, req);
     return { status: st ? 204 : 201 };
   }
 
@@ -168,7 +168,7 @@ export class DavService {
     if (move) await rename(full, dest);
     else if (src.isDirectory()) await cp(full, dest, { recursive: true });
     else await copyFile(full, dest);
-    if ((await statOrNull(dest))?.isFile()) await this.afterWrite(dest);
+    if ((await statOrNull(dest))?.isFile()) await this.afterWrite(dest, req);
     return { status: existed ? 204 : 201 };
   }
 
@@ -200,24 +200,48 @@ export class DavService {
   }
 
   /** A file arrived: a backup goes to the inbox, a reading position triggers a rebuild. */
-  private async afterWrite(full: string): Promise<void> {
+  private async afterWrite(full: string, req: IncomingMessage): Promise<void> {
     const rel = relative(this.library.dav, full).split(sep).join('/');
     const lower = full.toLowerCase();
+    const device = davDevice(req);
     if (lower.endsWith('.mrpro')) {
       if (await startsWithPK(full)) {
-        const name = await this.library.receiveBackup(full, basename(full));
-        this.activity.log(`WebDAV: received backup ${rel} -> inbox/${name}`);
+        const name = await this.library.receiveBackup(full, basename(full), 'webdav');
+        this.activity.record({
+          type: 'sync',
+          message: `WebDAV: received backup ${rel} -> inbox/${name}`,
+          trigger: 'webdav',
+          details: { kind: 'backup', file: rel, inbox: name, device },
+        });
       } else {
-        this.activity.log(`WebDAV: ${rel} is not a valid backup, ignored`);
+        this.activity.record({
+          type: 'sync',
+          message: `WebDAV: ${rel} is not a valid backup, ignored`,
+          outcome: 'failed',
+          trigger: 'webdav',
+          error: 'Not a Moon+ backup (.mrpro is a zip file)',
+          details: { kind: 'backup', file: rel, device },
+        });
       }
     } else if (lower.endsWith('.po')) {
       this.status.positionSynced();
-      this.activity.log(`WebDAV: reading position ${rel}`);
-      this.library.changed();
+      this.activity.record({
+        type: 'sync',
+        message: `WebDAV: reading position ${rel}`,
+        trigger: 'webdav',
+        details: { kind: 'position', file: rel, book: basename(full).slice(0, -3), device },
+      });
+      this.library.changed('sync');
     } else {
       this.activity.log(`WebDAV: stored ${rel}`);
     }
   }
+}
+
+/** The client's User-Agent, which names the app (and sometimes the device) that synced. */
+export function davDevice(req: IncomingMessage): string | null {
+  const agent = String(req.headers['user-agent'] ?? '').trim();
+  return agent ? agent.slice(0, 160) : null;
 }
 
 async function startsWithPK(path: string): Promise<boolean> {
