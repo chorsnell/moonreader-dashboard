@@ -1,0 +1,11 @@
+/* quote of the day on the Overview */
+.qd-card .chart{min-height:0;display:flex;gap:var(--cds-gap-lg);align-items:flex-start}
+.cv.qd-cv{width:64px;height:96px;border-radius:4px}.cv.qd-cv span{font-size:28px}
+.qd-body{min-width:0;flex:1}
+.qd-text{margin:0;font-family:var(--font-anthropic-serif);font-size:22px;line-height:1.4;color:var(--color-fg);white-space:pre-line;text-wrap:pretty}
+.qd-text::before{content:'“'}.qd-text::after{content:'”'}
+.qd-note{margin:var(--cds-gap-sm) 0 0;font-style:italic;color:var(--color-fg)}
+.qd-src{margin-top:var(--cds-gap-md);font-weight:var(--cds-font-weight-medium)}
+.qd-by,.qd-when{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.qd-next{cursor:pointer}
+@media (max-width:520px){.cv.qd-cv{width:40px;height:60px}.cv.qd-cv span{font-size:18px}.qd-text{font-size:18px}.qd-card .chart{gap:var(--cds-gap-md)}}

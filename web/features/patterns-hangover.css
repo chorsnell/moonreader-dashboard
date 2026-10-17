@@ -1,0 +1,7 @@
+/* book hangover */
+.hg-kpis .lk,.hg-kpis div[data-link]{cursor:pointer}
+.hg-long h3{font-size:var(--cds-font-size-caption);font-weight:500;color:var(--color-fg-muted);margin:var(--cds-gap-md) 0 var(--cds-gap-xs)}
+.rh-list li.hg-item{justify-content:flex-start;align-items:center}
+.hg-item .ttl{display:flex;flex-direction:column;gap:2px}
+.hg-item small{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.hg-item .meta{white-space:normal;text-align:right;max-width:45%}
