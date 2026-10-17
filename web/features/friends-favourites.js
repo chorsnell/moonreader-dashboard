@@ -22,7 +22,7 @@
           if (have(b)) return null;
           const genre = (genreN[b.genre] || 0) / total, known = authorN[authorKey(b.author)] || 0;
           return {
-            book_id: b.id, title: b.title, author: b.author, genre: b.genre, subgenre: b.subgenre,
+            book_id: b.id, title: b.title, author: b.author, genre: b.genre, subgenre: b.subgenre, isbn13: b.isbn13 || null,
             devoured: !!(f && f.shape === 'devoured'), reread: again,
             days: f ? f.span_days : null, mins_per_day: f ? f.mins_per_day : null, spark: f ? f.spark : [],
             end: f ? f.end : b.last_read, your_genre_reads: genreN[b.genre] || 0, your_author_books: known,
@@ -101,6 +101,9 @@
         const side = el('div', 'ff-side');
         if (r.spark.length) side.append(sparkSvg(r.spark, fr.color(r.friend.slug)));
         if (r.mins_per_day) side.append(el('span', 'ff-n', `${fmt(r.mins_per_day)} min a day`));
+        // the admin's book manager (BOO-64), when there is one
+        const getIt = rh.arrGetButton && rh.arrGetButton(r);
+        if (getIt) text.append(getIt);
         li.append(text, side);
         list.append(li);
       });

@@ -90,6 +90,8 @@
         books: pairs.map(({ mine, theirs }) => ({
           book_id: mine.id, title: mine.title, author: mine.author, genre: mine.genre,
           mine: ms.get(mine.id) || null, theirs: ts.get(theirs.id) || null,
+          // star ratings, when imported (Goodreads, StoryGraph)
+          my_rating: mine.rating ?? null, their_rating: theirs.rating ?? null,
         })).sort((x, y) => ((y.mine?.end || '') > (x.mine?.end || '') ? 1 : -1)),
       }];
     },
@@ -219,6 +221,7 @@
         linkBook(tr, b.book_id);
         const t = el('td');
         t.append(el('div', 'tm-title', b.title), ref(b, 'author'));
+        if (b.my_rating || b.their_rating) t.append(el('span', 'tm-stars', ` · ★ you ${b.my_rating ?? '–'}, ${f.name} ${b.their_rating ?? '–'}`));
         const quick = b.mine && b.theirs && b.mine.finished && b.theirs.finished ? (b.mine.days < b.theirs.days ? 'mine' : b.theirs.days < b.mine.days ? 'theirs' : null) : null;
         const cell = (s, side) => { const td = time(el('td', 'n'), s); if (quick === side) td.classList.add('tm-win'); return td; };
         const fast = b.mine?.wpm && b.theirs?.wpm ? (b.mine.wpm > b.theirs.wpm ? 'mine' : 'theirs') : null;
