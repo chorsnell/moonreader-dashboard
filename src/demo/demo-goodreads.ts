@@ -13,9 +13,9 @@ const PAPER: [string, string, string, number, number][] = [
     0.18,
   ],
   ['Northanger Abbey', 'Jane Austen', 'classics, paperbacks', 4, 0.33],
-  ['Strange Case of Dr Jekyll and Mr Hyde', 'Robert Louis Stevenson', 'horror', 5, 0.47],
+  ['The Turn of the Screw', 'Henry James', 'horror', 5, 0.47],
   ['The Wind in the Willows', 'Kenneth Grahame', 'fantasy, gifts', 3, 0.61],
-  ['Heart of Darkness', 'Joseph Conrad', 'paperbacks', 2, 0.74],
+  ['Heart of Darkness', 'Joseph Conrad', 'classics, paperbacks', 2, 0.74],
   ['The Scarlet Pimpernel', 'Baroness Orczy', 'adventure', 4, 0.9],
 ];
 
@@ -95,7 +95,7 @@ export function demoGoodreadsCsv(
     0,
     '',
     date(lastDay - 20),
-    'paperbacks',
+    'classics, paperbacks',
     'currently-reading',
     0,
   ]);

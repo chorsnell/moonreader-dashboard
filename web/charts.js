@@ -1013,6 +1013,8 @@
     const b = books.find((x) => x.id === bookId);
     ['#bk-kpis', '#card-bk-days', '#card-bk-reads', '#card-bk-related', '#card-bk-log'].forEach((s) => ($(s).hidden = !b));
     if (!b) { document.title = 'Reading history'; head.replaceChildren(el('div', 'dy-empty', 'That book isn’t in your library.')); return; }
+    // a book only an import knows (Goodreads, StoryGraph) has no days to show
+    ['#card-bk-days', '#card-bk-log'].forEach((s) => ($(s).hidden = !!b.source));
     detailName = b.title; document.title = `${b.title} · Reading history`;
     const reads = (D('reads').data || []).filter((r) => r.book_id === b.id).sort((x, y) => x.read_no - y.read_no);
     const days = (D('diary').status === 'ok' ? D('diary').data : []).filter((d) => d.book_id === b.id);
@@ -1053,11 +1055,13 @@
     };
     const k = [];
     k.push(kpi('Times read', fmt(Math.max(reads.length, b.times_read || 0)), fin.length ? `finished ${plural(fin.length, 'time')}` : 'not finished yet'));
-    if (latest) k.push(kpi(reads.length > 1 ? `Read ${latest.read_no} started` : 'Started', fDay(pDate(latest.start)), reads.length > 1 ? `first read ${fShort(pDate(reads[0].start))}` : null));
+    // Goodreads only knows the day a book was finished
+    if (latest && !(latest.source && latest.start === latest.end)) k.push(kpi(reads.length > 1 ? `Read ${latest.read_no} started` : 'Started', fDay(pDate(latest.start)), reads.length > 1 ? `first read ${fShort(pDate(reads[0].start))}` : null));
     if (fin.length) {
       const f = fin[fin.length - 1];
       k.push(kpi('Finished', fDay(pDate(f.end)), fin.length > 1 ? `also ${fin.slice(0, -1).map((r) => fShort(pDate(r.end))).join(', ')}` : null));
-      k.push(kpi('Start to finish', plural(span(f.start, f.end), 'day'), `read on ${plural(f.days_read, 'day')}`));
+      // an imported read has no reading days (Goodreads only knows the day it was finished)
+      if (f.days_read) k.push(kpi('Start to finish', plural(span(f.start, f.end), 'day'), `read on ${plural(f.days_read, 'day')}`));
     } else if (latest) k.push(kpi('Reading for', plural(span(latest.start, latest.end), 'day'), `read on ${plural(latest.days_read, 'day')}`));
     if (totalMin) k.push(kpi('Time spent', mins(totalMin), reads.length > 1 ? 'across every read' : `${fmt(Math.round(totalMin / timed.length))} min per reading day`));
     if (spd) k.push(kpi('Speed', `${fmt(Math.round(spd.wpm))} wpm`, (avg ? vsAvg(spd.wpm / avg - 1) : '') + (rank >= 0 ? ` · #${rank + 1} fastest of ${fmt(bs.length)}` : '')));

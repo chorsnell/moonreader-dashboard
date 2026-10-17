@@ -99,6 +99,12 @@ export function mergeImports(
       genres.set(b.subgenre.toLowerCase(), [b.genre, b.subgenre]);
     }
   }
+  // and a book in a series the library has takes that series' genre
+  const seriesGenres = new Map<string, [string, string]>();
+  for (const b of books) {
+    if (b.series && b.genre !== 'Untagged')
+      seriesGenres.set(b.series.toLowerCase(), [b.genre, b.subgenre]);
+  }
   const exclude = new Set(catalogue.exclude);
   const result: MergeResult = { matched: 0, added: 0, skipped: 0 };
 
@@ -131,9 +137,9 @@ export function mergeImports(
         result.skipped++;
         continue;
       }
-      const shelfGenre = ib.shelves
-        .map((s) => genres.get(s.toLowerCase().replace(/[-_]+/g, ' ')))
-        .find(Boolean);
+      const shelfGenre =
+        (series && seriesGenres.get(series[1].trim().toLowerCase())) ||
+        ib.shelves.map((s) => genres.get(s.toLowerCase().replace(/[-_]+/g, ' '))).find(Boolean);
       let id = slug(title);
       for (let n = 2; ids.has(id); n++) id = `${slug(title)}-${n}`;
       ids.add(id);
