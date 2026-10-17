@@ -13,6 +13,8 @@ export interface MediaSettings {
   tmdb: { api_key: string };
   /** Plex through Tautulli; user_id limits it to one Plex user (empty: everyone). */
   tautulli: { url: string; api_key: string; user_id: string };
+  /** Audiobookshelf: its address and an API token (from your user's settings there). */
+  audiobookshelf: { url: string; token: string };
   /** Streaming subscriptions, for cost per hour watched; served as data/media_money.json. */
   subscriptions: StreamingSubscription[];
 }
@@ -62,6 +64,8 @@ export class MediaFiles implements OnModuleInit {
   readonly settingsFile: string;
   /** Plays pulled from Tautulli so far, so a rebuild never pulls them again. */
   readonly tautulliCache: string;
+  /** Listening sessions pulled from Audiobookshelf. */
+  readonly audiobookshelfCache: string;
   private saving = Promise.resolve();
 
   constructor(@Inject(appConfig.KEY) private readonly config: AppConfigType) {
@@ -71,6 +75,7 @@ export class MediaFiles implements OnModuleInit {
     this.catalogue = join(this.root, 'catalogue.json');
     this.settingsFile = join(this.root, 'settings.json');
     this.tautulliCache = join(this.cache, 'tautulli.json');
+    this.audiobookshelfCache = join(this.cache, 'audiobookshelf.json');
   }
 
   async onModuleInit(): Promise<void> {
@@ -90,6 +95,10 @@ export class MediaFiles implements OnModuleInit {
         api_key: str(raw.tautulli?.api_key),
         user_id: str(raw.tautulli?.user_id),
       },
+      audiobookshelf: {
+        url: str(raw.audiobookshelf?.url),
+        token: str(raw.audiobookshelf?.token),
+      },
       subscriptions: (() => {
         try {
           return toSubscriptions(raw.subscriptions ?? []);
@@ -106,6 +115,14 @@ export class MediaFiles implements OnModuleInit {
     const url = (t.url || this.config.tautulliUrl).replace(/\/+$/, '');
     const key = t.api_key || this.config.tautulliApiKey;
     return url && key ? { url, api_key: key, user_id: t.user_id } : null;
+  }
+
+  /** Audiobookshelf's address and token: the admin's, else the env vars. Null when not set up. */
+  async audiobookshelf(): Promise<{ url: string; token: string } | null> {
+    const a = (await this.settings()).audiobookshelf;
+    const url = (a.url || this.config.audiobookshelfUrl).replace(/\/+$/, '');
+    const token = a.token || this.config.audiobookshelfToken;
+    return url && token ? { url, token } : null;
   }
 
   /** The TMDB key: the admin's, else TMDB_API_KEY. Empty means no lookups. */

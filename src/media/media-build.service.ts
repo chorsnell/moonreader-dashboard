@@ -14,6 +14,7 @@ import { MediaMetadataService } from './metadata/media-metadata.service';
 import { netflixEvents, parseNetflix, type NetflixFile } from './sources/netflix';
 import { tautulliEvents, tautulliMeta } from './sources/tautulli';
 import { TautulliClient } from './sources/tautulli.client';
+import { absEvents, absMeta, AudiobookshelfClient } from './sources/audiobookshelf';
 
 /** The data files the media build writes, media_meta.json last. */
 export const MEDIA_FILES = [
@@ -54,15 +55,20 @@ export class MediaBuildService {
     private readonly metadata: MediaMetadataService,
     private readonly covers: CoverStore,
     private readonly tautulli: TautulliClient,
+    private readonly abs: AudiobookshelfClient,
   ) {}
 
   /** The newest time any media input changed: uploads, the media catalogue, the settings. */
   async inputsChanged(): Promise<number> {
     const inbox = await this.netflixFiles();
     const times = await Promise.all(
-      [...inbox, this.files.catalogue, this.files.settingsFile, this.files.tautulliCache].map(
-        mtimeMs,
-      ),
+      [
+        ...inbox,
+        this.files.catalogue,
+        this.files.settingsFile,
+        this.files.tautulliCache,
+        this.files.audiobookshelfCache,
+      ].map(mtimeMs),
     );
     return Math.max(0, ...times);
   }
@@ -169,9 +175,18 @@ export class MediaBuildService {
       lines.push(`Tautulli: ${ev.length} Plex plays`);
     }
 
+    const listened = await this.abs.readCache();
+    if (listened.sessions.length) {
+      const ev = absEvents(listened.sessions);
+      events.push(...ev);
+      for (const [k, m] of absMeta(listened.sessions)) plexMeta.set(k, m);
+      sources.audiobookshelf = { rows: ev.length, pulled: listened.pulled };
+      lines.push(`Audiobookshelf: ${ev.length} listening sessions`);
+    }
+
     const key = await this.files.tmdbKey();
     const meta = new Map<string, ItemMeta>();
-    // Plex knows its own titles; TMDB fills in the rest
+    // Plex and Audiobookshelf know their own titles; TMDB fills in the rest
     const forTmdb = events.filter((e) => !plexMeta.has(metaKey(e)));
     if (forTmdb.length) {
       const r = await this.metadata.resolve(forTmdb, this.files.cache, key, signal);
@@ -228,7 +243,7 @@ export class MediaBuildService {
     });
   }
 
-  /** Posters (through Tautulli, or from TMDB) for items without a cover, keyed by item id like book covers. */
+  /** Posters and covers (through Tautulli or Audiobookshelf, or from TMDB) for items without a cover, keyed by item id like book covers. */
   private async fetchPosters(
     history: MediaHistory,
     meta: Map<string, ItemMeta>,
@@ -238,6 +253,8 @@ export class MediaBuildService {
   ): Promise<number> {
     const have = await this.covers.existing();
     const conn = await this.files.tautulli();
+    const absConn = await this.files.audiobookshelf();
+    const ready = { tmdb, tautulli: Boolean(conn), audiobookshelf: Boolean(absConn) };
     const down = new Set<string>();
     let saved = 0;
     for (const item of history.items) {
@@ -246,13 +263,15 @@ export class MediaBuildService {
       const season = item.media === 'tv' ? m?.seasons?.[String(item.series_no)]?.poster : null;
       const path = season ?? m?.poster;
       const from = m?.poster_from ?? 'tmdb';
-      if (!path || down.has(from) || (from === 'tmdb' ? !tmdb : !conn)) continue;
+      if (!path || down.has(from) || !ready[from]) continue;
       try {
         if (saved) await sleep(this.config.coverPauseMs, undefined, { signal });
         const image =
           from === 'tautulli'
             ? await this.tautulli.poster(conn!, path, signal)
-            : await this.metadata.poster(path, signal);
+            : from === 'audiobookshelf'
+              ? await this.abs.cover(absConn!, path, signal)
+              : await this.metadata.poster(path, signal);
         if (await this.covers.save(item.id, image)) saved++;
       } catch {
         down.add(from); // can't be reached: the rest are tried on the next build
