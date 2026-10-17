@@ -555,6 +555,7 @@
       stat(days.length && totalMin ? fmt(Math.round(totalMin / days.length)) : '—', 'minutes per reading day'),
       stat(fmt(new Set(inR.map((r) => r.book_id)).size), 'books opened'),
       stat(fmt(finished), 'books finished'));
+    drawDiaryTimeline(inR, R, days);
     if (!days.length) { list.replaceChildren(el('div', 'dy-empty', `No reading recorded between ${fDay(pDate(R.start))} and ${fDay(pDate(R.end))}.`)); more.hidden = true; return; }
     const monthTotals = d3.rollup(inR, (v) => ({ days: new Set(v.map((r) => r.date)).size, min: d3.sum(v, (r) => r.minutes || 0), books: new Set(v.map((r) => r.book_id)).size }), (r) => r.date.slice(0, 7));
     const out = []; let month = '', prev = null;
@@ -603,6 +604,59 @@
       if (target) { target.classList.add('hl'); target.scrollIntoView({ block: 'center' }); setTimeout(() => target.classList.remove('hl'), 2500); }
       else list.scrollIntoView({ block: 'start' });
     }
+  }
+
+  // the diary period as one strip: a column per day, stacked by book; click a day to jump to it in the list
+  function jumpToDay(date, days) {
+    // an empty day snaps to the nearest day with reading
+    const t = +pDate(date), i = d3.minIndex(days, ([d]) => Math.abs(+pDate(d) - t)); if (i < 0) return;
+    if (i >= diaryLimit) diaryLimit = i + 30;
+    diaryFocus = days[i][0]; drawDiary();
+  }
+  function drawDiaryTimeline(inR, R, days) {
+    const el = $('#ch-dytl'), lg = $('#leg-dytl');
+    if (!days.length) { el.hidden = lg.hidden = true; return; }
+    el.hidden = lg.hidden = false;
+    const genres = genreOrder.filter((g) => inR.some((r) => r.genre === g));
+    genreLegend(lg, genres);
+    const byDate = new Map(days);
+    const h = 160, { svg, w, tip } = svgIn(el, h), m = { t: 8, r: 4, b: 22, l: 30 };
+    el.style.minHeight = h + 'px';
+    const x = d3.scaleUtc([pDate(R.start), d3.utcDay.offset(pDate(R.end), 1)], [m.l, w - m.r]);
+    const step = (w - m.l - m.r) / R.days, gap = step > 6 ? 1.5 : step > 3 ? 0.5 : 0, bw = Math.max(0.5, step - gap);
+    const dayMin = (es) => d3.sum(es, (r) => r.minutes || 0);
+    const y = d3.scaleLinear([0, d3.max(days, ([, es]) => dayMin(es)) || 60], [h - m.b, m.t]).nice();
+    axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(4).tickFormat((v) => (v >= 60 && v % 60 === 0 ? v / 60 + 'h' : v)).tickSize(-(w - m.l - m.r)));
+    svg.select('.domain').remove();
+    axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).ticks(Math.max(2, Math.floor(w / 90))).tickFormat(d3.utcFormat(R.days <= 120 ? '%-d %b' : '%b %y')).tickSizeOuter(0));
+    // stack each day's books, longest at the bottom; days with books but no minutes (before 2019) get a small muted tick
+    const segs = [];
+    days.forEach(([date, es]) => {
+      let acc = 0;
+      es.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
+        if (!r.minutes) return;
+        segs.push({ date, r, y0: acc, y1: acc + r.minutes }); acc += r.minutes;
+      });
+      if (!acc) segs.push({ date, r: null, y0: 0, y1: null });
+    });
+    svg.append('g').selectAll('rect').data(segs).join('rect')
+      .attr('x', (s) => x(pDate(s.date)) + gap / 2).attr('width', bw)
+      .attr('y', (s) => (s.r ? y(s.y1) : h - m.b - 4)).attr('height', (s) => (s.r ? Math.max(0.5, y(s.y0) - y(s.y1) - (s.y0 && step > 6 ? 0.5 : 0)) : 4))
+      .attr('fill', (s) => (s.r ? gColor(s.r.genre) : 'var(--cds-chart-muted)'));
+    svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', w - m.l - m.r).attr('height', h - m.t - m.b).attr('fill', 'transparent')
+      .style('cursor', 'pointer')
+      .on('mousemove', (e) => {
+        const day = iso(d3.utcDay.floor(x.invert(d3.pointer(e)[0]))), es = byDate.get(day) || [];
+        showTip(tip, el, e, (t) => {
+          tipLines(t, d3.utcFormat('%a %-d %b %Y')(pDate(day)), es.length ? [[null, 'Total', dayMin(es) ? mins(dayMin(es)) : '—']] : [[null, '', 'No reading']]);
+          es.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
+            const d = t.append('div'); d.append('span').attr('class', 'sw').style('background', gColor(r.genre));
+            d.append('span').text(r.title + (r.minutes ? ': ' : '')); if (r.minutes) d.append('b').text(mins(r.minutes));
+          });
+        });
+      })
+      .on('mouseleave', () => hideTip(tip))
+      .on('click', (e) => { hideTip(tip); jumpToDay(iso(d3.utcDay.floor(x.invert(d3.pointer(e)[0]))), days); });
   }
 
   // to(d) → ['year', 2024] links each bar

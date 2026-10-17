@@ -439,8 +439,10 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
         <select aria-label="Period"><option value="30d">Last 30 days</option><option value="90d">Last 3 months</option><option value="12m">Last 12 months</option><option value="ytd">This year</option><option value="ly">Last year</option><option value="24m">Last 2 years</option><option value="all">All time</option><option value="custom">Custom…</option></select>
         <label>From <input type="date" aria-label="From"></label><label>To <input type="date" aria-label="To"></label>
       </div></div>
-      <p class="note">What you read each day: minutes, words and how far you got. Moon+ records the day you read, not the time of day; minutes and words are logged from 2019.</p>
+      <p class="note">What you read each day: minutes, words and how far you got. The strip shows minutes per day, coloured by genre; click a day to jump to it in the list. Moon+ records the day you read, not the time of day; minutes and words are logged from 2019.</p>
       <div class="dy-sum" id="dy-sum" data-source="diary"></div>
+      <div class="legend" id="leg-dytl"></div>
+      <div class="chart short" id="ch-dytl" data-source="diary"></div>
       <div id="dy-list" data-source="diary"></div>
       <button class="dy-more" id="dy-more" hidden>Show more days</button>
     </div>
