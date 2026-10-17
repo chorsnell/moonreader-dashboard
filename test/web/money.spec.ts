@@ -100,3 +100,38 @@ describe('money calcs', () => {
     expect(s).toMatchObject({ lifetime: 31, year: 2025, this_year: 31, unopened: 1 });
   });
 });
+
+describe('subscriptions and the shelf', () => {
+  const subDaily = [
+    { date: '2025-04-03', book_id: 'c', minutes: 90, words: 100 },
+    { date: '2025-05-01', book_id: 'c', minutes: 30, words: 100 },
+    { date: '2025-07-01', book_id: 'c', minutes: 600, words: 100 }, // after it ended
+    { date: '2025-06-30', book_id: 'a', minutes: 10, words: 100 },
+  ];
+
+  it('sets each month of a subscription against what its books would have cost', () => {
+    const rows = run('money_subscriptions', { ...input, daily: subDaily });
+    expect(rows.map((r) => [r.month, r.fee, r.hours, r.list_value, r.paid_off])).toEqual([
+      ['2025-04', 10, 1.5, 3, false],
+      ['2025-05', 10, 0.5, 0, false],
+    ]);
+    expect(rows[0]).toMatchObject({ books: ['c'], per_hour: 6.67 });
+  });
+
+  it('finds paid books given up on or never opened', () => {
+    const shelfBooks = [
+      ...books,
+      book('d', { status: 'in_progress', progress: 20, last_read: '2025-01-01' }),
+      book('e', { status: 'in_progress', progress: 40, last_read: '2025-06-20' }), // on the go
+    ];
+    const shelfPrices = {
+      ...prices,
+      books: [...prices.books, price('d', { price: 10 }), price('e')],
+    };
+    const rows = run('money_shelf', { ...input, books: shelfBooks, prices: shelfPrices });
+    expect(rows.map((r) => [r.book_id, r.state, r.bucket, r.unread_value])).toEqual([
+      ['unread', 'unopened', null, 2],
+      ['d', 'abandoned', '10–25%', 8],
+    ]);
+  });
+});
