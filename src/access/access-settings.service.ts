@@ -43,7 +43,7 @@ export function checkPassword(password: string, stored: string): boolean {
 @Injectable()
 export class AccessSettingsService {
   private readonly file: string;
-  private saving = Promise.resolve();
+  private saving: Promise<unknown> = Promise.resolve();
 
   constructor(@Inject(appConfig.KEY) config: AppConfigType) {
     this.file = join(config.library, 'settings.json');
@@ -68,12 +68,42 @@ export class AccessSettingsService {
     };
   }
 
-  /** Saves one at a time, through a .part file. */
+  /** Saves one at a time, through a .part file, keeping the file's other sections. */
   save(settings: AccessSettings): Promise<void> {
-    this.saving = this.saving.then(async () => {
-      await writeFile(`${this.file}.part`, JSON.stringify(settings, null, 2), 'utf8');
+    return this.write((raw) => ({ ...raw, ...settings }));
+  }
+
+  /** Another feature's own section of settings.json (e.g. "arr"), or undefined. */
+  async section(name: string): Promise<unknown> {
+    return (await this.raw())[name];
+  }
+
+  /** Replaces (or, with undefined, removes) one section of settings.json. */
+  saveSection(name: string, value: unknown): Promise<void> {
+    return this.write((raw) => {
+      const next = { ...raw };
+      if (value === undefined) delete next[name];
+      else next[name] = value;
+      return next;
+    });
+  }
+
+  private async raw(): Promise<Record<string, unknown>> {
+    try {
+      const o = JSON.parse(await readFile(this.file, 'utf8')) as unknown;
+      return o && typeof o === 'object' && !Array.isArray(o) ? (o as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private write(change: (raw: Record<string, unknown>) => Record<string, unknown>): Promise<void> {
+    const run = this.saving.then(async () => {
+      const next = change(await this.raw());
+      await writeFile(`${this.file}.part`, JSON.stringify(next, null, 2), 'utf8');
       await rename(`${this.file}.part`, this.file);
     });
-    return this.saving;
+    this.saving = run.catch(() => undefined);
+    return run;
   }
 }
