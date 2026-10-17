@@ -1,0 +1,18 @@
+.or-seg{display:inline-flex;margin-left:auto;border:1px solid var(--color-border-line);border-radius:999px;overflow:hidden;flex:none}
+.or-seg button{font:inherit;font-size:var(--cds-font-size-caption);padding:3px 12px;border:0;background:none;color:var(--color-fg-muted);cursor:pointer}
+.or-seg button[aria-pressed=true]{background:var(--color-fg);color:var(--color-panel)}
+.or-map{display:grid;grid-template-columns:minmax(0,1fr) minmax(12rem,16rem);gap:var(--cds-gap-lg);align-items:start}
+.or-geo{position:relative;min-width:0;min-height:180px}
+.or-land{fill:var(--cds-chart-grid);stroke:var(--color-panel);stroke-width:.5}
+.or-land.has{stroke-width:.75}
+.or-land:hover{stroke:var(--color-fg);stroke-width:1}
+.or-side{min-width:0}
+.or-scale .sw{border-radius:2px}
+.or-list{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:var(--cds-font-size-caption)}
+.or-list li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:baseline}
+.or-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.or-val{color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.or-bar{grid-column:1/-1;height:4px;border-radius:2px;background:var(--cds-chart-grid);overflow:hidden}
+.or-bar i{display:block;height:100%;background:var(--series-1);border-radius:2px}
+.or-more{color:var(--color-fg-muted)}
+@media (max-width:720px){.or-map{grid-template-columns:1fr}}
