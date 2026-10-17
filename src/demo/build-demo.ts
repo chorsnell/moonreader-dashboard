@@ -20,10 +20,13 @@ import type { Catalogue } from '../backup-import/reading-history.types';
 import { CoverLookupService } from '../covers/cover-lookup.service';
 import { WEB_DIR } from '../paths';
 import { withFeatures } from '../web/features';
+import { MediaBuildService } from '../media/media-build.service';
+import { MediaFiles } from '../media/media-files.service';
 import { writeDemoBackup } from './demo-backup';
 import { simulateHighlights } from './demo-highlights';
 import { DemoModule } from './demo.module';
 import { BOOKS, fileName } from './demo-books';
+import { demoMediaCatalogue, simulateNetflix } from './demo-media';
 import { Random } from './random';
 import { simulate } from './simulate';
 
@@ -59,6 +62,20 @@ async function main(): Promise<void> {
     const backup = join(lib, 'demo-library.mrpro');
     await writeDemoBackup(backup, log, firstDay, highlights);
 
+    // TV and film, as a Netflix export of two profiles; the demo's own is "You"
+    const readingMinutes = new Map<number, number>();
+    for (const entries of log.values()) {
+      for (const e of entries)
+        readingMinutes.set(e.day, (readingMinutes.get(e.day) ?? 0) + e.minutes);
+    }
+    const media = join(lib, 'media');
+    await mkdir(join(media, 'inbox', 'netflix'), { recursive: true });
+    await writeFile(
+      join(media, 'inbox', 'netflix', 'ViewingActivity.csv'),
+      simulateNetflix(seed, firstDay, days, readingMinutes),
+    );
+    await writeFile(join(media, 'catalogue.json'), JSON.stringify(demoMediaCatalogue(), null, 1));
+
     process.env.LIBRARY = lib; // read when the app context starts
     const app = await NestFactory.createApplicationContext(DemoModule, {
       logger: ['error', 'warn'],
@@ -66,6 +83,8 @@ async function main(): Promise<void> {
     try {
       const summary = await app.get(BackupImportService).importBackup(backup);
       summary.lines.forEach((line) => console.log(line));
+      await app.get(MediaFiles).update((st) => (st.netflix.profiles = ['You']));
+      (await app.get(MediaBuildService).build()).lines.forEach((line) => console.log(line));
       await app.get(CoverLookupService).run();
     } finally {
       await app.close();
@@ -90,7 +109,15 @@ async function main(): Promise<void> {
     await mkdir(join(out, 'api'), { recursive: true });
     await writeFile(
       join(out, 'api', 'config'),
-      JSON.stringify({ uploads: false, webdav: false, has_data: true, demo: true, meta }),
+      JSON.stringify({
+        uploads: false,
+        webdav: false,
+        has_data: true,
+        has_books: true,
+        has_media: true,
+        demo: true,
+        meta,
+      }),
     );
     await writeFile(join(out, 'api', 'covers'), JSON.stringify(coverUrls));
     await writeFile(join(out, '.nojekyll'), '');

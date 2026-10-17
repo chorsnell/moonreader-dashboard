@@ -20,17 +20,22 @@ import { publicPrefix } from '../common/http/public-prefix';
 import { RequestBodyError, saveRequestBody } from '../common/http/request-body';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LibraryService, safeFileName } from '../library/library.service';
+import { MediaInboxService, MediaUploadError } from '../media/media-inbox.service';
 
 /** Every zip file, .mrpro included, starts with "PK". */
 const isZip = (chunk: Buffer) => chunk.subarray(0, 2).toString('latin1') === 'PK';
 
-/** The dashboard's "Update data" button: PUT /upload?name=<file>.mrpro with the file as the body. */
+/**
+ * The dashboard's "Update data" button: PUT /upload?name=<file>.mrpro with the file as the
+ * body. Other media say which source with ?source=, e.g. ?source=netflix&name=ViewingActivity.csv.
+ */
 @Controller('upload')
 export class UploadController {
   constructor(
     @Inject(appConfig.KEY) private readonly config: AppConfigType,
     private readonly library: LibraryService,
     private readonly activity: ActivityLogService,
+    private readonly media: MediaInboxService,
   ) {}
 
   /** An old bookmark: open the dashboard with the upload dialog. */
@@ -47,8 +52,24 @@ export class UploadController {
     off: 'Uploads are turned off on this server.',
     slow: true,
   })
-  async upload(@Req() req: Request, @Query('name') name = 'backup.mrpro') {
+  async upload(
+    @Req() req: Request,
+    @Query('name') name = 'backup.mrpro',
+    @Query('source') source = '',
+  ) {
     const file = safeFileName(basename(name));
+    if (source === 'netflix' || (!source && /\.csv$/i.test(file))) {
+      try {
+        return { ok: true, ...(await this.media.receiveNetflix(req, file)) };
+      } catch (e) {
+        if (e instanceof MediaUploadError) throw new BadRequestException({ error: e.message });
+        throw e;
+      }
+    }
+    if (source) {
+      req.resume();
+      throw new BadRequestException({ error: `Unknown source "${source}".` });
+    }
     if (!file.toLowerCase().endsWith('.mrpro')) {
       req.resume();
       throw new BadRequestException({ error: "That isn't a .mrpro backup file." });

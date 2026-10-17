@@ -145,6 +145,18 @@ Books without a cover show a tile with their first letter. Covers appear when yo
 
 Each cover is saved as `library/covers/<book id>.jpg` (or `.png`), and an existing file is never replaced. To fix a wrong cover or add a missing one, save your own image under that name. The book id is the title in lower case with dashes, such as `project-hail-mary`. Set `COVER_LOOKUP: "off"` to never contact Open Library.
 
+## TV and film (Netflix)
+
+The dashboard can also show what you watch. For now that's Netflix; Plex is next (see [docs/media-verticals.md](docs/media-verticals.md)).
+
+1. On Netflix, go to Account → Security & privacy → **Download your personal information**. A day or so later you get a zip; it holds `CONTENT_INTERACTION/ViewingActivity.csv`.
+2. Upload the zip (or just that .csv) as the admin: `curl -T netflix.zip -H "X-Upload-Token: $UPLOAD_TOKEN" "http://your-server/upload?source=netflix&name=netflix.zip"`.
+3. Netflix accounts are shared, so nothing is imported until you choose your profile(s): `POST /api/admin/media/netflix` with `{"profiles": ["Chris"]}`. An export with only one profile is imported straight away.
+
+A profile's "Viewing activity" page also has a **Download all** link that gives `NetflixViewingHistory.csv`. It works, but it only has titles and dates, so time watched is estimated; the full export is better.
+
+The media build runs on its own, beside the book build, and writes `media_items.json` (a TV season or a film), `media_runs.json`, `media_daily.json`, `media_sessions.json` and `media_parts.json` (episodes) to `library/data/`. A season is treated like a book and the show like a series. With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or `POST /api/admin/media/tmdb` with `{"api_key": "…"}`) it also adds genres, creators, episode counts and posters; without one everything still works, from the titles alone. To fix a title, put it in `library/media/catalogue.json`, keyed by the lower-case show or film title: `{"copper valley": {"genre": "Drama", "episodes": {"1": 8}}, "some trailer": {"exclude": true}}`.
+
 ## Settings
 
 All of these are optional environment variables in `docker-compose.yml`. `UPLOAD_TOKEN` is read from `.env` (copied from `.env.example`, and ignored by git) so the secret never lands in the compose file:
@@ -157,6 +169,7 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 | `POLL_SECONDS` | `30` | How often to check the inbox |
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
 | `COVER_LOOKUP` | `on` | Set to `off` to stop looking up missing covers on Open Library |
+| `TMDB_API_KEY` | *(empty)* | A TMDB key (v3 key or v4 read token) for TV and film genres and posters |
 | `TZ` | UTC | Time zone for the log |
 
 The server also has three JSON endpoints: `/healthz`, which Docker uses as its health check, `/api/config`, which reports who you're signed in as and the last rebuild, and `/api/covers`, which lists the saved covers.
@@ -211,6 +224,8 @@ src/access/                 sign-in, sessions, and whether the dashboard is publ
 src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
   reading-history.ts        the rules: what counts as a read, finished, and so on
 src/covers/                 saves covers from the backup and looks up missing ones on Open Library
+src/media/                  other media (TV and film): Netflix import, the media build and its watcher
+  media-history.ts          the rules: seasons, re-watches, what counts as watched
 src/rebuild/                watches for new backups, catalogue edits and syncs, and rebuilds
 src/upload/                 the Update data button's upload
 src/dav/                    the WebDAV server Moon+ syncs to

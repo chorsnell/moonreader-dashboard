@@ -49,6 +49,8 @@ export class StatusController {
       uploads: admin,
       webdav: admin,
       has_data: await this.library.hasData(),
+      has_books: await this.library.hasBooks(),
+      has_media: await this.library.hasMedia(),
       meta: await this.library.meta(),
       building,
       last_build,

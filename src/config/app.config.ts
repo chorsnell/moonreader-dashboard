@@ -23,6 +23,10 @@ export interface AppConfig {
   openLibraryCoversUrl: string;
   /** Pause between Open Library lookups, to be polite. */
   coverPauseMs: number;
+  /** TMDB, for TV and film posters, genres and runtimes; the admin can also set the key on the page. */
+  tmdbApiKey: string;
+  tmdbUrl: string;
+  tmdbImageUrl: string;
   /** Who should own the files in the library when the container starts as root. */
   puid: number;
   pgid: number;
@@ -63,6 +67,9 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     openLibraryUrl: url(env, 'OPENLIBRARY_URL', 'https://openlibrary.org'),
     openLibraryCoversUrl: url(env, 'OPENLIBRARY_COVERS_URL', 'https://covers.openlibrary.org'),
     coverPauseMs: decimal(env, 'COVER_PAUSE', 1) * 1000,
+    tmdbApiKey: (env.TMDB_API_KEY ?? '').trim(),
+    tmdbUrl: url(env, 'TMDB_URL', 'https://api.themoviedb.org/3'),
+    tmdbImageUrl: url(env, 'TMDB_IMAGE_URL', 'https://image.tmdb.org/t/p'),
     puid: integer(env, 'PUID', 1000),
     pgid: integer(env, 'PGID', 1000),
   };
