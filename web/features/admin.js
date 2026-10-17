@@ -244,8 +244,116 @@
         : 'Share this with the people you want to see your reading.';
     }
     form.addEventListener('change', sync); sync();
-    box.append(a.block('Who can see this dashboard', null, form));
+    box.append(a.block('Who can see this dashboard', null, form), privacyBlock(a));
   } });
+
+  // What visitors may see (enforced on the server, src/privacy): a policy per role, private
+  // books and genres, and previewing the dashboard as a visitor.
+  function privacyBlock(a) {
+    const ROLES = [['public', 'Anyone with the link'], ['reader', 'People with the read password']];
+    const PRESET_NAMES = { everything: 'Everything', no_dates: 'Everything but exact dates', taste: 'Taste only' };
+    const FLAGS = [
+      ['diary', 'Day-by-day reading: the diary, heatmaps and timeline'],
+      ['current', "What I'm reading now and when I last read"],
+      ['streaks', 'Streaks and quiet spells'],
+      ['highlights', 'Highlights and notes'],
+      ['money', 'Prices and spending'],
+    ];
+    const wrap = h('div', {}, h('p', { class: 'note' }, 'Loading…'));
+    const block = a.block('What visitors can see', "You always see everything. Anything hidden here is taken out of the data on the server, so visitors can't get at it; cards that need it are left out of their page.", wrap);
+    let settings = null, presets = {};
+    const books = () => (dash.data('books').data || []).slice().sort((x, y) => x.title.localeCompare(y.title));
+    const same = (p, q) => Object.keys(q).every((k) => p[k] === q[k]);
+    function role(id, title) {
+      const p = settings[id];
+      const preset = h('select', { 'aria-label': `${title}: preset` },
+        Object.entries(PRESET_NAMES).map(([k, t]) => h('option', { value: k }, t)), h('option', { value: 'custom' }, 'Custom'));
+      const dates = h('select', { 'aria-label': `${title}: dates` },
+        h('option', { value: 'day' }, 'Exact days'), h('option', { value: 'week' }, 'Weeks only'), h('option', { value: 'month' }, 'Months only'));
+      const boxes = FLAGS.map(([k, t]) => {
+        const c = h('input', { type: 'checkbox', name: k });
+        return [k, c, h('label', { class: 'pv-check' }, c, t)];
+      });
+      function show() {
+        dates.value = p.dates;
+        boxes.forEach(([k, c]) => (c.checked = p[k]));
+        preset.value = Object.keys(PRESET_NAMES).find((k) => presets[k] && same(p, presets[k])) || 'custom';
+      }
+      preset.addEventListener('change', () => { if (presets[preset.value]) { Object.assign(p, presets[preset.value]); show(); } });
+      dates.addEventListener('change', () => { p.dates = dates.value; show(); });
+      boxes.forEach(([k, c]) => c.addEventListener('change', () => { p[k] = c.checked; show(); }));
+      show();
+      return h('fieldset', { class: 'pv-role' }, h('legend', {}, title),
+        h('label', {}, 'Preset'), preset, h('label', {}, 'Dates'), dates, h('div', { class: 'pv-checks' }, boxes.map((b) => b[2])));
+    }
+    function privateBooks() {
+      const chips = h('div', { class: 'pv-chips' });
+      const search = h('input', { type: 'search', placeholder: 'Add a book…', 'aria-label': 'Add a private book', list: 'pv-books' });
+      const list = h('datalist', { id: 'pv-books' }, books().map((b) => h('option', { value: b.title })));
+      const draw = () => chips.replaceChildren(...settings.private_books.map((id) => {
+        const b = books().find((x) => x.id === id);
+        return h('span', { class: 'pv-chip' }, b ? b.title : id,
+          h('button', { type: 'button', 'aria-label': 'Remove', onclick: () => { settings.private_books = settings.private_books.filter((x) => x !== id); draw(); } }, '×'));
+      }));
+      search.addEventListener('change', () => {
+        const b = books().find((x) => x.title === search.value);
+        if (b && !settings.private_books.includes(b.id)) { settings.private_books.push(b.id); draw(); }
+        search.value = '';
+      });
+      draw();
+      return h('div', {}, h('label', {}, 'Private books'), search, list, chips);
+    }
+    function privateGenres() {
+      const genres = [...new Set(books().flatMap((b) => [b.genre]).filter(Boolean))].sort();
+      const lower = () => new Set(settings.private_genres.map((g) => g.toLowerCase()));
+      const box = h('div', { class: 'pv-chips' });
+      const draw = () => box.replaceChildren(...genres.map((g) => h('button', {
+        type: 'button', class: 'pv-genre', 'aria-pressed': String(lower().has(g.toLowerCase())),
+        onclick: () => {
+          settings.private_genres = lower().has(g.toLowerCase()) ? settings.private_genres.filter((x) => x.toLowerCase() !== g.toLowerCase()) : [...settings.private_genres, g];
+          draw();
+        },
+      }, g)));
+      draw();
+      return h('div', {}, h('label', {}, 'Private genres'), box);
+    }
+    // the book list comes from the page's own data, which may still be loading
+    const booksLoaded = () => new Promise((resolve) => {
+      let done = false;
+      dash.onData(() => { if (!done && dash.data('books').status !== 'loading') { done = true; resolve(); } });
+    });
+    async function load() {
+      let r;
+      await booksLoaded();
+      try { r = await a.get('api/admin/privacy'); } catch (e) { wrap.replaceChildren(h('p', { class: 'up-msg' }, e.message)); return; }
+      settings = r.privacy; presets = r.presets;
+      const mode = (v, t) => h('label', { class: 'up-radio' }, h('input', { type: 'radio', name: 'pv-mode', value: v, checked: settings.private_mode === v,
+        onchange: () => (settings.private_mode = v) }), t);
+      const msg = a.msg();
+      const save = h('button', { class: 'up-primary ad-auto', type: 'button' }, 'Save');
+      save.addEventListener('click', async () => {
+        save.disabled = true; msg.textContent = 'Saving…';
+        try { settings = (await a.put('api/admin/privacy', settings)).privacy; msg.textContent = 'Saved. Visitors see the change on their next visit.'; }
+        catch (e) { msg.textContent = e.message; }
+        save.disabled = false;
+      });
+      const preview = (as, t) => h('button', { class: 'up-copy', type: 'button', onclick: async () => {
+        try { await a.post('api/admin/preview', { as }); location.href = location.pathname + location.search + '#overview'; location.reload(); }
+        catch (e) { msg.textContent = e.message; }
+      } }, t);
+      wrap.replaceChildren(
+        h('div', { class: 'pv-roles' }, ROLES.map(([id, t]) => role(id, t))),
+        h('div', { class: 'pv-private' },
+          h('h4', {}, 'Private books and genres'),
+          h('p', { class: 'up-note' }, 'Only you see these. Choose whether visitors see nothing of them, or see them counted as "A private book" with no title, author or cover.'),
+          privateBooks(), privateGenres(),
+          mode('hide', 'Leave them out'), mode('anonymise', 'Show them as "A private book"')),
+        h('div', { class: 'ad-actions' }, save, preview('public', 'Preview as a public visitor'), preview('reader', 'Preview with the read password')),
+        msg);
+    }
+    load();
+    return block;
+  }
 
   // ---------- Catalogue ----------
   rh.adminSection({ id: 'catalogue', title: 'Catalogue', order: 40, draw(box, a) {

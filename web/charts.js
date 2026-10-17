@@ -2,7 +2,10 @@
   const C = dash.colors;
   const fmt = d3.format(',');
   const pDate = (s) => new Date(s + 'T00:00:00Z');
-  const fDay = d3.utcFormat('%-d %b %Y');
+  // a day, or the week or month it falls in when the owner shows visitors only those
+  // (dash.dates, from /api/config; the server has already rounded the dates down)
+  const fExact = d3.utcFormat('%-d %b %Y'), fWeek = d3.utcFormat('w/c %-d %b %Y');
+  const fDay = (d) => (dash.dates === 'month' ? fShort(d) : dash.dates === 'week' ? fWeek(d) : fExact(d));
   const fShort = d3.utcFormat('%b %Y');
   const $ = (s) => document.querySelector(s);
   let tab = 'overview';
@@ -185,7 +188,7 @@
   }
 
   function drawMonths() {
-    const el = $('#ch-months'), rows = state(el, 'per_month'); if (!rows) return;
+    const el = $('#ch-months'), rows = state(el, 'per_month'); if (!rows || !rows.length) return; // none without the daily log
     const h = 240, { svg, w, tip } = svgIn(el, h), m = { t: 10, r: 6, b: 24, l: 30 };
     const x = d3.scaleBand(rows.map((r) => r.month), [m.l, w - m.r]).padding(0.15);
     const y = d3.scaleLinear([0, d3.max(rows, (r) => r.hours) || 1], [h - m.b, m.t]).nice();
@@ -750,7 +753,7 @@
       .each(function (d) { if (to) link(this, ...to(d)); })
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, String(key(d)), [[null, unit, fmt(val(d))]]))).on('mouseleave', () => hideTip(tip));
   }
-  function drawWeek() { const el = $('#ch-week'), rows = state(el, 'weekday'); if (rows) vbars(el, rows, (r) => r.weekday, (r) => r.avg_minutes, C[0], 'Avg minutes'); }
+  function drawWeek() { const el = $('#ch-week'), rows = state(el, 'weekday'); if (rows && rows.some((r) => r.avg_minutes > 0)) vbars(el, rows, (r) => r.weekday, (r) => r.avg_minutes, C[0], 'Avg minutes'); }
   function drawSpeed() { const el = $('#ch-speed'), rows = state(el, 'speed_year'); if (rows) vbars(el, rows, (r) => r.year, (r) => r.wpm, C[2], 'Words per minute', (r) => ['year', r.year]); }
 
   // ---------- covers ----------
@@ -1154,6 +1157,8 @@
   function cardShell(o, cls) {
     const c = el('div', 'rh-card' + (o.wide === false ? '' : ' wide') + (cls ? ' ' + cls : ''));
     c.id = 'card-' + o.id;
+    // what the card shows that the owner may hide from visitors (web/features/privacy.js)
+    if (o.privacy) c.dataset.privacy = [].concat(o.privacy).join(' ');
     const head = el('div', 'card-head'), h = el('h2', null, o.title || '');
     head.append(h); c.append(head);
     const note = el('p', 'note', o.note || ''); note.hidden = !o.note; c.append(note);

@@ -1,7 +1,8 @@
 dash.calc('as_of', {
   inputs: ['daily'], title: 'Backup date',
   description: 'The latest day in the reading log, used as "today" everywhere.',
-  fn: (daily) => [{ date: daily.reduce((m, d) => (d.date > m ? d.date : m), '') }],
+  // without the day-by-day log (the owner can keep it private from visitors), today
+  fn: (daily) => [{ date: daily.reduce((m, d) => (d.date > m ? d.date : m), '') || new Date().toISOString().slice(0, 10) }],
 });
 
 dash.calc('kpis', {
@@ -40,7 +41,8 @@ dash.calc('kpis', {
     const g = Object.entries(top).sort((a, b) => b[1] - a[1])[0];
     const diff = v.finished_ytd - v.finished_prev_ytd;
     v.takeaway = `${v.finished_ytd} books finished in ${y} so far, ${diff === 0 ? 'level with' : Math.abs(diff) + (diff > 0 ? ' ahead of' : ' behind')} this point last year` +
-      (g ? `, mostly ${/[A-Z]{2}/.test(g[0]) ? g[0] : g[0].toLowerCase()}` : '') + `. You've read on ${v.days_365} of the last 365 days, averaging ${v.avg_mins_365} minutes a day.`;
+      (g ? `, mostly ${/[A-Z]{2}/.test(g[0]) ? g[0] : g[0].toLowerCase()}` : '') + '.' +
+      (daily.length ? ` You've read on ${v.days_365} of the last 365 days, averaging ${v.avg_mins_365} minutes a day.` : '');
     return Object.entries(v).map(([metric, value]) => ({ metric, value }));
   },
 });
@@ -68,6 +70,7 @@ dash.calc('per_month', {
     const m = {};
     daily.filter((d) => d.minutes).forEach((d) => (m[d.date.slice(0, 7)] = (m[d.date.slice(0, 7)] || 0) + d.minutes));
     const keys = Object.keys(m).sort();
+    if (!keys.length) return [];
     const out = [];
     let [y, mo] = keys[0].split('-').map(Number);
     const last = keys[keys.length - 1];
