@@ -23,6 +23,7 @@ A feature script is an IIFE that uses `dash` (data and calcs) and `rh` (drawing 
     calc: 'my_rows',          // draw waits for these rows (shows a skeleton until then)
     after: 'card-heat',       // or before: 'card-…'; default is the end of the tab
     wide: true,               // default; false for a half-width card
+    privacy: 'streaks',       // optional: hide it from visitors when the owner hides this (see Privacy)
     draw(box, rows, parts) { /* draw into box; parts = { card, head, h, note, box } */ },
   });
 
@@ -40,6 +41,27 @@ A feature script is an IIFE that uses `dash` (data and calcs) and `rh` (drawing 
   rh.page('mypage', (section) => {});
 })();
 ```
+
+## Privacy
+
+The owner chooses what visitors (public, or with the read password) may see; the admin
+always sees everything. It is enforced on the server (`src/privacy/privacy.ts`): every file
+under `data/` is filtered for visitors before it's sent. A new data file is covered without
+extra work as long as its rows follow the usual shape:
+- rows naming a book with `book_id` (or `id` in `books.json`) are left out or anonymised for
+  private books and genres;
+- dates in fields named `date`, `start`, `end`, `first_read`, `last_read`, `generated`,
+  `synced`, `finish` or `finished_on` are rounded to the week or month, and `time` fields
+  are emptied;
+- `highlights*.json` is served empty when highlights are hidden, `prices*.json` (or
+  `money*`, `spending*`, `purchases*`) when money is.
+
+Name date fields that way, or extend the lists in `privacy.ts`. On the page,
+`web/features/privacy.js` hides cards whose calc needs a file the visitor gets empty (found
+through `dash.needs(calc)`), cards it lists by id, and any card given `privacy: '<category>'`
+(categories: `exact_dates`, `diary`, `current`, `streaks`, `money`, `highlights`). Draw
+functions should cope with empty rows. `dash.dates` is `'week'` or `'month'` when dates
+are rounded, and `rh.fDay` then shows the week or month.
 
 ## Admin sections
 

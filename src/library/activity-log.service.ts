@@ -6,7 +6,15 @@ import { appConfig, type AppConfigType } from '../config/app.config';
 import { localDateTime, logTimestamp } from '../common/time';
 
 /** What an activity entry is about. */
-export const ACTIVITY_TYPES = ['sync', 'rebuild', 'upload', 'cover', 'prune', 'settings'] as const;
+export const ACTIVITY_TYPES = [
+  'sync',
+  'rebuild',
+  'upload',
+  'cover',
+  'metadata',
+  'prune',
+  'settings',
+] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 export type Outcome = 'ok' | 'failed';
 
