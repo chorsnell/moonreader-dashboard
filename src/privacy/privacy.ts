@@ -22,9 +22,12 @@ export interface Policy {
   money: boolean;
   /** Highlights and notes. */
   highlights: boolean;
+  /** Your ratings and shelves (from Goodreads or StoryGraph). */
+  ratings: boolean;
 }
 
-export type Category = 'exact_dates' | 'diary' | 'current' | 'streaks' | 'money' | 'highlights';
+export type Category =
+  'exact_dates' | 'diary' | 'current' | 'streaks' | 'money' | 'highlights' | 'ratings';
 export const CATEGORIES: Category[] = [
   'exact_dates',
   'diary',
@@ -32,6 +35,7 @@ export const CATEGORIES: Category[] = [
   'streaks',
   'money',
   'highlights',
+  'ratings',
 ];
 
 export interface PrivacySettings {
@@ -53,6 +57,7 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
     streaks: true,
     money: true,
     highlights: true,
+    ratings: true,
   },
   /** Everything but exact dates: weeks instead of days, so no diary or streaks. */
   no_dates: {
@@ -62,6 +67,7 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
     streaks: false,
     money: true,
     highlights: true,
+    ratings: true,
   },
   /** Taste only: what you read and think of it, nothing about your routine. */
   taste: {
@@ -71,6 +77,8 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
     streaks: false,
     money: false,
     highlights: false,
+    // what you think of what you read is taste
+    ratings: true,
   },
 };
 
@@ -99,6 +107,7 @@ function toPolicy(raw: unknown, fallback: Policy): Policy {
     streaks: flag('streaks') as boolean,
     money: flag('money') as boolean,
     highlights: flag('highlights') as boolean,
+    ratings: flag('ratings') as boolean,
   };
 }
 
@@ -130,6 +139,7 @@ export function hiddenCategories(p: Policy): Category[] {
   if (!p.streaks) out.push('streaks');
   if (!p.money) out.push('money');
   if (!p.highlights) out.push('highlights');
+  if (!p.ratings) out.push('ratings');
   return out;
 }
 
@@ -215,6 +225,8 @@ const DATE_KEYS = new Set([
   'finished_on',
 ]);
 const TIME_KEYS = new Set(['time']);
+/** Opinions from Goodreads or StoryGraph, left out when ratings are hidden. */
+const RATING_KEYS = new Set(['rating', 'shelves']);
 const DATE_VALUE = /^\d{4}-\d{2}-\d{2}/;
 const DROP = Symbol('drop');
 
@@ -269,6 +281,7 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
           : null;
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(o)) {
+      if (!p.ratings && RATING_KEYS.has(k)) continue;
       if (DATE_KEYS.has(k) && typeof v === 'string' && DATE_VALUE.test(v)) {
         out[k] = coarsenDate(v, dates);
       } else if (TIME_KEYS.has(k) && dates !== 'day') {

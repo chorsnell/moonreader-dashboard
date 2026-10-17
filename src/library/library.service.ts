@@ -4,6 +4,7 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { appConfig, type AppConfigType } from '../config/app.config';
 import { exists, findFiles, mtimeMs, newestFirst } from '../common/files';
+import { ImportsStore } from '../imports/imports.store';
 import { SEED_CATALOGUE } from '../paths';
 import { ActivityLogService } from './activity-log.service';
 import { LIBRARY_CHANGED } from './library.events';
@@ -32,6 +33,7 @@ export class LibraryService implements OnModuleInit {
     @Inject(appConfig.KEY) private readonly config: AppConfigType,
     private readonly activity: ActivityLogService,
     private readonly events: EventEmitter2,
+    private readonly imports: ImportsStore,
   ) {
     this.root = config.library;
     this.inbox = join(this.root, 'inbox');
@@ -68,7 +70,7 @@ export class LibraryService implements OnModuleInit {
     );
   }
 
-  /** The newest backup, if it, catalogue.json, metadata.json or a synced position is newer than the data. */
+  /** The newest backup, if it, catalogue.json, metadata.json, an import or a synced position is newer than the data. */
   async needsBuild(): Promise<string | null> {
     const [newest] = await this.backups();
     if (!newest) return null;
@@ -78,6 +80,7 @@ export class LibraryService implements OnModuleInit {
       await mtimeMs(newest),
       await mtimeMs(this.catalogue),
       await mtimeMs(this.metadata),
+      await this.imports.newest(),
       ...syncs,
     );
     return changed > built ? newest : null;

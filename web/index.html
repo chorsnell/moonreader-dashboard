@@ -95,7 +95,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .rh-tabs button[aria-selected=true]{color:var(--color-fg);border-bottom-color:var(--color-fg)}
 .rh-tabs[hidden]{display:none}
 .rh-page{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
-.rh-page[hidden]{display:none}
+.rh-page[hidden],.rh-card[hidden]{display:none}
 .rh-page.in-l{animation:in-l .22s ease-out}.rh-page.in-r{animation:in-r .22s ease-out}.rh-page.in-up{animation:in-up .2s ease-out}
 @keyframes in-l{from{transform:translateX(-40px);opacity:0}}
 @keyframes in-r{from{transform:translateX(40px);opacity:0}}

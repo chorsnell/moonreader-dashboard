@@ -10,6 +10,7 @@ export const ACTIVITY_TYPES = [
   'sync',
   'rebuild',
   'upload',
+  'import',
   'cover',
   'metadata',
   'prune',

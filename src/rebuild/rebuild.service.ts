@@ -145,6 +145,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
           new_covers: summary.newCovers,
           untagged_count: summary.untagged.length,
           untagged: summary.untagged.slice(0, 100),
+          ...(summary.imported ? { imported: summary.imported } : {}),
         },
       });
       this.lookUp('rebuild');
