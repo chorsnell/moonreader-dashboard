@@ -183,6 +183,8 @@ With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or i
 
 **Finished by hand.** When you finished a book Moon+ didn't see you finish (a broken file with blank pages at the end, or a book from before it recorded progress), add `"finished": true` to its entry, or use **Mark finished** in the Catalogue section (its **Not finished** list shows the candidates). Its latest read then counts as finished. `"finished": false` stops the guesses above for a book you really didn't finish.
 
+**Year and country.** The Origins tab needs each book's first-published year and its author's country. The metadata lookup fills most of them in; to fix a gap or a wrong one, use **First published** (a year, or `400 BC`) and **Author's country** (an English name or a two-letter code) in the Catalogue section's editor, which save `"published_year"` and `"author_country"` to the book's entry. Leave them blank to go back to what the lookup found (shown as the placeholder).
+
 Add a lower-case file name to `"exclude"` to hide something that isn't a book. Per author, `"authors": { "Author Name": { "country": "Ireland", "gender": "male" } }`. What you put in the catalogue always wins over lookups.
 
 **ISBNs and editions.** ISBN-13 or ISBN-10, with or without hyphens (the other form is worked out; invalid ones are ignored). Copies count as one book when they share a title and author, an ISBN, or a `"work_id"` (any id you give every edition, such as an Open Library work id).
@@ -218,7 +220,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Other media** | Netflix uploads, Tautulli, Audiobookshelf, TMDB and streaming subscriptions |
 | **Access & privacy** | Who can see the dashboard and what each kind of visitor sees; private books and genres; preview as a visitor |
 | **Friends** | Your share file and leaderboards, friends' share files, dashboards you follow and that follow you, book clubs, and who can see friends' reading |
-| **Catalogue** | Titles, authors, series, genres and ISBNs; untagged books |
+| **Catalogue** | Titles, authors, series, genres, ISBNs, first-published years and authors' countries; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
 | **Covers** | Books without a cover: look them up again or upload your own |
 | **Book manager** | Your *arr book manager's URL and API key |
