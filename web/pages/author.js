@@ -67,6 +67,10 @@
       const bits = [plural(books.length, 'book'), `${fmt(fin.length)} finished`];
       if (hours >= 1) bits.push(`${hrs(hours)} hours`);
       info.append(el('div', 'go-sub', bits.join(', ') + (started.length ? ` since ${yr(started[0])}` : '') + '.'));
+      // country and gender, from catalogue.json or the metadata lookup
+      const who = books.find((b) => b.author_country || b.author_gender) || {};
+      const origin = [who.author_country_name, { female: 'Woman', male: 'Man', 'non-binary': 'Non-binary' }[who.author_gender]].filter(Boolean);
+      if (origin.length) info.append(el('div', 'go-sub au-origin', origin.join(' · ')));
       const chips = el('div', 'bk-chips');
       genreHours.forEach(([g]) => { const c = linkPage(el('span', 'chip', g), 'genre', g); c.style.color = gColor(g); chips.append(c); });
       [...new Set(books.map((b) => b.series).filter(Boolean))].forEach((s) => chips.append(linkPage(el('span', 'chip', s), 'series', s)));

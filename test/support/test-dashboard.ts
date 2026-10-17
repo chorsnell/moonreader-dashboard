@@ -29,6 +29,7 @@ export class TestDashboard {
       uploadToken: TOKEN,
       pollSeconds: 5,
       coverLookup: false,
+      metadataLookup: false,
       ...overrides,
     };
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
