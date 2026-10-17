@@ -83,6 +83,13 @@ through `dash.needs(calc)`), cards it lists by id, and any card given `privacy: 
 functions should cope with empty rows. `dash.dates` is `'week'` or `'month'` when dates
 are rounded, and `rh.fDay` then shows the week or month.
 
+## Analytics
+
+`analytics.js` sends page views and clicks to Mixpanel when `MIXPANEL_TOKEN` is set. It
+names what was used (tab ids, card ids, link kinds, control ids or form labels) and never
+what's shown, so give controls an `id` or a fixed `aria-label` rather than relying on their
+text. Each tab or page that comes on screen is announced with an `rh:view` event.
+
 ## Admin sections
 
 The admin page (`#admin`, drawn by `admin.js`) is only shown to the admin. Each of its

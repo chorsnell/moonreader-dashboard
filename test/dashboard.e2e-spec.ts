@@ -61,6 +61,21 @@ describe('rebuilding', () => {
     expect(admin.body.uploads).toBe(true);
   });
 
+  it('tells the page about analytics only when MIXPANEL_TOKEN is set', async () => {
+    dash = await TestDashboard.start();
+    expect((await request(dash.server).get('/api/config')).body).not.toHaveProperty('analytics');
+    await dash.stop();
+    dash = await TestDashboard.start({
+      mixpanelToken: 'mp-test',
+      mixpanelApiHost: 'https://api-eu.mixpanel.com',
+    });
+    expect((await request(dash.server).get('/api/config')).body.analytics).toEqual({
+      mixpanel_token: 'mp-test',
+      api_host: 'https://api-eu.mixpanel.com',
+    });
+    await request(dash.server).get('/vendor/mixpanel.min.js').expect(200);
+  });
+
   it('builds the data from an upload', async () => {
     dash = await TestDashboard.start();
     await upload(dash).expect(200, { ok: true });

@@ -32,6 +32,8 @@ services:
       TAUTULLI_API_KEY: ${TAUTULLI_API_KEY:-}
       AUDIOBOOKSHELF_URL: ${AUDIOBOOKSHELF_URL:-}
       AUDIOBOOKSHELF_TOKEN: ${AUDIOBOOKSHELF_TOKEN:-}
+      MIXPANEL_TOKEN: ${MIXPANEL_TOKEN:-}
+      MIXPANEL_API_HOST: ${MIXPANEL_API_HOST:-}
       MEDIA_POLL_MINUTES: 60
       # How often to refresh friends' dashboards you follow, in minutes (0: only by hand).
       FEDERATION_REFRESH_MINUTES: 60

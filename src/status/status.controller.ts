@@ -1,9 +1,10 @@
-import { Controller, Get, Header, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Header, Inject, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { AccessSettingsService } from '../access/access-settings.service';
 import { AccessService } from '../access/access.service';
 import { ReaderGuard } from '../access/reader.guard';
 import { UploadTokenService } from '../access/upload-token.service';
+import { appConfig, type AppConfigType } from '../config/app.config';
 import { CoverStore } from '../covers/cover-store.service';
 import { LibraryService } from '../library/library.service';
 import { StatusService } from '../library/status.service';
@@ -14,6 +15,7 @@ import { PrivacyService } from '../privacy/privacy.service';
 @Controller()
 export class StatusController {
   constructor(
+    @Inject(appConfig.KEY) private readonly appConfig: AppConfigType,
     private readonly status: StatusService,
     private readonly library: LibraryService,
     private readonly covers: CoverStore,
@@ -31,7 +33,8 @@ export class StatusController {
 
   /**
    * Who you're signed in as and whether you can read the dashboard; then, if you can, the
-   * last rebuild. Only the admin sees the upload button and build errors.
+   * last rebuild. Only the admin sees the upload button and build errors. `analytics` is
+   * there only when MIXPANEL_TOKEN is set, so the sign-in screen is counted too.
    */
   @Get('api/config')
   @Header('Cache-Control', 'no-store')
@@ -43,6 +46,7 @@ export class StatusController {
       role,
       admin: this.tokens.enabled,
       can_read: access === 'public' || role !== null,
+      ...this.analytics(),
     };
     if (!who.can_read) return who;
     const { building, last_build, last_error } = this.status.snapshot();
@@ -65,6 +69,12 @@ export class StatusController {
       last_build: admin ? last_build : null, // its time of day is the last sync's
       last_error: admin ? last_error : null,
     };
+  }
+
+  /** The Mixpanel project the page reports to (a project token is public by design). */
+  private analytics() {
+    const { mixpanelToken: token, mixpanelApiHost: api_host } = this.appConfig;
+    return token ? { analytics: { mixpanel_token: token, api_host } } : {};
   }
 
   /** {book id: cover URL} for every saved cover. */
