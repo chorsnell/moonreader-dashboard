@@ -1,0 +1,9 @@
+/* highlights on a book page */
+.hl-list{list-style:none;margin:0;padding:0 var(--cds-pad-xs) 0 0;display:flex;flex-direction:column;gap:var(--cds-gap-lg);max-height:640px;overflow-y:auto}
+.hl-item{border-left:3px solid var(--hl,var(--color-border-line));padding:2px 0 2px var(--cds-pad-md)}
+.hl-text{margin:0;font-family:var(--font-anthropic-serif);font-size:17px;line-height:1.45;white-space:pre-line;color:var(--color-fg)}
+.hl-note{margin:var(--cds-gap-xs) 0 0;font-size:var(--cds-font-size-body);color:var(--color-fg);font-style:italic}
+.hl-note::before{content:'— '}
+.hl-mark{font-size:var(--cds-font-size-body);color:var(--color-fg-muted)}
+.hl-k-bookmark{border-left-style:dashed}
+.hl-meta{margin-top:var(--cds-gap-xs);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}

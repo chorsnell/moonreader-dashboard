@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ZipFile } from 'yazl';
 import { BOOKS, fileName } from './demo-books';
+import type { DemoNote } from './demo-highlights';
 import type { DemoDay } from './simulate';
 
 /** Writes the simulated history as a Moon+ backup, laid out the way the app writes one. */
@@ -13,6 +14,7 @@ export async function writeDemoBackup(
   path: string,
   log: Map<string, DemoDay[]>,
   firstDay: number,
+  highlights: Map<string, DemoNote[]> = new Map(),
 ): Promise<void> {
   const tmp = await mkdtemp(join(tmpdir(), 'demo-backup-'));
   try {
@@ -25,6 +27,10 @@ export async function writeDemoBackup(
       create table tmpbooks as select * from books where 0;
       create table statistics (_id integer primary key, filename text, usedTime numeric,
         readWords numeric, dates text);
+      create table notes (_id integer primary key, book text, filename text, lowerFilename text,
+        lastChapter numeric, lastSplitIndex numeric, lastPosition numeric,
+        highlightLength numeric, highlightColor numeric, time numeric, bookmark text,
+        note text, original text, underline numeric, strikethrough numeric, bak text);
     `);
     const addBook = db.prepare(
       'insert into books (book, filename, lowerFilename, author) values (?, ?, ?, ?)',
@@ -52,6 +58,35 @@ export async function writeDemoBackup(
       );
       positions.push(
         `<string name="${full.toLowerCase()}">1@0#0:${entries.at(-1)!.progress}%</string>`,
+      );
+    }
+    const addNote = db.prepare(
+      `insert into notes (book, filename, lowerFilename, lastChapter, lastSplitIndex,
+        lastPosition, highlightLength, highlightColor, time, bookmark, note, original,
+        underline, strikethrough) values (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, 0, 0)`,
+    );
+    const notes = [...highlights].flatMap(([file, list]) => list.map((n) => ({ file, ...n })));
+    for (const n of notes.sort((a, b) => a.day - b.day || a.minute - b.minute)) {
+      const full = `/sdcard/Books/${n.file}`;
+      // a local time, as the phone would have recorded it
+      const [y, m, d] = new Date((firstDay + n.day) * 86_400_000)
+        .toISOString()
+        .slice(0, 10)
+        .split('-')
+        .map(Number);
+      const time = new Date(y, m - 1, d, 0, n.minute).getTime();
+      addNote.run(
+        authors.get(n.file)![0],
+        full,
+        full.toLowerCase(),
+        n.chapter,
+        n.position,
+        n.original.length,
+        n.colour,
+        time,
+        n.bookmark,
+        n.note,
+        n.original,
       );
     }
     db.close();
