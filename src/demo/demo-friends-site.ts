@@ -27,7 +27,7 @@ export async function writeDemoFriends(
     .sort((a, b) => (String(a.end) < String(b.end) ? 1 : -1))[0];
   for (const plan of FRIEND_PLANS) {
     const bundle = parseBundle(
-      simulateFriend(plan, owner, firstDay, lastDay, {
+      simulateFriend(plan, owner, firstDay, lastDay - (plan.offline_days ?? 0), {
         buddy: plan.slug === 'ada' ? (buddy?.title as string | undefined) : undefined,
         current: CURRENT,
       }),
@@ -40,7 +40,7 @@ export async function writeDemoFriends(
     const profile: FriendProfile = {
       slug: plan.slug,
       name: plan.name,
-      source: 'upload',
+      source: plan.url ? 'federation' : 'upload',
       added: bundle.profile.generated ?? '',
       updated: bundle.profile.generated,
       generated: bundle.profile.generated,
@@ -48,6 +48,10 @@ export async function writeDemoFriends(
       privacy: bundle.privacy,
       parts: ['books', 'reads', 'daily'],
       books: bundle.books.length,
+      // followed on their own dashboard, which hasn't answered lately: shown as last seen
+      ...(plan.url
+        ? { url: plan.url, status: plan.offline_days ? 'offline' : 'ok', last_checked: null }
+        : {}),
     };
     await writeFile(join(dir, 'profile.json'), JSON.stringify(profile));
   }

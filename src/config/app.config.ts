@@ -26,6 +26,8 @@ export interface AppConfig {
   wikidataUrl: string;
   /** Pause between Open Library lookups, to be polite. */
   coverPauseMs: number;
+  /** How often to refresh friends' data from their installations, in minutes; 0 is never. */
+  federationRefreshMinutes: number;
   /** Who should own the files in the library when the container starts as root. */
   puid: number;
   pgid: number;
@@ -70,6 +72,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     metadataLookup: onOff(env, 'METADATA_LOOKUP'),
     wikidataUrl: url(env, 'WIKIDATA_URL', 'https://www.wikidata.org'),
     coverPauseMs: decimal(env, 'COVER_PAUSE', 1) * 1000,
+    federationRefreshMinutes: Math.max(0, integer(env, 'FEDERATION_REFRESH_MINUTES', 60)),
     puid: integer(env, 'PUID', 1000),
     pgid: integer(env, 'PGID', 1000),
   };

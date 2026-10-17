@@ -113,7 +113,7 @@ You can also mark books or whole genres as private. Visitors then see nothing of
 
 ## Friends
 
-Add friends' reading to your dashboard to compare notes. A friend's data comes from a **share file** they export from their own dashboard (admin page → **Friends** → **Download your share file**) and you add under **Add a friend's reading**. What a share file holds is chosen by the **Friends you share with** policy under Access & privacy (by default everything except prices and highlights), and your private books are never in it. Friends then appear on a **Friends** tab. Their reading is theirs: by default only you, the admin, see it, and you can let people with the read password or everyone see it too. The file format is described in [docs/friends.md](docs/friends.md).
+Add friends' reading to your dashboard to compare notes. A friend's data comes from a **share file** they export from their own dashboard (admin page → **Friends** → **Download your share file**) and you add under **Add a friend's reading**. What a share file holds is chosen by the **Friends you share with** policy under Access & privacy (by default everything except prices and highlights), and your private books are never in it. Friends then appear on a **Friends** tab. Their reading is theirs: by default only you, the admin, see it, and you can let people with the read password or everyone see it too. If a friend runs their own dashboard, **follow it** by its address instead: they approve, choose what you see (everything, stats only or chosen views, minus any books they hide), and their reading stays up to date; they can stop sharing at any time. The file format and the protocol are described in [docs/friends.md](docs/friends.md).
 
 ## Sync straight from Moon+ (WebDAV)
 
@@ -208,6 +208,7 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 | `PUID` / `PGID` | `1000` | Who owns the files in `library/` on the host |
 | `POLL_SECONDS` | `30` | How often to check the inbox |
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
+| `FEDERATION_REFRESH_MINUTES` | `60` | How often to refresh friends' reading from the dashboards you follow (`0`: only when you press Refresh) |
 | `COVER_LOOKUP` | `on` | Set to `off` to stop looking up missing covers on Open Library |
 | `METADATA_LOOKUP` | `on` | Set to `off` to stop looking up publication years, page counts and authors on Open Library and Wikidata |
 | `TZ` | UTC | Time zone for the log |
