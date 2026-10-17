@@ -23,12 +23,15 @@ export function loadCalcs(...scripts: string[]) {
     onData: noop,
     colors: [],
   };
+  // just enough of a page for scripts that touch it while loading
+  const document = { getElementById: () => null, querySelector: () => null };
   const window = { addEventListener: noop };
   const context = createContext({
     dash,
     rh,
-    window,
     console,
+    document,
+    window,
     matchMedia: () => ({ matches: false }),
   });
   for (const s of scripts) runInContext(readFileSync(join(WEB_DIR, s), 'utf8'), context);
