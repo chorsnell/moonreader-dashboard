@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AdminModule } from './admin/admin.module';
 import { ArrModule } from './arr/arr.module';
+import { ChallengesModule } from './challenges/challenges.module';
 import { appConfig } from './config/app.config';
 import { ClubsModule } from './clubs/clubs.module';
 import { DavModule } from './dav/dav.module';
@@ -28,6 +29,7 @@ import { WebModule } from './web/web.module';
     UploadModule,
     AdminModule,
     ArrModule,
+    ChallengesModule,
     MediaModule,
     PricesModule,
     DavModule,

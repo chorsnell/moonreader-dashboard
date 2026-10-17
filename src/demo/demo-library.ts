@@ -11,6 +11,7 @@ import { CoverLookupService } from '../covers/cover-lookup.service';
 import { parseReadingExport } from '../imports/goodreads';
 import { MediaBuildService } from '../media/media-build.service';
 import { servedPrices } from '../prices/prices';
+import { DEFAULT_CHALLENGES } from '../challenges/challenges';
 import { writeDemoBackup } from './demo-backup';
 import { BOOKS, fileName, ISBN } from './demo-books';
 import { writeDemoFriends } from './demo-friends-site';
@@ -91,6 +92,8 @@ export async function buildDemoLibrary(
   // what the server writes from library/prices.json
   const prices = servedPrices(demoPrices(log, firstDay, seed));
   await writeFile(join(lib, 'data', 'prices.json'), JSON.stringify(prices));
+  // the default reading challenges, as the server publishes them from settings.json
+  await writeFile(join(lib, 'data', 'challenges.json'), JSON.stringify(DEFAULT_CHALLENGES));
   // two friends to compare with, as if their share files had been added
   await writeDemoFriends(lib, firstDay, lastDay);
   return { log, firstDay, lastDay, summary };

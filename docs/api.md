@@ -64,6 +64,19 @@ curl -s -c jar -H 'Content-Type: application/json' -d '{"password":"…"}' https
 curl -s -b jar https://reading.example.com/api/stats/year/2025
 ```
 
+## Reading challenges
+
+The challenges on the Overview (`challenge_progress` above gives their progress) are set by
+the admin, and kept in `settings.json` under `challenges`. When that is missing, a default
+set is used. Everyone reads the list as `/data/challenges.json`. It names no books, so it is
+the same for every viewer; progress is worked out from each viewer's own filtered data.
+
+| Method and path | Who | What |
+| --- | --- | --- |
+| `GET /api/admin/challenges` | admin | `{challenges, custom, defaults}`; `custom` is false while the defaults are in use |
+| `PUT /api/admin/challenges` | admin | `{challenges: [{id?, kind, title, target, period, from?, to?}]}`. `kind` is `countries`, `decades` (with `from` and `to`, years), `series`, `women` (target in %), `streak` (days) or `genres`; `period` is `year` (the latest reading's year) or `all`. Up to 20. `400` with an `error` when something can't be used |
+| `POST /api/admin/challenges/reset` | admin | Back to the defaults |
+
 ## How it works
 
 `src/stats/page-sandbox.ts` loads the page's scripts in Node, in the order `index.html` loads
