@@ -53,4 +53,27 @@ export class ImportsStore {
   async newest(): Promise<number> {
     return Math.max(0, ...(await Promise.all(IMPORT_SOURCES.map((s) => mtimeMs(this.path(s))))));
   }
+
+  /** Kindle titles by ASIN (Amazon's reading sessions name books only by ASIN). */
+  async titles(): Promise<Map<string, { title: string; author: string }>> {
+    try {
+      const raw = JSON.parse(await readFile(this.titlesPath, 'utf8')) as Record<
+        string,
+        { title: string; author: string }
+      >;
+      return new Map(Object.entries(raw));
+    } catch {
+      return new Map();
+    }
+  }
+
+  async saveTitles(titles: Map<string, { title: string; author: string }>): Promise<void> {
+    const merged = new Map([...(await this.titles()), ...titles]);
+    await writeFile(`${this.titlesPath}.part`, JSON.stringify(Object.fromEntries(merged)), 'utf8');
+    await rename(`${this.titlesPath}.part`, this.titlesPath);
+  }
+
+  private get titlesPath(): string {
+    return join(this.root, 'kindle_titles.json');
+  }
 }

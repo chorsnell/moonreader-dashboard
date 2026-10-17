@@ -93,7 +93,7 @@ describe('mergeImports', () => {
       ],
       empty,
     );
-    expect(r).toEqual({ matched: 1, added: 0, skipped: 0 });
+    expect(r).toMatchObject({ matched: 1, added: 0, skipped: 0 });
     expect(books).toHaveLength(1);
     expect(books[0]).toMatchObject({ rating: 4, shelves: ['favourites'], times_read: 1 });
     expect(books[0].reads).toHaveLength(1);
@@ -143,7 +143,7 @@ describe('mergeImports', () => {
       ],
       empty,
     );
-    expect(r).toEqual({ matched: 1, added: 1, skipped: 1 });
+    expect(r).toMatchObject({ matched: 1, added: 1, skipped: 1 });
     const added = books.find((b) => b.source === 'goodreads')!;
     expect(added).toMatchObject({
       id: 'the-colour-of-magic',
@@ -186,5 +186,119 @@ describe('mergeImports', () => {
     expect(books.map((b) => [b.title, b.author, b.genre])).toEqual([
       ['Mort', 'Terry Pratchett', 'Fantasy'],
     ]);
+  });
+
+  it('fills in days Moon+ lacks from a device, and finishes the read there', () => {
+    const books = [
+      moonBook({
+        status: 'in_progress',
+        progress: 60,
+        reads: [
+          {
+            read_no: 1,
+            start: '2024-01-01',
+            end: '2024-01-20',
+            days_read: 2,
+            minutes: 60,
+            progress: 60,
+            finished: false,
+          },
+        ],
+        daily: [
+          { date: '2024-01-01', minutes: 30, words: null, progress: 30 },
+          { date: '2024-01-20', minutes: 30, words: null, progress: 60 },
+        ],
+        total_minutes: 60,
+      }),
+    ];
+    const r = mergeImports(
+      books,
+      [
+        {
+          ...file([
+            imported({
+              id: 'kobo-1',
+              rating: null,
+              shelf: 'read',
+              progress: 100,
+              reads: [{ start: '2024-01-20', end: '2024-01-25', finished: true, minutes: 50 }],
+              daily: [
+                { date: '2024-01-20', minutes: 99, words: null, progress: 70 },
+                { date: '2024-01-25', minutes: 50, words: null, progress: 100 },
+              ],
+              highlights: [
+                {
+                  time: '2024-01-25T20:00:00',
+                  progress: null,
+                  chapter: null,
+                  location: null,
+                  text: 'A line',
+                  note: null,
+                  kind: 'highlight',
+                },
+              ],
+            }),
+          ]),
+          source: 'kobo',
+        },
+      ],
+      empty,
+    );
+    const b = books[0];
+    // Moon+ keeps its own 20 January; the Kobo adds the 25th
+    expect(b.daily.map((d) => [d.date, d.minutes])).toEqual([
+      ['2024-01-01', 30],
+      ['2024-01-20', 30],
+      ['2024-01-25', 50],
+    ]);
+    expect(b.reads).toEqual([
+      expect.objectContaining({ start: '2024-01-01', end: '2024-01-25', finished: true }),
+    ]);
+    expect(b).toMatchObject({ status: 'finished', progress: 100, total_minutes: 110 });
+    expect(b.last_read).toBe('2024-01-25');
+    expect(r.highlights).toEqual([
+      expect.objectContaining({ book_id: 'emma', source: 'kobo', text: 'A line' }),
+    ]);
+  });
+
+  it('adds a book known only from its highlights', () => {
+    const books: BookHistory[] = [];
+    mergeImports(
+      books,
+      [
+        {
+          ...file([
+            imported({
+              id: 'Mort (Terry Pratchett)',
+              title: 'Mort',
+              author: 'Terry Pratchett',
+              rating: null,
+              shelf: '',
+              highlights: [
+                {
+                  time: '2021-03-14T21:03:11',
+                  progress: null,
+                  chapter: null,
+                  location: 7,
+                  text: 'Death',
+                  note: null,
+                  kind: 'highlight',
+                },
+              ],
+            }),
+          ]),
+          source: 'kindle_clippings',
+        },
+      ],
+      empty,
+    );
+    expect(books[0]).toMatchObject({
+      title: 'Mort',
+      status: 'unknown',
+      source: 'kindle_clippings',
+      first_read: '2021-03-14',
+      last_read: '2021-03-14',
+      reads: [],
+    });
   });
 });

@@ -1016,11 +1016,11 @@
     const b = books.find((x) => x.id === bookId);
     ['#bk-kpis', '#card-bk-days', '#card-bk-reads', '#card-bk-related', '#card-bk-log'].forEach((s) => ($(s).hidden = !b));
     if (!b) { document.title = 'Reading history'; head.replaceChildren(el('div', 'dy-empty', 'That book isn’t in your library.')); return; }
-    // a book only an import knows (Goodreads, StoryGraph) has no days to show
-    ['#card-bk-days', '#card-bk-log'].forEach((s) => ($(s).hidden = !!b.source));
     detailName = b.title; document.title = `${b.title} · Reading history`;
     const reads = (D('reads').data || []).filter((r) => r.book_id === b.id).sort((x, y) => x.read_no - y.read_no);
     const days = (D('diary').status === 'ok' ? D('diary').data : []).filter((d) => d.book_id === b.id);
+    // a book only an import knows (Goodreads, a Kobo without day data) may have no days to show
+    ['#card-bk-days', '#card-bk-log'].forEach((s) => ($(s).hidden = !!b.source && !days.length));
     const latest = reads[reads.length - 1];
 
     // header: cover, title, author, series, genre, status and progress

@@ -100,6 +100,16 @@ The admin page's **Imports** section takes a Goodreads library export (My Books 
 
 Without an import, nothing changes.
 
+### Kobo and Kindle
+
+The same **Imports** section takes e-reader data too; the file is recognised by its contents:
+
+- **Kobo**: connect it by USB and upload `.kobo/KoboReader.sqlite`. Each book you've opened brings its progress, time spent, when you started, last read and finished it, and your highlights and notes. Days come from the device's `AnalyticsEvents` table, which only holds what hasn't been sent to Kobo yet, so many databases give a read per book without days.
+- **Kindle highlights**: `documents/My Clippings.txt` from the Kindle. Highlights, notes (attached to their highlight) and bookmarks, with their dates.
+- **Kindle reading sessions**: Amazon's "Request your data" export has `Kindle.Devices.ReadingSession.csv`, with the start, end and length of every session: minutes per day for each book. It names books only by ASIN and says nothing about progress, so they aren't counted as finished unless Goodreads (or another source) says so. Upload any CSV with `ASIN` and `Title` columns, such as your digital orders, to name them, or name them in **Catalogue** (`kindle:<ASIN>`).
+
+Imported books are matched to Moon+'s by ISBN, then title and author. For a day Moon+ already has, Moon+'s figures stand; the import fills in the other days, and a read finished on another device finishes the Moon+ read. With no Moon+ backup at all, the dashboard is built from the imports alone.
+
 ## Who can see it
 
 `UPLOAD_TOKEN` is the admin password. Only the admin can upload, sync, or change settings. Visitors see a small **Admin** link and nothing else they can use.
@@ -320,7 +330,7 @@ src/privacy/                what visitors may see, and the filter that enforces 
 src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
   reading-history.ts        the rules: what counts as a read, finished, and so on
 src/covers/                 saves covers from the backup and looks up missing ones on Open Library
-src/imports/                Goodreads and StoryGraph exports: reading them, matching them to Moon+ books, exporting back
+src/imports/                Goodreads, StoryGraph, Kobo and Kindle imports: reading them, matching them to Moon+ books, exporting back
 src/media/                  other media (TV, film, audiobooks): Netflix, Tautulli and Audiobookshelf imports, the media build and its watcher
   media-history.ts          the rules: seasons, re-watches, what counts as watched
 src/rebuild/                watches for new backups, catalogue edits and syncs, and rebuilds

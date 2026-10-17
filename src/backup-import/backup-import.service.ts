@@ -59,14 +59,21 @@ export class BackupImportService {
     private readonly imports: ImportsStore,
   ) {}
 
-  async importBackup(backup: string): Promise<ImportSummary> {
+  /** Builds from a backup, or from the imports alone (Kobo, Kindle…) when backup is null. */
+  async importBackup(backup: string | null): Promise<ImportSummary> {
     const started = new Date();
     const catalogue = JSON.parse(await readFile(this.library.catalogue, 'utf8')) as Catalogue;
     const tmp = await mkdtemp(join(tmpdir(), 'moonreader-'));
     try {
-      const contents = await readBackup(backup, tmp);
-      if (!contents.databasePath) throw new Error('This backup has no mrbooks.db database.');
-      const { bookMeta, isbns, statistics, notes } = readDatabase(contents.databasePath);
+      const contents = backup
+        ? await readBackup(backup, tmp)
+        : { databasePath: null, positionsXml: null, covers: new Map<string, Buffer>() };
+      if (backup && !contents.databasePath) {
+        throw new Error('This backup has no mrbooks.db database.');
+      }
+      const { bookMeta, isbns, statistics, notes } = contents.databasePath
+        ? readDatabase(contents.databasePath)
+        : { bookMeta: new Map(), isbns: new Map(), statistics: [], notes: [] };
       const result = buildReadingHistory({
         catalogue,
         bookMeta,
@@ -85,6 +92,22 @@ export class BackupImportService {
         : null;
 
       const { highlights } = buildHighlights(result.books, notes);
+      // highlights from Kobo and Kindle, numbered after Moon+'s
+      let nextId = highlights.reduce((m, h) => Math.max(m, h.id), 0);
+      for (const h of imported?.highlights ?? []) {
+        highlights.push({
+          id: ++nextId,
+          book_id: h.book_id,
+          date: h.time ? h.time.slice(0, 10) : null,
+          time: h.time,
+          progress: h.progress,
+          chapter: h.chapter,
+          text: h.text,
+          note: h.note,
+          colour: null,
+          kind: h.kind,
+        });
+      }
 
       let newCovers = 0;
       for (const book of result.books) {
@@ -113,7 +136,7 @@ export class BackupImportService {
       const builtFrom = new Date(started.getTime() - MTIME_MARGIN_MS);
       await utimes(join(this.library.data, 'meta.json'), builtFrom, builtFrom);
       const lines = [
-        `${basename(backup)}: ${counts.books} books, ${counts.reads} reads, ${counts.readingDays} reading days` +
+        `${backup ? basename(backup) : 'Imports only (no Moon+ backup)'}: ${counts.books} books, ${counts.reads} reads, ${counts.readingDays} reading days` +
           (counts.highlights ? `, ${counts.highlights} highlights and notes` : '') +
           (result.syncedApplied ? `, ${result.syncedApplied} synced position(s) applied` : '') +
           (newCovers ? `, ${newCovers} new cover(s) from the backup` : ''),
@@ -121,6 +144,7 @@ export class BackupImportService {
       if (imported) {
         lines.push(
           `Imports (${imported.sources.join(', ')}): ${imported.matched} matched, ${imported.added} added` +
+            (imported.highlights.length ? `, ${imported.highlights.length} highlights` : '') +
             (imported.skipped ? `, ${imported.skipped} to-read or excluded left out` : ''),
         );
       }
@@ -164,7 +188,7 @@ export class BackupImportService {
   }
 
   private async writeData(
-    backup: string,
+    backup: string | null,
     books: BookHistory[],
     catalogue: Catalogue,
     metadata: MetadataFile,
@@ -189,7 +213,7 @@ export class BackupImportService {
         ...facts,
         status: b.status,
         progress: b.progress,
-        hours: b.source ? null : round1(b.total_minutes / 60),
+        hours: b.source && !b.total_minutes ? null : round1(b.total_minutes / 60),
         words: b.total_words,
         times_read: b.times_read,
         first_read: b.first_read,
@@ -236,7 +260,7 @@ export class BackupImportService {
     dailyRows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
     const generated = localDateTime();
-    const backupFile = basename(backup);
+    const backupFile = backup ? basename(backup) : null;
     await mkdir(this.library.data, { recursive: true });
     await this.dump('books.json', booksRows);
     await this.dump('reads.json', readsRows);
