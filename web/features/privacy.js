@@ -20,6 +20,7 @@
     current: ['#card-current', '#card-stalled', '#card-forecast'],
     highlights: ['#card-bk-highlights', '#card-bk-hl-density', '#card-bk-hl-cloud', '#card-quote', '#card-clock'],
     money: [],
+    ratings: [],
   };
   const OFF = 'rh-privacy-off';
   const NOTE = 'Some details are kept private by the owner.';

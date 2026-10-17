@@ -8,10 +8,13 @@ import { NestFactory } from '@nestjs/core';
 import { BackupImportService, type ImportSummary } from '../backup-import/backup-import.service';
 import type { Catalogue } from '../backup-import/reading-history.types';
 import { CoverLookupService } from '../covers/cover-lookup.service';
+import { parseReadingExport } from '../imports/goodreads';
 import { MediaBuildService } from '../media/media-build.service';
 import { servedPrices } from '../prices/prices';
 import { writeDemoBackup } from './demo-backup';
 import { BOOKS, fileName, ISBN } from './demo-books';
+import { demoGoodreadsCsv } from './demo-goodreads';
+import { demoKobo } from './demo-kobo';
 import { simulateHighlights } from './demo-highlights';
 import { demoMediaCatalogue, simulateAudiobookshelf, simulateNetflix } from './demo-media';
 import { demoMetadata } from './demo-metadata';
@@ -54,11 +57,34 @@ export async function buildDemoLibrary(
       ]),
     ),
   };
+  // the Kobo books' genres, set in the catalogue as the admin would for imported books
+  for (const [id, title, author] of [
+    ['kobo-demo-1', 'The Secret Garden', 'Frances Hodgson Burnett'],
+    ['kobo-demo-2', 'The Railway Children', 'E. Nesbit'],
+  ]) {
+    catalogue.books[`kobo:${id}`] = { title, author, genre: 'Classics', subgenre: 'Coming of Age' };
+  }
   await writeFile(join(lib, 'catalogue.json'), JSON.stringify(catalogue), 'utf8');
   // what the metadata lookup would find, so the demo needs no network for it
   await writeFile(join(lib, 'metadata.json'), JSON.stringify(demoMetadata()), 'utf8');
   const backup = join(lib, 'demo-library.mrpro');
   await writeDemoBackup(backup, log, firstDay, highlights);
+  // a Kobo's database, as if uploaded on the admin page: two books read on the Kobo
+  const kobo = { ...demoKobo(firstDay, lastDay, seed), imported: `${today}T09:00:00` };
+  await writeFile(join(lib, 'kobo.json'), JSON.stringify(kobo), 'utf8');
+  // a Goodreads export, as if uploaded on the admin page: ratings and a few paper books
+  const goodreads = parseReadingExport(demoGoodreadsCsv(log, firstDay, lastDay, seed));
+  await writeFile(
+    join(lib, 'goodreads.json'),
+    JSON.stringify({
+      schema_version: 1,
+      source: goodreads.source,
+      file: 'goodreads_library_export.csv',
+      imported: `${today}T09:00:00`,
+      books: goodreads.books,
+    }),
+    'utf8',
+  );
   await writeDemoMedia(lib, seed, log, firstDay, days);
   const summary = await importInto(lib, backup, { lookUpCovers, media: true });
   // what the server writes from library/prices.json

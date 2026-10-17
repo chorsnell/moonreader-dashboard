@@ -89,6 +89,27 @@ There are four ways, and all of them trigger a rebuild automatically:
 3. **Drop a backup into `library/inbox/`**, by hand, with `scp`, or with Syncthing.
 4. **Edit titles, authors, series and genres** in the admin page's **Catalogue** section, or edit `library/catalogue.json` by hand. Saving either rebuilds the data with your changes.
 
+### Goodreads and StoryGraph
+
+The admin page's **Imports** section takes a Goodreads library export (My Books → Import and export → Export library) or a StoryGraph export. It is kept as `library/goodreads.json` (or `storygraph.json`) and added to every build:
+
+- Books are matched to your Moon+ books by ISBN, then by title and author. They gain your **rating** and **shelves**, and any read Moon+ doesn't know about (an earlier read on paper, say).
+- Books only the export knows show as finished on the day it gives, marked `source: "goodreads"`. They have no minutes, words or speed, so they count towards books per year, genres, authors and series, but not towards time, speed, streaks or heatmaps. Give them a genre in the **Catalogue** section, where their file is shown as `goodreads:<id>`. To-read shelves are left out.
+- Ratings add views: speed against rating, ratings by genre, and whether you rate books you devoured higher.
+- **Export to Goodreads** downloads your finished books as a CSV that Goodreads' own import reads.
+
+Without an import, nothing changes.
+
+### Kobo and Kindle
+
+The same **Imports** section takes e-reader data too; the file is recognised by its contents:
+
+- **Kobo**: connect it by USB and upload `.kobo/KoboReader.sqlite`. Each book you've opened brings its progress, time spent, when you started, last read and finished it, and your highlights and notes. Days come from the device's `AnalyticsEvents` table, which only holds what hasn't been sent to Kobo yet, so many databases give a read per book without days.
+- **Kindle highlights**: `documents/My Clippings.txt` from the Kindle. Highlights, notes (attached to their highlight) and bookmarks, with their dates.
+- **Kindle reading sessions**: Amazon's "Request your data" export has `Kindle.Devices.ReadingSession.csv`, with the start, end and length of every session: minutes per day for each book. It names books only by ASIN and says nothing about progress, so they aren't counted as finished unless Goodreads (or another source) says so. Upload any CSV with `ASIN` and `Title` columns, such as your digital orders, to name them, or name them in **Catalogue** (`kindle:<ASIN>`).
+
+Imported books are matched to Moon+'s by ISBN, then title and author. For a day Moon+ already has, Moon+'s figures stand; the import fills in the other days, and a read finished on another device finishes the Moon+ read. With no Moon+ backup at all, the dashboard is built from the imports alone.
+
 ## Who can see it
 
 `UPLOAD_TOKEN` is the admin password. Only the admin can upload, sync, or change settings. Visitors see a small **Admin** link and nothing else they can use.
@@ -108,6 +129,7 @@ Setting a new read password signs out everyone who used the old one. Changing `U
 - **Streaks and quiet spells.**
 - **Highlights and notes.** These are hidden from the public by default.
 - **Prices and spending.**
+- **Your ratings and shelves** (from Goodreads or StoryGraph). Shown in every preset, since they're part of your taste; untick to keep them to yourself.
 
 You can also mark books or whole genres as private. Visitors then see nothing of them, or see them as "A private book" with no title, author or cover. This is enforced on the server: the data files and API are filtered for each visitor, so hidden details never reach their browser. **Preview as a visitor** shows you exactly what they get. You, as the admin, always see everything.
 
@@ -312,6 +334,7 @@ src/privacy/                what visitors may see, and the filter that enforces 
 src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
   reading-history.ts        the rules: what counts as a read, finished, and so on
 src/covers/                 saves covers from the backup and looks up missing ones on Open Library
+src/imports/                Goodreads, StoryGraph, Kobo and Kindle imports: reading them, matching them to Moon+ books, exporting back
 src/media/                  other media (TV, film, audiobooks): Netflix, Tautulli and Audiobookshelf imports, the media build and its watcher
   media-history.ts          the rules: seasons, re-watches, what counts as watched
 src/rebuild/                watches for new backups, catalogue edits and syncs, and rebuilds
