@@ -1,0 +1,3 @@
+/* Cards hidden from visitors (privacy.js) and the admin's preview banner */
+.rh-privacy-off{display:none!important}
+.pv-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px var(--cds-gap-md);padding:8px 12px;border-radius:8px;border:1px solid var(--color-warn);background:var(--color-panel);font-size:13px;color:var(--color-fg)}

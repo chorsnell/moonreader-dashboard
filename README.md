@@ -77,6 +77,7 @@ library/
   covers/          book covers, one <book id>.jpg or .png each
   catalogue.json   titles, authors, series and genres for your books
   update.log       what happened on each rebuild, upload and sync
+  activity.jsonl   the same as JSON lines, for the admin page's Sync & logs
 ```
 
 ## Getting new data in
@@ -99,6 +100,17 @@ To choose who can *read* the dashboard, sign in as the admin, open the admin pag
 
 Setting a new read password signs out everyone who used the old one. Changing `UPLOAD_TOKEN` signs out the admin.
 
+**What visitors see.** The same section chooses, separately for the public and for people with the read password, which details they get. Start from a preset (**Everything**, **Everything but exact dates** or **Taste only**), or set each one:
+
+- **Dates:** exact days, or only the week or month.
+- **Day-by-day reading:** the diary, heatmaps and timeline.
+- **What you're reading now** and when you last read.
+- **Streaks and quiet spells.**
+- **Highlights and notes.** These are hidden from the public by default.
+- **Prices and spending.**
+
+You can also mark books or whole genres as private. Visitors then see nothing of them, or see them as "A private book" with no title, author or cover. This is enforced on the server: the data files and API are filtered for each visitor, so hidden details never reach their browser. **Preview as a visitor** shows you exactly what they get. You, as the admin, always see everything.
+
 ## Sync straight from Moon+ (WebDAV)
 
 When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-domain/reading/dav/`. The admin page's **Data** section shows the exact address. Log in with any username, and use your `UPLOAD_TOKEN` as the password.
@@ -108,6 +120,8 @@ When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-
 **Backups.** If your version of Moon+ offers WebDAV as a backup destination, use the same details. Any `.mrpro` file written to the WebDAV folder is treated exactly like an upload.
 
 > This WebDAV support is built from Moon+'s documented behaviour and tested with standard WebDAV clients, but not yet against the app itself. Every file Moon+ writes is listed in `library/update.log`. If something isn't picked up, that log shows what arrived. Position files the server can't read are listed there too.
+
+The admin page's **Sync & logs** section shows the same activity without opening the box: every sync (with the app that sent it), rebuild (what triggered it, how long it took, any error and the untagged files), upload, cover lookup and removed backup. You can filter it by type, date and outcome, search it, and download it. At the top it says when Moon+ last synced, and warns when syncing seems to have stopped or a login used the wrong password. The structured log is `library/activity.jsonl`, one JSON object per line, next to `update.log`.
 
 ## Behind a reverse proxy (Traefik, Nginx Proxy Manager, Caddy…)
 
@@ -134,6 +148,12 @@ Moon+ doesn't store genres, so they come from `catalogue.json`, keyed by the low
 ```
 
 You can also paste the untagged list into Claude and ask for the entries. To hide something that isn't a book, add its lower-case file name to `"exclude"`.
+
+### ISBNs and editions
+
+Give a book an ISBN with `"isbn": "978-0-14-143951-8"` (ISBN-13 or ISBN-10, with or without hyphens; the other form is worked out, and invalid ones are ignored). It shows on the book's page, and **Data checks** lists books without one. Moon+ backups don't usually hold ISBNs, though one is read from Moon+'s books table if a version of the app keeps it there.
+
+Copies of a book count as one book when they share a title and author, an ISBN, or a `"work_id"`: any id you give every edition of the same work (paperback, ebook, a translation), such as its Open Library work id (`"OL66562W"`).
 
 ## What your books cost
 
@@ -221,6 +241,7 @@ src/app.setup.ts            HTTP setup shared with the e2e tests (BASE_PATH, hea
 src/config/                 every setting, read and checked from environment variables
 src/library/                the library folder, update.log and the server's status
 src/access/                 sign-in, sessions, and whether the dashboard is public or needs the read password
+src/privacy/                what visitors may see, and the filter that enforces it on the data they get
 src/backup-import/          turns a .mrpro backup (plus synced positions) into data/*.json
   reading-history.ts        the rules: what counts as a read, finished, and so on
 src/covers/                 saves covers from the backup and looks up missing ones on Open Library

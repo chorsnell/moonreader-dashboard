@@ -93,9 +93,12 @@ export class AccessController {
       throw new BadRequestException({ error: 'Set a read password.' });
     }
     await this.settings.save(next);
-    this.activity.log(
-      `Dashboard is now ${next.access}${password ? ', with a new read password' : ''}`,
-    );
+    this.activity.record({
+      type: 'settings',
+      message: `Dashboard is now ${next.access}${password ? ', with a new read password' : ''}`,
+      trigger: 'admin',
+      details: { access: next.access, new_read_password: Boolean(password) },
+    });
     return { ok: true, access: next.access };
   }
 

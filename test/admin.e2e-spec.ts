@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import request from 'supertest';
 import { JPEG, makeBackup } from './support/fake-backup';
-import { TOKEN, TestDashboard, fileExists, waitFor } from './support/test-dashboard';
+import { DAV_AUTH, TOKEN, TestDashboard, fileExists, waitFor } from './support/test-dashboard';
 
 interface BookRow {
   id: string;
@@ -85,6 +85,8 @@ describe('admin endpoints', () => {
       ['GET', '/api/admin/covers'],
       ['POST', '/api/admin/covers/lookup'],
       ['PUT', '/api/admin/covers/alpha'],
+      ['GET', '/api/admin/logs'],
+      ['GET', '/api/admin/logs/download'],
     ];
     for (const [method, path] of calls) {
       for (const cookie of ['', reader, 'mrd_session=admin.9999999999.forged']) {
@@ -149,6 +151,9 @@ describe('the Catalogue section', () => {
     await admin(dash)
       .put('/api/admin/catalogue', { files: beta.files, title: 'B', series: 'S', series_no: 'x' })
       .expect(400);
+    await admin(dash)
+      .put('/api/admin/catalogue', { files: beta.files, title: 'B', isbn: '978-0-14-143951-9' })
+      .expect(400); // bad checksum
 
     await admin(dash)
       .put('/api/admin/catalogue', {
@@ -159,6 +164,7 @@ describe('the Catalogue section', () => {
         series_no: 2,
         genre: 'Fantasy',
         subgenre: 'Epic',
+        isbn: '0-14-143951-3',
       })
       .expect(200, { ok: true });
     const catalogue = await dash.json<{ books: Record<string, BookRow> }>('catalogue.json');
@@ -169,6 +175,8 @@ describe('the Catalogue section', () => {
       series_no: 2,
       genre: 'Fantasy',
       subgenre: 'Epic',
+      isbn13: '9780141439518',
+      isbn10: '0141439513',
     });
     expect(Object.keys(catalogue.books).length).toBeGreaterThan(10); // the rest is kept
     expect((await readdir(dash.lib)).filter((f) => f.endsWith('.part'))).toEqual([]);
@@ -274,5 +282,92 @@ describe('the Covers section', () => {
         .expect(202);
       expect(await waitFor(fileExists(dash.path('covers', 'beta.jpg')))).toBe(true);
     });
+  });
+});
+
+interface LogEntry {
+  type: string;
+  time: string;
+  outcome: string;
+  message: string;
+  trigger?: string;
+  duration_ms?: number;
+  error?: string;
+  details?: Record<string, unknown>;
+}
+
+describe('the Sync & logs section', () => {
+  it('records syncs, uploads and rebuilds as structured entries', async () => {
+    dash = await withData();
+    const d = dash;
+    const logs = async (query = '') =>
+      (await admin(d).get(`/api/admin/logs${query}`).expect(200)).body as {
+        total: number;
+        entries: LogEntry[];
+        health: { last_sync: string | null; last_rebuild: { trigger: string } | null };
+      };
+
+    // a position synced over WebDAV, and a login with the wrong password
+    await request(dash.server)
+      .put('/dav/Beta%20-%20Bob%20Writer.epub.po')
+      .set('Authorization', DAV_AUTH)
+      .set('User-Agent', 'MoonReader/9 (Pixel 8)')
+      .type('application/octet-stream')
+      .send(Buffer.from(`${Date.now()}*7@0#100:60%`))
+      .expect(201);
+    await request(dash.server)
+      .propfind('/dav/')
+      .set('Authorization', `Basic ${Buffer.from('moon:nope').toString('base64')}`)
+      .expect(401);
+    expect(
+      await waitFor(async () =>
+        (await logs('?type=rebuild')).entries.some((e) => e.trigger === 'sync'),
+      ),
+    ).toBe(true);
+
+    const all = await logs();
+    const types = all.entries.map((e) => e.type);
+    expect(types).toEqual(expect.arrayContaining(['upload', 'rebuild', 'sync']));
+    expect(all.entries[0].time >= all.entries.at(-1)!.time).toBe(true); // newest first
+
+    const upload = all.entries.find((e) => e.type === 'upload')!;
+    expect(upload).toMatchObject({ outcome: 'ok', trigger: 'upload' });
+    expect(upload.details).toMatchObject({ file: 'test.mrpro', size: backup.length });
+
+    const first = all.entries.filter((e) => e.type === 'rebuild').at(-1)!;
+    expect(first).toMatchObject({ outcome: 'ok', trigger: 'upload' });
+    expect(first.duration_ms).toBeGreaterThanOrEqual(0);
+    expect(first.details).toMatchObject({ backup: 'test.mrpro', books: 2, untagged_count: 2 });
+
+    const position = all.entries.find((e) => e.type === 'sync' && e.outcome === 'ok')!;
+    expect(position.details).toMatchObject({
+      kind: 'position',
+      book: 'Beta - Bob Writer.epub',
+      device: 'MoonReader/9 (Pixel 8)',
+    });
+    const refused = all.entries.find((e) => e.type === 'sync' && e.outcome === 'failed')!;
+    expect(refused.error).toMatch(/Wrong password/);
+
+    expect(all.health.last_sync).toBe(position.time);
+    expect(all.health.last_rebuild?.trigger).toBe('sync');
+
+    // filters
+    expect((await logs('?type=upload')).entries.map((e) => e.type)).toEqual(['upload']);
+    expect((await logs('?outcome=failed')).entries.every((e) => e.outcome === 'failed')).toBe(true);
+    expect((await logs('?q=pixel')).entries.map((e) => e.type)).toEqual(['sync']);
+    expect((await logs('?from=2000-01-01&to=2000-01-02')).total).toBe(0);
+    expect((await logs('?limit=1')).entries).toHaveLength(1);
+
+    // the raw files
+    const raw = await admin(dash).get('/api/admin/logs/download').expect(200);
+    expect(raw.headers['content-disposition']).toContain('activity.jsonl');
+    const lines = raw.text
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l) as LogEntry);
+    expect(lines.length).toBe(all.total);
+    const text = await admin(dash).get('/api/admin/logs/download?file=update').expect(200);
+    expect(text.text).toContain('Received upload test.mrpro');
+    expect((await dash.raw('GET', '/activity.jsonl')).status).toBe(404);
   });
 });

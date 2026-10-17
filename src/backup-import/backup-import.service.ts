@@ -22,6 +22,10 @@ export interface ImportSummary {
   books: number;
   reads: number;
   readingDays: number;
+  syncedApplied: number;
+  newCovers: number;
+  /** "<file>  ->  <title>" for every file not in catalogue.json. */
+  untagged: string[];
   highlights: number;
   lines: string[];
 }
@@ -53,10 +57,11 @@ export class BackupImportService {
     try {
       const contents = await readBackup(backup, tmp);
       if (!contents.databasePath) throw new Error('This backup has no mrbooks.db database.');
-      const { bookMeta, statistics, notes } = readDatabase(contents.databasePath);
+      const { bookMeta, isbns, statistics, notes } = readDatabase(contents.databasePath);
       const result = buildReadingHistory({
         catalogue,
         bookMeta,
+        isbns,
         statistics,
         positions: parsePositions(contents.positionsXml),
         synced: await this.readSyncedPositions(),
@@ -105,7 +110,13 @@ export class BackupImportService {
         );
         lines.push(...result.untagged.map((u) => `  ${u}`));
       }
-      return { ...counts, lines };
+      return {
+        ...counts,
+        syncedApplied: result.syncedApplied,
+        newCovers,
+        untagged: result.untagged,
+        lines,
+      };
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
@@ -131,7 +142,7 @@ export class BackupImportService {
     highlights: Highlight[],
     untagged: number,
     synced: number,
-  ): Promise<Omit<ImportSummary, 'lines'>> {
+  ): Promise<Pick<ImportSummary, 'books' | 'reads' | 'readingDays' | 'highlights'>> {
     const booksRows = [];
     const readsRows = [];
     const dailyRows = [];
@@ -144,6 +155,9 @@ export class BackupImportService {
         series_no: b.series_no,
         genre: b.genre,
         subgenre: b.subgenre,
+        isbn13: b.isbn13,
+        isbn10: b.isbn10,
+        work_id: b.work_id,
         status: b.status,
         progress: b.progress,
         hours: round1(b.total_minutes / 60),
@@ -230,17 +244,29 @@ export class BackupImportService {
 /** Book titles and authors, the reading log and highlights, from Moon+'s database. */
 function readDatabase(path: string): {
   bookMeta: Map<string, [string, string]>;
+  isbns: Map<string, string>;
   statistics: StatisticsRow[];
   notes: NoteRow[];
 } {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
     const bookMeta = new Map<string, [string, string]>();
+    const isbns = new Map<string, string>();
     for (const table of ['tmpbooks', 'books']) {
-      const rows = db.prepare(`select book, filename, author from ${table}`).all();
-      for (const { book, filename, author } of rows) {
-        if (filename)
-          bookMeta.set(String(filename).toLowerCase(), [String(book ?? ''), String(author ?? '')]);
+      // Moon+ isn't known to keep ISBNs, but read one if a version has a column for it
+      const isbn = db
+        .prepare(`pragma table_info(${table})`)
+        .all()
+        .map((c) => String(c.name))
+        .find((c) => /^(isbn\w*|identifier)$/i.test(c));
+      const rows = db
+        .prepare(`select book, filename, author${isbn ? `, "${isbn}" as isbn` : ''} from ${table}`)
+        .all();
+      for (const { book, filename, author, isbn: id } of rows) {
+        if (!filename) continue;
+        const file = String(filename).toLowerCase();
+        bookMeta.set(file, [String(book ?? ''), String(author ?? '')]);
+        if (id) isbns.set(file, String(id));
       }
     }
     const statistics = db
@@ -252,7 +278,7 @@ function readDatabase(path: string): {
         readWords: r.readWords == null ? null : Number(r.readWords),
         dates: r.dates == null ? null : String(r.dates),
       }));
-    return { bookMeta, statistics, notes: readNotes(db) };
+    return { bookMeta, isbns, statistics, notes: readNotes(db) };
   } finally {
     db.close();
   }

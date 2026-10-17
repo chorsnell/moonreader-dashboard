@@ -33,6 +33,55 @@ const row = (filename: string, dates: string[]): StatisticsRow => ({
 });
 
 describe('buildReadingHistory', () => {
+  it('carries ISBNs and counts editions of one work as one book', () => {
+    const days = (d: string) => [`${day(d)}|60000`, `${day(d) + 1}|60000`];
+    const { books } = buildReadingHistory(
+      input(
+        [
+          row('/b/Dune.epub', days('2020-01-01')),
+          row('/b/Dune (40th Anniversary).epub', days('2021-01-01')),
+          row('/b/Emma.epub', days('2022-01-01')),
+          row('/b/Emma - Penguin.epub', days('2023-01-01')),
+          row('/b/Moonless.epub', days('2024-01-01')),
+        ],
+        {
+          catalogue: {
+            books: {
+              'dune.epub': { title: 'Dune', author: 'Frank Herbert', isbn: '0-441-17271-7' },
+              'dune (40th anniversary).epub': {
+                title: 'Dune (40th Anniversary)',
+                author: 'Frank Herbert',
+                work_id: 'OL893415W',
+                isbn13: '978-0-441-17271-9',
+              },
+              'emma.epub': { title: 'Emma', author: 'Jane Austen', work_id: 'OL66562W' },
+              'emma - penguin.epub': {
+                title: 'Emma (Penguin Classics)',
+                author: 'Jane Austen',
+                work_id: 'ol66562w',
+                isbn10: 'not an isbn',
+              },
+            },
+            exclude: [],
+          },
+          isbns: new Map([['/b/moonless.epub', 'urn:isbn:9780141439587']]),
+        },
+      ),
+    );
+    const by = Object.fromEntries(books.map((b) => [b.title, b]));
+    expect(Object.keys(by).sort()).toEqual(['Dune', 'Emma', 'Moonless']);
+    expect(by.Dune).toMatchObject({
+      isbn13: '9780441172719',
+      isbn10: '0441172717',
+      work_id: 'OL893415W', // filled in from the other edition
+      times_read: 2,
+    });
+    expect(by.Dune.source_files).toHaveLength(2);
+    expect(by.Emma).toMatchObject({ isbn13: null, work_id: 'OL66562W', times_read: 1 });
+    expect(by.Emma.source_files).toHaveLength(2);
+    expect(by.Moonless.isbn13).toBe('9780141439587'); // from Moon+'s own table
+  });
+
   it('starts a new read after a year away', () => {
     const { books } = buildReadingHistory(
       input([
