@@ -1,0 +1,18 @@
+/* on this day, on the Overview */
+.otd-card .chart{min-height:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,18rem),1fr));gap:var(--cds-gap-md)}
+.otd-year{display:flex;flex-direction:column;gap:var(--cds-gap-sm);padding:var(--cds-pad-md);border-radius:8px;background:var(--color-bg);min-width:0}
+.otd-head{display:flex;align-items:baseline;gap:var(--cds-gap-sm);flex-wrap:wrap}
+.otd-head b{font-family:var(--font-anthropic-serif);font-weight:400;font-size:20px}
+.otd-date{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.otd-open{margin-left:auto}
+.otd-quiet{margin:0;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.otd-books{display:flex;flex-direction:column;gap:var(--cds-gap-xs)}
+.otd-book{display:grid;grid-template-columns:auto 1fr auto;gap:var(--cds-gap-sm);align-items:start}
+.otd-t{min-width:0;font-size:var(--cds-font-size-body)}
+.otd-t small.by{display:block;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.otd-book[data-link]:hover .otd-ttl{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+.otd-m{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.otd-quote{margin:var(--cds-gap-xs) 0 0;padding-left:var(--cds-pad-md);border-left:2px solid var(--cds-chart-muted);font-family:var(--font-anthropic-serif);font-size:16px;line-height:1.45;color:var(--color-fg);white-space:pre-line;text-wrap:pretty}
+.otd-quote::before{content:'“'}.otd-quote::after{content:'”'}
+.otd-note{margin:0;padding-left:var(--cds-pad-md);font-style:italic;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.otd-src{padding-left:var(--cds-pad-md);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}

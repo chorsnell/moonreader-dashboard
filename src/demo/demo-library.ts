@@ -16,7 +16,7 @@ import { BOOKS, fileName, ISBN } from './demo-books';
 import { writeDemoFriends } from './demo-friends-site';
 import { demoGoodreadsCsv } from './demo-goodreads';
 import { demoKobo } from './demo-kobo';
-import { simulateHighlights } from './demo-highlights';
+import { anniversaryHighlight, simulateHighlights } from './demo-highlights';
 import { demoMediaCatalogue, simulateAudiobookshelf, simulateNetflix } from './demo-media';
 import { demoMetadata } from './demo-metadata';
 import { demoPrices } from './demo-prices';
@@ -49,6 +49,8 @@ export async function buildDemoLibrary(
   let firstDay = yesterday - days + 1;
   firstDay -= firstDay % 7; // keep simulated weekends on real weekends (day 0 is a Thursday)
   const lastDay = firstDay + days - 1;
+  // a highlight on today's date in an earlier year, for the Overview's "On this day"
+  anniversaryHighlight(log, highlights, firstDay, today);
   const catalogue: Catalogue = {
     exclude: [],
     books: Object.fromEntries(
