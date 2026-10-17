@@ -22,6 +22,14 @@ import { COVER_NAME } from '../covers/cover-store.service';
 import { LibraryService } from '../library/library.service';
 import { filterDataFile } from '../privacy/privacy';
 import { PrivacyService } from '../privacy/privacy.service';
+import {
+  escapeAttribute,
+  GENERIC_DESCRIPTION,
+  SITE_NAME,
+  shareTags,
+  withShareTags,
+} from '../share/share-card';
+import { ShareService } from '../share/share.service';
 import { WEB_DIR } from '../paths';
 import { withFeatures } from './features';
 
@@ -40,6 +48,7 @@ export class WebController {
     private readonly library: LibraryService,
     private readonly settings: AccessSettingsService,
     private readonly privacy: PrivacyService,
+    private readonly share: ShareService,
   ) {}
 
   /**
@@ -51,8 +60,54 @@ export class WebController {
   @Header('Cache-Control', 'no-cache')
   async index(@Headers() headers: IncomingHttpHeaders): Promise<string> {
     const page = await withFeatures(await readFile(join(WEB_DIR, 'index.html'), 'utf8'), WEB_DIR);
-    const base = escapeAttribute(`${publicPrefix(headers, this.config.basePath)}/`);
-    return page.replace('<head>', `<head>\n<base href="${base}">`);
+    const prefix = publicPrefix(headers, this.config.basePath);
+    const base = escapeAttribute(`${prefix}/`);
+    const tagged = withShareTags(page, await this.shareTags(headers, prefix));
+    return tagged.replace('<head>', `<head>\n<base href="${base}">`);
+  }
+
+  /**
+   * Link preview tags. Only a public dashboard says anything about the reading (as the
+   * public sees it): one behind a password gets its name alone, as anyone without it would.
+   */
+  private async shareTags(headers: IncomingHttpHeaders, prefix: string): Promise<string> {
+    const origin = this.config.publicUrl || requestOrigin(headers, prefix);
+    const url = origin ? `${origin}/` : null;
+    const generic = { title: SITE_NAME, description: GENERIC_DESCRIPTION, url, image: null };
+    try {
+      if ((await this.settings.load()).access !== 'public' || !(await this.library.hasData())) {
+        return shareTags(generic);
+      }
+      const [card, image] = await Promise.all([this.share.card(), this.share.collage()]);
+      const path = image ? `share.jpg?v=${image.version}` : null;
+      return shareTags({
+        title: card.title,
+        description: card.description,
+        url,
+        image: path && (url ? `${url}${path}` : path),
+      });
+    } catch {
+      return shareTags(generic); // the page matters more than its preview
+    }
+  }
+
+  /** The link preview picture, a collage of recent covers: for a public dashboard only. */
+  @Get('share.jpg')
+  async shareImage(
+    @Headers('if-none-match') ifNoneMatch: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    if ((await this.settings.load()).access !== 'public') throw new NotFoundException();
+    const image = await this.share.collage();
+    if (!image) throw new NotFoundException();
+    const etag = `"${image.version}"`;
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    if (ifNoneMatch === etag) {
+      res.status(304).end();
+      return;
+    }
+    res.type('image/jpeg').send(image.jpeg);
   }
 
   /** The admin gets the files as written; everyone else a copy filtered by their policy. */
@@ -105,13 +160,20 @@ export class WebController {
   }
 }
 
-function escapeAttribute(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;');
+const HOST = /^(\[[0-9A-Fa-f:.]+\]|[A-Za-z0-9.-]+)(:\d{1,5})?$/;
+
+/**
+ * The dashboard's address from the request: the host the reverse proxy forwarded (or the
+ * Host header) and X-Forwarded-Proto, or null when the host doesn't look like one. Link
+ * previews need an absolute address; PUBLIC_URL sets it outright.
+ */
+export function requestOrigin(headers: IncomingHttpHeaders, prefix: string): string | null {
+  const first = (v: string | string[] | undefined) =>
+    (Array.isArray(v) ? (v[0] ?? '') : (v ?? '')).split(',')[0].trim();
+  const host = first(headers['x-forwarded-host']) || first(headers.host);
+  if (!HOST.test(host)) return null;
+  const proto = first(headers['x-forwarded-proto']).toLowerCase() === 'https' ? 'https' : 'http';
+  return `${proto}://${host}${prefix}`;
 }
 
 /** Sends a file that exists, or a 404 (never a directory listing or a path outside its folder). */

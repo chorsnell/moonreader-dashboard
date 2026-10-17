@@ -11,6 +11,11 @@ export interface AppConfig {
   library: string;
   /** The public sub-path, e.g. /reading, when a reverse proxy forwards it without stripping it. */
   basePath: string;
+  /**
+   * The dashboard's public address, e.g. https://books.example.com/reading, for the link
+   * preview tags. Empty: worked out from each request's Host (and X-Forwarded-*) headers.
+   */
+  publicUrl: string;
   /** Turns on uploads and WebDAV sync; it is the password for both. Empty means off. */
   uploadToken: string;
   /** How often to look for new backups, in seconds. */
@@ -72,6 +77,14 @@ function url(env: NodeJS.ProcessEnv, name: string, fallback: string): string {
   return (env[name]?.trim() || fallback).replace(/\/+$/, '');
 }
 
+function publicUrl(env: NodeJS.ProcessEnv): string {
+  const raw = (env.PUBLIC_URL ?? '').trim().replace(/\/+$/, '');
+  if (raw && !/^https?:\/\/[^\s/?#]+(\/[^\s?#]*)?$/.test(raw)) {
+    throw new Error(`PUBLIC_URL must be an http(s) address, not "${raw}"`);
+  }
+  return raw;
+}
+
 /** Reads and checks the settings. Throws with a readable message when one is invalid. */
 export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const base = (env.BASE_PATH ?? '').trim().replace(/^\/+|\/+$/g, '');
@@ -79,6 +92,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: integer(env, 'PORT', 8080),
     library: env.LIBRARY?.trim() || '/library',
     basePath: base ? `/${base}` : '',
+    publicUrl: publicUrl(env),
     uploadToken: (env.UPLOAD_TOKEN ?? '').trim(),
     pollSeconds: Math.max(5, integer(env, 'POLL_SECONDS', 30)),
     keepBackups: Math.max(1, integer(env, 'KEEP_BACKUPS', 5)),
