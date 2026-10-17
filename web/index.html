@@ -29,8 +29,9 @@
 }}
 *{box-sizing:border-box}
 body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans);-webkit-font-smoothing:antialiased}
-#dash-root{padding:clamp(16px,4vw,40px)}
+#dash-root{--root-pad:clamp(16px,4vw,40px);padding:var(--root-pad);overflow-x:clip}
 .rh-src{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);margin:var(--cds-gap-xs) 0 0}
+.rh-src a{color:inherit}
 .dash-skeleton{color:transparent!important;position:relative}
 .dash-skeleton::after{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:min(60%,8rem);height:.8em;border-radius:6px;background:var(--cds-chart-grid);animation:sk 1.4s ease-in-out infinite}
 .chart.dash-skeleton::after,ul.dash-skeleton::after{top:0;transform:none;width:100%;height:100%;min-height:120px}
@@ -56,9 +57,22 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .up-dav{display:flex;gap:8px;align-items:center;margin:4px 0 10px}
 .up-dav code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;padding:7px 9px;border-radius:8px;background:var(--color-bg);border:1px solid var(--color-border-line)}
 .up-copy{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg);cursor:pointer}
-#rh-empty{margin-top:var(--cds-gap-lg)}
+#rh-empty,#rh-locked{margin-top:var(--cds-gap-lg)}
 #rh-empty .up-primary{width:auto}
+#rh-locked form{max-width:20rem}
+#rh-locked label,.up-dialog label{display:block;font-size:12px;color:var(--color-fg-muted);margin:12px 0 4px}
+#rh-locked input{width:100%;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg)}
+.up-link{font:inherit;font-size:13px;border:0;background:none;color:var(--color-fg-muted);cursor:pointer;padding:4px 2px;text-decoration:underline;text-underline-offset:3px}
+.up-link:hover{color:var(--color-fg)}
+.up-dialog label.up-radio{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--color-fg);margin:8px 0;cursor:pointer}
+.up-dialog .up-radio input{width:auto;margin:0}
+.up-hint{margin-top:6px}
+.up-dialog section.up-foot{padding:10px 20px;text-align:right}
 </style>
+<link rel="stylesheet" href="pages/author.css">
+<link rel="stylesheet" href="pages/series.css">
+<link rel="stylesheet" href="pages/genre.css">
+<link rel="stylesheet" href="pages/year.css">
 </head>
 <body>
 <div id="dash-root">
@@ -67,12 +81,23 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .rh-head h1{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0}
 .rh-take{color:var(--color-fg-muted);font-size:var(--cds-font-size-body);margin:var(--cds-gap-xs) 0 0;line-height:1.5}
 .rh-take b,.rh .num b{font-weight:600;color:var(--color-fg)}
-.rh-tabs{display:flex;gap:var(--cds-gap-xs);border-bottom:1px solid var(--color-border-line);overflow-x:auto}
+.rh-top{position:sticky;top:0;z-index:10;display:flex;flex-direction:column;gap:var(--cds-gap-sm);margin-top:calc(-1 * var(--root-pad));padding-top:var(--cds-pad-md);background:var(--color-bg);box-shadow:0 0 0 100vmax var(--color-bg);clip-path:inset(0 -100vmax)}
+.rh-intro{margin-top:calc(-1 * var(--cds-gap-sm))}
+.rh-intro .rh-take{margin:0}
+.rh-tabs{display:flex;gap:var(--cds-gap-xs);border-bottom:1px solid var(--color-border-line);overflow-x:auto;scrollbar-width:none}
+.rh-tabs::-webkit-scrollbar{display:none}
 .rh-tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:var(--cds-pad-sm) var(--cds-pad-md);font:inherit;font-size:var(--cds-font-size-body);color:var(--color-fg-muted);cursor:pointer;white-space:nowrap}
 .rh-tabs button[aria-selected=true]{color:var(--color-fg);border-bottom-color:var(--color-fg)}
 .rh-tabs[hidden]{display:none}
 .rh-page{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
 .rh-page[hidden]{display:none}
+.rh-page.in-l{animation:in-l .22s ease-out}.rh-page.in-r{animation:in-r .22s ease-out}
+@keyframes in-l{from{transform:translateX(-40px);opacity:0}}
+@keyframes in-r{from{transform:translateX(40px);opacity:0}}
+.rh-page.drag{transition:none!important}
+.rh-page.settle{transition:transform .18s ease-out,opacity .18s ease-out}
+.rh-page,.dy-day,.rh-card{scroll-margin-top:var(--top-h,110px)}
+@media (prefers-reduced-motion:reduce){.rh-page.in-l,.rh-page.in-r{animation:none}}
 .rh-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:var(--cds-gap-md)}
 .rh-kpi{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-md) var(--cds-pad-lg)}
 .rh-kpi .lbl{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
@@ -173,14 +198,67 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .ev.finished{color:var(--color-ok)}.ev.started,.ev.reread{color:var(--color-fg-muted)}
 .dy-more{margin-top:var(--cds-gap-md);font:inherit;font-size:var(--cds-font-size-body);padding:var(--cds-pad-xs) var(--cds-pad-md);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);cursor:pointer}
 .dy-empty{color:var(--color-fg-muted);font-size:var(--cds-font-size-body);padding:var(--cds-pad-lg) 0}
+.ck-filter{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs) var(--cds-gap-sm);margin-bottom:var(--cds-gap-md)}
+.ck-filter button{font:inherit;font-size:var(--cds-font-size-caption);padding:4px 10px;border:1px solid var(--color-border-line);border-radius:999px;background:var(--color-bg);color:var(--color-fg-muted);cursor:pointer;text-align:left}
+.ck-filter button b{color:var(--color-fg);font-weight:600;margin-left:4px;font-variant-numeric:tabular-nums}
+.ck-filter button[aria-pressed=true]{border-color:var(--color-fg);color:var(--color-fg)}
+.ck-filter button:disabled{opacity:.45;cursor:default}
+.ck-list li{align-items:flex-start}
+.ck-list .ttl p{margin:4px 0 0;font-size:var(--cds-font-size-caption);color:var(--color-fg);line-height:1.45;overflow-wrap:anywhere}
+.ck-list .tag{font-size:11px;color:var(--color-warn);margin-left:6px}
+.ck-strip{position:relative;height:10px;margin-top:6px;max-width:28rem;border-radius:3px;overflow:hidden}
+.ck-strip i{position:absolute;top:0;bottom:0;min-width:2px;border-radius:1px}
+.ck-strip span{position:absolute;inset:0;opacity:.16}
+.ck-date{all:unset;cursor:pointer;color:var(--series-1);font-size:var(--cds-font-size-caption);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ck-date:hover{text-decoration:underline}
+@media (max-width:640px){
+  #dash-root{--root-pad:12px}
+  .rh{gap:var(--cds-gap-md)}
+  .rh-top{gap:var(--cds-gap-xs);padding-top:var(--cds-pad-sm)}
+  .rh-head h1{font-size:22px}
+  .rh-update{padding:6px 12px;font-size:13px}
+  .rh-intro{margin-top:calc(-1 * var(--cds-gap-xs))}
+  .rh-tabs{margin-inline:calc(-1 * var(--root-pad));padding-inline:var(--root-pad);gap:0;scroll-padding-inline:var(--root-pad)}
+  .rh-tabs button{padding:10px 12px}
+  .rh-page,.rh-grid{gap:var(--cds-gap-sm)}
+  .rh-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--cds-gap-sm)}
+  .rh-kpi{padding:var(--cds-pad-sm) var(--cds-pad-md)}
+  .rh-kpi .val{font-size:22px}
+  .rh-card{padding:var(--cds-pad-md) 14px}
+  .chart.tall{min-height:260px}
+}
 @media (max-width:520px){.dy-day{grid-template-columns:1fr;gap:var(--cds-gap-xs)}.dy-date b,.dy-date span{display:inline;margin-right:8px}.dy-gap{padding-left:0}}
+[data-link],[data-day],[data-read]{cursor:pointer}
+[data-link]:focus-visible{outline:2px solid var(--series-1);outline-offset:2px;border-radius:4px}
+.rh-list li[data-link]:hover .ttl,.dy-book[data-link]:hover .t,.go-one[data-link]:hover .go-title,.rh-kpi[data-link]:hover .val{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+.rh tr[data-link]:hover td,.rh tr[data-day]:hover td,.rh tr[data-read]:hover td{background:var(--color-bg)}
+.ck-list li[data-link]:hover .ttl{text-decoration:none}.ck-list li[data-link]:hover .ck-title{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+/* an author, series or genre inside a book row: its own link, underlined on its own */
+.lk[data-link]{text-decoration:underline dotted;text-decoration-color:var(--cds-chart-axis);text-underline-offset:3px}
+.lk[data-link]:hover,.rh-list li[data-link]:hover .lk[data-link]:hover{text-decoration:underline solid;text-decoration-color:currentColor;color:var(--color-fg)}
+.rh-list li[data-link]:hover small .lk,.dy-book[data-link]:hover small .lk{text-decoration-style:dotted}
+.chip[data-link]:hover{border-color:currentColor}
+.legend span[data-link]:hover,svg [data-link]:hover text,svg text[data-link]:hover{text-decoration:underline;fill:var(--color-fg)}
+.legend span[data-link]:hover{color:var(--color-fg)}
+.dy-book .t small.by{display:block}
+.pg-body{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
+.rh .bk-tbl th{padding:var(--cds-pad-xs) var(--cds-pad-sm)}
+.rh .bk-tbl td{white-space:nowrap}
+.rh tr.sel td{background:color-mix(in srgb,var(--series-1) 10%,transparent)}
+.bk-back{align-self:flex-start;font:inherit;font-size:var(--cds-font-size-body);border:0;background:none;color:var(--color-fg-muted);cursor:pointer;padding:0}
+.bk-back:hover{color:var(--color-fg)}
+.rh-card.bk-head{flex-direction:row;align-items:flex-start;gap:var(--cds-gap-lg)}
+.bk-title{font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-title);line-height:1.2}
+.bk-chips{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs);margin-top:var(--cds-gap-xs)}
+.chip.ok{color:var(--color-ok);border-color:currentColor}
+.rh-list li.cur{background:color-mix(in srgb,var(--series-1) 8%,transparent);border-radius:6px}
+@media (max-width:520px){.rh-card.bk-head{flex-direction:column}#bk-kpis{grid-template-columns:1fr 1fr;gap:var(--cds-gap-sm)}#bk-kpis .rh-kpi{padding:var(--cds-pad-sm) var(--cds-pad-md)}#bk-kpis .val{font-size:20px}}
 </style>
 
 <div class="rh">
-  <header class="rh-head" id="top">
+  <div class="rh-top" id="top">
+  <header class="rh-head">
     <h1>Reading history</h1>
-    <p class="rh-take dash-skeleton" id="takeaway" data-source="kpis" data-field="value" data-where="metric=takeaway">—</p>
-    <p class="rh-src" id="rh-source"></p>
   </header>
 
   <nav class="rh-tabs" role="tablist">
@@ -190,7 +268,14 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
     <button role="tab" data-tab="timeline" id="tab-timeline" aria-selected="false">Timeline &amp; habits</button>
     <button role="tab" data-tab="diary" id="tab-diary" aria-selected="false">Diary</button>
     <button role="tab" data-tab="library" id="tab-library" aria-selected="false">Library</button>
+    <button role="tab" data-tab="checks" id="tab-checks" aria-selected="false">Data checks</button>
   </nav>
+  </div>
+
+  <div class="rh-intro">
+    <p class="rh-take dash-skeleton" id="takeaway" data-source="kpis" data-field="value" data-where="metric=takeaway">—</p>
+    <p class="rh-src" id="rh-source"></p>
+  </div>
 
   <!-- OVERVIEW -->
   <section class="rh-page" id="overview">
@@ -354,8 +439,10 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
         <select aria-label="Period"><option value="30d">Last 30 days</option><option value="90d">Last 3 months</option><option value="12m">Last 12 months</option><option value="ytd">This year</option><option value="ly">Last year</option><option value="24m">Last 2 years</option><option value="all">All time</option><option value="custom">Custom…</option></select>
         <label>From <input type="date" aria-label="From"></label><label>To <input type="date" aria-label="To"></label>
       </div></div>
-      <p class="note">What you read each day: minutes, words and how far you got. Moon+ records the day you read, not the time of day; minutes and words are logged from 2019.</p>
+      <p class="note">What you read each day: minutes, words and how far you got. The strip shows minutes per day, coloured by genre; click a day to jump to it in the list. Moon+ records the day you read, not the time of day; minutes and words are logged from 2019.</p>
       <div class="dy-sum" id="dy-sum" data-source="diary"></div>
+      <div class="legend" id="leg-dytl"></div>
+      <div class="chart short" id="ch-dytl" data-source="diary"></div>
       <div id="dy-list" data-source="diary"></div>
       <button class="dy-more" id="dy-more" hidden>Show more days</button>
     </div>
@@ -392,6 +479,50 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
         <thead><tr><th data-field="title"><button>Title</button></th><th data-field="read_no" class="n"><button>Read</button></th><th data-field="start"><button>Started</button></th><th data-field="end"><button>Last day</button></th><th data-field="days_read" class="n hide-sm"><button>Days</button></th><th data-field="hours" class="n hide-sm"><button>Hours</button></th><th data-field="progress" class="n"><button>Reached</button></th></tr></thead>
         <tbody></tbody></table></div></div>
   </section>
+
+  <!-- DATA CHECKS -->
+  <section class="rh-page" id="checks" hidden>
+    <div class="rh-card wide" id="card-checks"><h2>Things that look odd</h2>
+      <p class="note">Places where the log may not reflect what you actually read: books opened once and then left for weeks, reads spread thinly over months, days with lots of books, implausible speeds and progress jumps. Pick a check to filter; click a date to open that day in the diary.</p>
+      <div class="ck-filter" id="ck-filter" role="group" aria-label="Checks" data-source="anomalies"></div>
+      <ul class="rh-list ck-list" id="ck-list" data-source="anomalies"></ul>
+      <button class="dy-more" id="ck-more" hidden>Show more</button>
+    </div>
+  </section>
+
+  <!-- ONE BOOK (opened by clicking a book anywhere) -->
+  <section class="rh-page" id="book" hidden>
+    <button class="bk-back" id="bk-back">← Back</button>
+    <div class="rh-card wide bk-head" id="bk-head" data-source="books"></div>
+    <div class="rh-kpis" id="bk-kpis"></div>
+    <div class="rh-card wide" id="card-bk-days"><div class="card-head"><h2>Day by day</h2>
+      <select id="bk-read" class="rng-sel" aria-label="Read"></select></div>
+      <p class="note" id="bk-days-note"></p>
+      <div class="chart" id="ch-bk-days" data-source="diary"></div></div>
+    <div class="rh-grid">
+      <div class="rh-card" id="card-bk-reads"><h2>Every read</h2>
+        <p class="note">A new read starts when you come back after a year or more. Click one to chart it.</p>
+        <div class="tbl-box" style="max-height:420px">
+        <table id="tbl-bk-reads" class="bk-tbl">
+          <thead><tr><th class="n">Read</th><th>Started</th><th>Last day</th><th class="n hide-sm">Took</th><th class="n hide-sm">Hours</th><th class="n hide-sm">WPM</th><th class="n">Reached</th></tr></thead>
+          <tbody></tbody></table></div></div>
+      <div class="rh-card" id="card-bk-related"><h2 id="bk-rel-h">More</h2>
+        <p class="note" id="bk-rel-note"></p>
+        <ul class="rh-list" id="bk-related"></ul></div>
+    </div>
+    <div class="rh-card wide" id="card-bk-log"><h2>Reading log</h2>
+      <p class="note">Every day you opened this book, newest first. Click a day to open it in the diary.</p>
+      <div class="tbl-box" style="max-height:480px">
+      <table id="tbl-bk-log" class="bk-tbl">
+        <thead><tr><th>Day</th><th class="n">Time</th><th class="n hide-sm">Words</th><th class="n hide-sm">WPM</th><th class="n">Progress</th></tr></thead>
+        <tbody></tbody></table></div></div>
+  </section>
+
+  <!-- AUTHOR, SERIES, GENRE, SUBGENRE, YEAR: drawn by pages/*.js -->
+  <section class="rh-page" id="entity" hidden>
+    <button class="bk-back" id="pg-back">← Back</button>
+    <div class="pg-body" id="pg-body"></div>
+  </section>
 </div>
 
 </div>
@@ -399,6 +530,10 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 <script src="runtime.js"></script>
 <script src="calcs.js"></script>
 <script src="charts.js"></script>
+<script src="pages/author.js"></script>
+<script src="pages/series.js"></script>
+<script src="pages/genre.js"></script>
+<script src="pages/year.js"></script>
 <script src="upload.js"></script>
 </body>
 </html>

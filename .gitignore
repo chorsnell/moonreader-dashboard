@@ -6,3 +6,5 @@ dist/
 coverage/
 *.tsbuildinfo
 .DS_Store
+.env
+site/
