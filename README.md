@@ -206,6 +206,16 @@ TV subscriptions are entered in **Other media**, for the cost per hour watched.
 
 If you run a Readarr-compatible book manager (Readarr's successors such as Bookshelf), connect it in the **Book manager** section with its URL and API key. You then see, as the admin only, where each book stands there (available, downloading, wanted), a **Get next in series** button and **Get the rest of this author** on author pages. The dashboard only sends requests to your own instance; it never searches for or downloads anything itself, and the API key never leaves the server. Requests are logged in **Sync & logs**. More in [docs/integrations.md](docs/integrations.md).
 
+## Exporting highlights
+
+**Admin → Highlights** exports every highlight and note (Moon+, Kobo and Kindle):
+
+- **Obsidian or Logseq:** a zip with a Markdown file per book (`Highlights/<Title> - <Author>.md`): YAML front matter (title, author, series, genre, ISBN, published year, rating, status, first and last read, book id) and each highlight as a quote with your note and where it comes in the book, in book order. Each book keeps the same file name, so unzipping a new export into your vault replaces last time's files instead of adding copies (edits made in those files are overwritten). Each highlight has a block id (`^hl-<id>`), so links to it keep working.
+- **Readwise CSV:** the columns Readwise's [bulk import](https://readwise.io/import_bulk) reads (Highlight, Title, Author, URL, Note, Location, Date).
+- **Readwise directly:** paste your [access token](https://readwise.io/access_token); it's checked with Readwise, kept in `settings.json` and never sent back to the page. **Send new highlights** posts only what hasn't been sent before (recorded in `readwise-pushed.json`); Readwise itself matches highlights by text, title and author, so **Send all again** updates rather than duplicates.
+
+The export is the admin's own, so private books are included.
+
 ## The admin page
 
 Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#admin`) has these sections:
@@ -214,6 +224,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 |---|---|
 | **Data** | Upload a backup, rebuild now, the backups kept, the WebDAV address |
 | **Imports** | Goodreads, StoryGraph, Kobo and Kindle files; export to Goodreads |
+| **Highlights** | Export highlights to Obsidian or Logseq (Markdown) and Readwise (CSV or straight to your account) |
 | **Sync & logs** | Every sync, rebuild, upload, lookup and request, filterable and downloadable, with a warning when syncing seems to have stopped or a login failed |
 | **Other media** | Netflix uploads, Tautulli, Audiobookshelf, TMDB and streaming subscriptions |
 | **Access & privacy** | Who can see the dashboard and what each kind of visitor sees; private books and genres; preview as a visitor |
@@ -300,6 +311,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `MEDIA_POLL_MINUTES` | `60` | How often to pull from Tautulli and Audiobookshelf |
 | `MIXPANEL_TOKEN` | *(empty)* | A Mixpanel project token: sends anonymous page views and clicks (no titles, names or dates) to Mixpanel. Off when empty |
 | `MIXPANEL_API_HOST` | `https://api-js.mixpanel.com` | Mixpanel's address, e.g. `https://api-eu.mixpanel.com` for EU data residency |
+| `READWISE_URL` | `https://readwise.io` | Readwise's address (for tests); the token is set in Admin → Highlights |
 
 The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", `YYYY-MM-DD`) and `DEMO_SEED`, and the demo build `DEMO_URL` (its public address, for link previews); see [docs/contributing.md](docs/contributing.md).
 
@@ -309,6 +321,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/api/config`: who you're signed in as and the last rebuild.
 - `/api/covers`: the saved covers.
 - `/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`: every number the page shows, worked out on the server for each viewer from only what they may see. See [docs/api.md](docs/api.md).
+- `/api/admin/highlights/…` (admin only): highlight exports; see [docs/api.md](docs/api.md#admin-highlight-exports).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 
 ## How the numbers are worked out
