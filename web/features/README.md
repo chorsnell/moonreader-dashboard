@@ -60,3 +60,9 @@ Every chart shares one visual system, so new charts should use it rather than pi
   gridlines and remove the y-axis `.domain`.
 - **Hover.** Tooltips go through `rh.showTip` / `rh.tipLines`. Give a row's or column's
   transparent hit rect `class="hit"` and it gets a faint wash on hover.
+- **Motion.** Charts made with `rh.svgIn` fade in when they first appear on a view, or when
+  their data or a setting in their card changes. They don't animate on a resize or a table
+  sort, and never with `prefers-reduced-motion`. To grow marks as well, use
+  `sel.call(rh.grow, attr, from, to)`, e.g. `circles.call(rh.grow, 'r', 0, (d) => d.r)` or bars
+  from a zero-height `rh.barPath`. Draw lines in with `path.call(rh.drawIn)`. Both just set the
+  final value when the chart shouldn't animate. `rh.motion(node)` tells you whether it will.
