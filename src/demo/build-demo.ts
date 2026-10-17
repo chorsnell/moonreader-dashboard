@@ -25,7 +25,8 @@ import { writeDemoBackup } from './demo-backup';
 import { demoPrices } from './demo-prices';
 import { simulateHighlights } from './demo-highlights';
 import { DemoModule } from './demo.module';
-import { BOOKS, fileName } from './demo-books';
+import { BOOKS, fileName, ISBN } from './demo-books';
+import { demoMetadata } from './demo-metadata';
 import { Random } from './random';
 import { simulate } from './simulate';
 
@@ -53,11 +54,13 @@ async function main(): Promise<void> {
       books: Object.fromEntries(
         BOOKS.map(([title, author, genre, subgenre, series, seriesNo]) => [
           fileName(title, author).toLowerCase(),
-          { title, author, series, series_no: seriesNo, genre, subgenre },
+          { title, author, series, series_no: seriesNo, genre, subgenre, isbn: ISBN[title] },
         ]),
       ),
     };
     await writeFile(join(lib, 'catalogue.json'), JSON.stringify(catalogue), 'utf8');
+    // what the metadata lookup would find, so the demo needs no network for it
+    await writeFile(join(lib, 'metadata.json'), JSON.stringify(demoMetadata()), 'utf8');
     const backup = join(lib, 'demo-library.mrpro');
     await writeDemoBackup(backup, log, firstDay, highlights);
 

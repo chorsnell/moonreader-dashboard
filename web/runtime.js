@@ -54,7 +54,8 @@ window.dash = (() => {
       a.textContent = 'Run it on your own Moon+ Reader data';
       el.append(a, '.');
     } else if (el && m.backup_file) {
-      const when = new Date(m.generated).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+      // without a time when the owner shows visitors rounded dates only
+      const when = new Date(m.generated).toLocaleString('en-GB', String(m.generated).includes('T') ? { dateStyle: 'medium', timeStyle: 'short' } : api.dates === 'month' ? { month: 'long', year: 'numeric' } : { dateStyle: 'medium' });
       el.textContent = `Data from ${m.backup_file}, updated ${when}` + (m.synced_positions ? `, plus ${m.synced_positions} position${m.synced_positions === 1 ? '' : 's'} synced from Moon+.` : '.');
     }
     return config;
@@ -71,6 +72,19 @@ window.dash = (() => {
     file: (id, url, o = {}) => { files[id] = url; state[id] = { status: 'loading', data: [] }; if (o.optional) optional.add(id); },
     calc: (id, o) => { calcs.push([id, o]); state[id] = { status: 'loading', data: [] }; },
     data: (id) => state[id] || { status: 'missing', data: [] },
+    // the data files a calc is worked out from, through any calcs it uses
+    needs: (id) => {
+      const out = new Set(), seen = new Set();
+      const visit = (k) => {
+        if (seen.has(k)) return;
+        seen.add(k);
+        if (files[k]) out.add(k);
+        const c = calcs.find(([x]) => x === k);
+        if (c) c[1].inputs.forEach(visit);
+      };
+      visit(id);
+      return out;
+    },
     onData: (fn) => { subs.push(fn); try { fn(); } catch (e) { console.error(e); } },
     cover: (id) => covers[id] || null,
     params: () => ({ ...params }),

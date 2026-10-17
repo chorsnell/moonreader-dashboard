@@ -68,6 +68,7 @@ describe('rebuilding', () => {
     const books = await booksByTitle(dash);
     expect(books.Alpha.status).toBe('finished');
     expect(books.Beta.progress).toBe(50);
+    expect(books.Alpha).toMatchObject({ isbn13: null, isbn10: null, work_id: null });
     const daily = await dash.json<{ minutes: number; progress: number }[]>('data', 'daily.json');
     expect(daily).toHaveLength(5);
     expect(daily[0].minutes).toBe(30);
@@ -146,6 +147,86 @@ describe('covers', () => {
       const covers = (await request(dash.server).get('/api/covers')).body as object;
       expect(Object.keys(covers).sort()).toEqual(['alpha', 'beta']);
     });
+  });
+});
+
+describe('metadata lookup', () => {
+  let server: Server;
+  const asked: string[] = [];
+
+  // Open Library knows Beta (by Bob Writer, OL7A); Wikidata knows Bob as Q7, a French man
+  beforeAll(async () => {
+    server = createServer((req, res) => {
+      const url = new URL(req.url ?? '/', 'http://x');
+      asked.push(url.pathname);
+      res.setHeader('Content-Type', 'application/json');
+      if (url.pathname === '/search.json') {
+        const beta = url.searchParams.get('title') === 'Beta';
+        const docs = beta
+          ? [
+              {
+                key: '/works/OL9W',
+                title: 'Beta',
+                author_key: ['OL7A'],
+                first_publish_year: 1899,
+                number_of_pages_median: 321,
+                isbn: ['0141439513'],
+              },
+            ]
+          : [];
+        res.end(JSON.stringify({ docs }));
+      } else if (url.pathname === '/authors/OL7A.json') {
+        res.end(JSON.stringify({ remote_ids: { wikidata: 'Q7' } }));
+      } else if (url.pathname === '/w/api.php') {
+        const v = (id: string) => ({
+          mainsnak: { snaktype: 'value', datavalue: { value: { id } } },
+          rank: 'normal',
+        });
+        const entities: Record<string, object> = {
+          Q7: { id: 'Q7', claims: { P21: [v('Q6581097')], P27: [v('Q142')] } },
+          Q142: {
+            id: 'Q142',
+            claims: { P297: [{ mainsnak: { snaktype: 'value', datavalue: { value: 'FR' } } }] },
+          },
+        };
+        const ids = (url.searchParams.get('ids') ?? '').split('|');
+        res.end(JSON.stringify({ entities: Object.fromEntries(ids.map((i) => [i, entities[i]])) }));
+      } else {
+        res.writeHead(404).end();
+      }
+    });
+    server.listen(0, '127.0.0.1');
+    await new Promise((r) => server.once('listening', r));
+  });
+
+  afterAll(() => new Promise((r) => server.close(r)));
+
+  it('looks up books and authors, then rebuilds with what it found', async () => {
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    dash = await TestDashboard.start({
+      metadataLookup: true,
+      openLibraryUrl: url,
+      wikidataUrl: url,
+      coverPauseMs: 0,
+    });
+    await upload(dash);
+    const beta = async () => (await booksByTitle(dash!)).Beta as unknown as Record<string, unknown>;
+    expect(await waitFor(async () => (await beta()).published_year === 1899)).toBe(true);
+    expect(await beta()).toMatchObject({
+      pages: 321,
+      isbn13: '9780141439518',
+      isbn10: '0141439513',
+      work_id: 'OL9W',
+      author_country: 'FR',
+      author_country_name: 'France',
+      author_gender: 'male',
+    });
+    expect((await booksByTitle(dash)).Alpha).toMatchObject({ published_year: null });
+    const misses = await dash.json<{ books: Record<string, string> }>('.metadata-misses.json');
+    expect(Object.keys(misses.books)).toEqual(['alpha']);
+    expect(asked).toContain('/authors/OL7A.json');
+    // metadata.json isn't served
+    expect((await dash.raw('GET', '/metadata.json')).status).toBe(404);
   });
 });
 

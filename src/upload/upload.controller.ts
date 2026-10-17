@@ -59,11 +59,24 @@ export class UploadController {
     } catch (e) {
       if (!(e instanceof RequestBodyError)) throw e;
       const error = e.problem === 'bad-content' ? "That file isn't a Moon+ backup." : e.message;
+      this.activity.record({
+        type: 'upload',
+        message: `Refused upload ${file}`,
+        outcome: 'failed',
+        trigger: 'upload',
+        error,
+        details: { file },
+      });
       throw new BadRequestException({ error });
     }
     const { size } = await stat(dest);
-    this.activity.log(`Received upload ${file} (${Math.floor(size / (1024 * 1024))} MB)`);
-    this.library.changed();
+    this.activity.record({
+      type: 'upload',
+      message: `Received upload ${file} (${Math.floor(size / (1024 * 1024))} MB)`,
+      trigger: 'upload',
+      details: { file, size },
+    });
+    this.library.changed('upload');
     return { ok: true };
   }
 }
