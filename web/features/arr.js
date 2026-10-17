@@ -148,7 +148,7 @@
       } catch (err) { msg.textContent = err.message; }
       save.disabled = false;
     } }, h('label', { for: 'arr-url' }, 'URL'), url, h('label', { for: 'arr-key' }, 'API key'), key,
-      h('p', { class: 'up-note' }, 'In the book manager: Settings → General → Security → API Key. It is kept in settings.json on this server and is never sent to anyone but the admin’s own requests to it.'),
+      h('p', { class: 'up-note' }, 'In the book manager: Settings → General → Security → API Key. It’s kept in settings.json on this server and only ever sent to the book manager itself.'),
       h('div', { class: 'ad-actions' }, save, drop), msg);
     const recent = h('div', {});
     async function load() {
