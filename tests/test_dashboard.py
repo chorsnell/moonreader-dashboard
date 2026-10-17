@@ -154,6 +154,9 @@ class DashboardTests(unittest.TestCase):
         cfg = json.loads(body)
         self.assertEqual(status, 200)
         self.assertFalse(cfg['has_data'])
+        self.assertFalse(cfg['uploads'])  # only the admin sees the upload button
+        self.assertEqual((cfg['access'], cfg['role'], cfg['can_read'], cfg['admin']), ('public', None, True, True))
+        cfg = json.loads(s.request('GET', '/api/config', headers={'X-Upload-Token': TOKEN})[2])
         self.assertTrue(cfg['uploads'])
 
     def test_upload_builds_data(self):
@@ -227,6 +230,72 @@ class DashboardTests(unittest.TestCase):
         self.assertIn(b'<base href="/books/">', body)
         self.assertEqual(s.request('GET', '/books/runtime.js')[0], 200)
         self.assertEqual(s.request('GET', '/books/api/config')[0], 200)
+
+    def sign_in(self, s, password):
+        status, headers, body = s.request('POST', '/api/login', json.dumps({'password': password}),
+                                          {'Content-Type': 'application/json'})
+        cookie = headers.get('Set-Cookie', '').split(';')[0]
+        return status, ({'Cookie': cookie} if status == 200 else {}), json.loads(body)
+
+    def set_access(self, s, auth, access, password=''):
+        return s.request('POST', '/api/access', json.dumps({'access': access, 'password': password}),
+                         {'Content-Type': 'application/json', **auth})
+
+    def test_admin_signs_in_to_upload(self):
+        self.s = s = Server()
+        self.assertEqual(self.sign_in(s, 'wrong')[0], 403)
+        status, admin, body = self.sign_in(s, TOKEN)
+        self.assertEqual((status, body['role']), (200, 'admin'))
+        cfg = json.loads(s.request('GET', '/api/config', headers=admin)[2])
+        self.assertEqual((cfg['role'], cfg['uploads']), ('admin', True))
+        with open(self.backup, 'rb') as f:
+            self.assertEqual(s.request('PUT', '/upload?name=test.mrpro', f.read(), admin)[0], 200)
+        self.assertEqual(s.request('PUT', '/upload?name=test.mrpro', b'PK..', {'Cookie': 'mrd_session=admin.9999999999.forged'})[0], 403)
+        _, headers, _ = s.request('POST', '/api/logout', headers=admin)
+        self.assertIn('Max-Age=0', headers['Set-Cookie'])
+
+    def test_private_dashboard_needs_read_password(self):
+        self.s = s = Server()
+        self.upload(s)
+        self.assertTrue(s.wait_for(lambda: os.path.exists(os.path.join(s.lib, 'data', 'books.json'))))
+        _, admin, _ = self.sign_in(s, TOKEN)
+        # only the admin can change it, and only with a JSON body (so other sites can't)
+        self.assertEqual(self.set_access(s, {}, 'password', 'friends')[0], 403)
+        self.assertEqual(s.request('POST', '/api/access', 'access=public', {**admin, 'Content-Type': 'application/x-www-form-urlencoded'})[0], 400)
+        self.assertEqual(self.set_access(s, admin, 'password')[0], 400)       # no read password yet
+        self.assertEqual(self.set_access(s, admin, 'password', TOKEN)[0], 400)  # must differ from the admin token
+        self.assertEqual(self.set_access(s, admin, 'password', 'friends')[0], 200)
+        self.assertNotIn(b'friends', open(os.path.join(s.lib, 'settings.json'), 'rb').read())
+
+        cfg = json.loads(s.request('GET', '/api/config')[2])
+        self.assertEqual(cfg, {'access': 'password', 'role': None, 'admin': True, 'can_read': False})
+        s.request('GET', '/api/covers')  # covers were saved by the build
+        for path in ('/data/books.json', '/data/meta.json', '/api/covers', '/covers/alpha.png'):
+            self.assertEqual(s.request('GET', path)[0], 401, path)
+        self.assertEqual(s.request('GET', '/')[0], 200)  # the page itself shows the password box
+        self.assertEqual(s.request('GET', '/data/books.json', headers=admin)[0], 200)
+
+        self.assertEqual(self.sign_in(s, 'wrong')[0], 403)
+        status, reader, body = self.sign_in(s, 'friends')
+        self.assertEqual((status, body['role']), (200, 'reader'))
+        self.assertEqual(s.request('GET', '/data/books.json', headers=reader)[0], 200)
+        status, headers, _ = s.request('GET', '/covers/alpha.png', headers=reader)
+        self.assertEqual(status, 200)
+        self.assertTrue(headers['Cache-Control'].startswith('private'))
+        cfg = json.loads(s.request('GET', '/api/config', headers=reader)[2])
+        self.assertEqual((cfg['role'], cfg['can_read'], cfg['uploads']), ('reader', True, False))
+        # readers can't upload or change the setting
+        self.assertEqual(s.request('PUT', '/upload?name=test.mrpro', b'PK..', reader)[0], 403)
+        self.assertEqual(self.set_access(s, reader, 'public')[0], 403)
+
+        # a new read password signs out everyone using the old one; keeping it doesn't
+        self.assertEqual(self.set_access(s, admin, 'password')[0], 200)
+        self.assertEqual(s.request('GET', '/data/books.json', headers=reader)[0], 200)
+        self.assertEqual(self.set_access(s, admin, 'password', 'new friends')[0], 200)
+        self.assertEqual(s.request('GET', '/data/books.json', headers=reader)[0], 401)
+
+        self.assertEqual(self.set_access(s, admin, 'public')[0], 200)
+        self.assertEqual(s.request('GET', '/data/books.json')[0], 200)
 
     def test_webdav_requires_password(self):
         self.s = s = Server()

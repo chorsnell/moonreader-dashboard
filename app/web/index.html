@@ -56,8 +56,17 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .up-dav{display:flex;gap:8px;align-items:center;margin:4px 0 10px}
 .up-dav code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;padding:7px 9px;border-radius:8px;background:var(--color-bg);border:1px solid var(--color-border-line)}
 .up-copy{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg);cursor:pointer}
-#rh-empty{margin-top:var(--cds-gap-lg)}
+#rh-empty,#rh-locked{margin-top:var(--cds-gap-lg)}
 #rh-empty .up-primary{width:auto}
+#rh-locked form{max-width:20rem}
+#rh-locked label,.up-dialog label{display:block;font-size:12px;color:var(--color-fg-muted);margin:12px 0 4px}
+#rh-locked input{width:100%;font:inherit;font-size:14px;padding:7px 9px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg)}
+.up-link{font:inherit;font-size:13px;border:0;background:none;color:var(--color-fg-muted);cursor:pointer;padding:4px 2px;text-decoration:underline;text-underline-offset:3px}
+.up-link:hover{color:var(--color-fg)}
+.up-dialog label.up-radio{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--color-fg);margin:8px 0;cursor:pointer}
+.up-dialog .up-radio input{width:auto;margin:0}
+.up-hint{margin-top:6px}
+.up-dialog section.up-foot{padding:10px 20px;text-align:right}
 </style>
 </head>
 <body>

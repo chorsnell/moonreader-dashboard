@@ -18,7 +18,7 @@ window.dash = (() => {
     let config = { has_data: true };
     try { config = await (await fetch('api/config', { cache: 'no-store' })).json(); } catch (e) { /* static hosting: no API */ }
     window.dispatchEvent(new CustomEvent('dash:config', { detail: config }));
-    if (config.has_data === false) { setAll('missing'); notify(); return config; }
+    if (config.has_data === false || config.can_read === false) { setAll('missing'); notify(); return config; }
     // covers are optional: without them the page shows placeholders
     const coverList = fetch('api/covers', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
     try {
