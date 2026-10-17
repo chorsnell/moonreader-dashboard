@@ -53,6 +53,11 @@ export class CoverLookupService implements OnApplicationShutdown {
     return this.running;
   }
 
+  /** Whether a lookup is running now. */
+  get busy(): boolean {
+    return this.running !== null;
+  }
+
   async onApplicationShutdown(): Promise<void> {
     this.stop.abort();
     await this.running;
