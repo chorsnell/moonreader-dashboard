@@ -224,11 +224,24 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
   .chart.tall{min-height:260px}
 }
 @media (max-width:520px){.dy-day{grid-template-columns:1fr;gap:var(--cds-gap-xs)}.dy-date b,.dy-date span{display:inline;margin-right:8px}.dy-gap{padding-left:0}}
-[data-book],[data-day],[data-read]{cursor:pointer}
-[data-book]:focus-visible{outline:2px solid var(--series-1);outline-offset:2px;border-radius:4px}
-.rh-list li[data-book]:hover .ttl,.dy-book[data-book]:hover .t,.go-one[data-book]:hover .go-title,.rh-kpi[data-book]:hover .val{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
-.rh tr[data-book]:hover td,.rh tr[data-day]:hover td,.rh tr[data-read]:hover td{background:var(--color-bg)}
-.ck-list li[data-book]:hover .ttl{text-decoration:none}.ck-list li[data-book]:hover .ck-title{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+[data-link],[data-day],[data-read]{cursor:pointer}
+[data-link]:focus-visible{outline:2px solid var(--series-1);outline-offset:2px;border-radius:4px}
+.rh-list li[data-link]:hover .ttl,.dy-book[data-link]:hover .t,.go-one[data-link]:hover .go-title,.rh-kpi[data-link]:hover .val{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+.rh tr[data-link]:hover td,.rh tr[data-day]:hover td,.rh tr[data-read]:hover td{background:var(--color-bg)}
+.ck-list li[data-link]:hover .ttl{text-decoration:none}.ck-list li[data-link]:hover .ck-title{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+/* an author, series or genre inside a book row: its own link, underlined on its own */
+.lk[data-link]{text-decoration:underline dotted;text-decoration-color:var(--cds-chart-axis);text-underline-offset:3px}
+.lk[data-link]:hover,.rh-list li[data-link]:hover .lk[data-link]:hover{text-decoration:underline solid;text-decoration-color:currentColor;color:var(--color-fg)}
+.rh-list li[data-link]:hover small .lk,.dy-book[data-link]:hover small .lk{text-decoration-style:dotted}
+.chip[data-link]:hover{border-color:currentColor}
+.legend span[data-link]:hover,svg [data-link]:hover text,svg text[data-link]:hover{text-decoration:underline;fill:var(--color-fg)}
+.legend span[data-link]:hover{color:var(--color-fg)}
+.dy-book .t small.by{display:block}
+.gp-covers{display:flex;flex:none}
+.gp-covers .cv+.cv{margin-left:-64px;transform:translateY(10px)}
+.gp-covers .cv:nth-child(3){transform:translateY(20px)}
+.gp-facts{margin-top:var(--cds-gap-sm);align-items:baseline}
+.gp-facts dd{margin:0}
 .rh .bk-tbl th{padding:var(--cds-pad-xs) var(--cds-pad-sm)}
 .rh .bk-tbl td{white-space:nowrap}
 .rh tr.sel td{background:color-mix(in srgb,var(--series-1) 10%,transparent)}
@@ -239,7 +252,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 .bk-chips{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs);margin-top:var(--cds-gap-xs)}
 .chip.ok{color:var(--color-ok);border-color:currentColor}
 .rh-list li.cur{background:color-mix(in srgb,var(--series-1) 8%,transparent);border-radius:6px}
-@media (max-width:520px){.rh-card.bk-head{flex-direction:column}#bk-kpis{grid-template-columns:1fr 1fr;gap:var(--cds-gap-sm)}#bk-kpis .rh-kpi{padding:var(--cds-pad-sm) var(--cds-pad-md)}#bk-kpis .val{font-size:20px}}
+@media (max-width:520px){.rh-card.bk-head{flex-direction:column}#gp-kpis,#bk-kpis{grid-template-columns:1fr 1fr;gap:var(--cds-gap-sm)}#gp-kpis .rh-kpi,#bk-kpis .rh-kpi{padding:var(--cds-pad-sm) var(--cds-pad-md)}#gp-kpis .val,#bk-kpis .val{font-size:20px}.gp-facts{grid-template-columns:1fr}}
 </style>
 
 <div class="rh">
@@ -501,6 +514,21 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
       <table id="tbl-bk-log" class="bk-tbl">
         <thead><tr><th>Day</th><th class="n">Time</th><th class="n hide-sm">Words</th><th class="n hide-sm">WPM</th><th class="n">Progress</th></tr></thead>
         <tbody></tbody></table></div></div>
+  </section>
+
+  <!-- ONE AUTHOR, SERIES, GENRE OR SUBGENRE (opened by clicking one anywhere) -->
+  <section class="rh-page" id="group" hidden>
+    <button class="bk-back">← Back</button>
+    <div class="rh-card wide bk-head" id="gp-head" data-source="books"></div>
+    <div class="rh-kpis" id="gp-kpis"></div>
+    <div class="rh-grid">
+      <div class="rh-card" id="card-gp-books"><h2>Books</h2>
+        <p class="note" id="gp-books-note"></p>
+        <ul class="rh-list" id="gp-books"></ul></div>
+      <div class="rh-card" id="card-gp-years"><h2>Finished per year</h2>
+        <p class="note">Reads that ended at 99% or more, by the year they ended.</p>
+        <div class="chart short" id="ch-gp-years"></div></div>
+    </div>
   </section>
 </div>
 

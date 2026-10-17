@@ -3,7 +3,7 @@ temporary library, and check rebuilding, uploads, reverse-proxy prefixes and Web
 
 Run with:  python3 -m unittest discover -s tests
 """
-import base64, datetime as dt, http.client, http.server, json, os, shutil, socket, sqlite3, subprocess, sys, tempfile
+import base64, datetime as dt, http.client, http.server, json, os, re, shutil, socket, sqlite3, subprocess, sys, tempfile
 import struct, threading, time, unittest, urllib.parse, zipfile, zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -359,6 +359,33 @@ class CoverTests(unittest.TestCase):
         self.assertEqual(pixels[1:4], b'\xff\x00\x00')     # first pixel still red
         self.assertEqual(pixels[-3:], b'\x00\x00\xff')     # last pixel still blue
         self.assertEqual(covers.shrink_png(PNG), PNG)      # not a real PNG: left alone
+
+
+class LinkTests(unittest.TestCase):
+    """Books, authors, series and genres link through the helpers in charts.js's links
+    section, so they link the same way everywhere. These catch code that goes around them."""
+
+    @classmethod
+    def setUpClass(cls):
+        src = open(os.path.join(ROOT, 'app', 'web', 'charts.js'), encoding='utf-8').read()
+        start = src.index('// ---------- links ----------')
+        end = src.index('// ----------', start + 10)
+        cls.links, cls.rest = src[start:end], src[:start] + src[end:]
+        cls.fields = [f for f in re.findall(r"field: '(\w+)'", cls.links) if f != 'title']
+
+    def test_links_are_made_only_by_the_helpers(self):
+        made = re.findall(r"(?:setAttribute|\.attr)\(\s*'data-(?:link|id|book)'", self.rest)
+        self.assertEqual(made, [], 'make links with link() or links() instead')
+
+    def test_linkable_fields_are_not_shown_as_plain_text(self):
+        self.assertEqual(sorted(self.fields), ['author', 'genre', 'series', 'subgenre'])
+        f = '|'.join(self.fields)
+        plain = [rf"\bel\([^()]*,\s*\w+\.(?:{f})\s*\)",            # el('small', null, r.author)
+                 rf"textContent\s*=\s*\w+\.(?:{f})\b",              # td.textContent = r.series
+                 rf"createTextNode\(\s*\w+\.(?:{f})\s*\)"]          # createTextNode(b.genre)
+        for pat in plain:
+            hits = re.findall(pat, self.rest)
+            self.assertEqual(hits, [], 'show these with ref(), byline() or chip() so they link')
 
 
 if __name__ == '__main__':
