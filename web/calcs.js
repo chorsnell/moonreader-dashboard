@@ -102,13 +102,13 @@ dash.calc('subgenres', {
   },
 });
 
-dash.calc('genre_year', {
-  inputs: ['reads'], title: 'Genre mix by year',
-  description: 'Finished reads per year and genre.',
-  fn: (reads) => {
+dash.calc('genre_month', {
+  inputs: ['daily'], title: 'Genre mix over time',
+  description: 'Hours read per genre in each calendar month.',
+  fn: (daily) => {
     const g = {};
-    reads.filter((r) => r.finished === true).forEach((r) => { const k = r.end.slice(0, 4) + '|' + r.genre; g[k] = (g[k] || 0) + 1; });
-    return Object.entries(g).map(([k, n]) => ({ year: +k.split('|')[0], genre: k.split('|')[1], reads: n })).sort((a, b) => a.year - b.year);
+    daily.forEach((d) => { if (!(d.minutes > 0)) return; const k = d.date.slice(0, 7) + '|' + (d.genre || 'Unknown'); g[k] = (g[k] || 0) + d.minutes; });
+    return Object.entries(g).map(([k, m]) => ({ month: k.split('|')[0], genre: k.split('|')[1], hours: Math.round(m / 6) / 10 })).sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
   },
 });
 
