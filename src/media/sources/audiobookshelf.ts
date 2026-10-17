@@ -117,15 +117,24 @@ export class AudiobookshelfClient {
    * Pulls every listening session (they change while a book is in progress, so the whole list,
    * newest first, page by page) and writes the cache only when something changed.
    */
-  async pull(conn: AbsConnection, signal?: AbortSignal): Promise<{ new_rows: number; total: number }> {
+  async pull(
+    conn: AbsConnection,
+    signal?: AbortSignal,
+  ): Promise<{ new_rows: number; total: number }> {
     const cache = await this.readCache();
     const known = new Map(cache.sessions.map((s) => [s.id, s]));
     let fresh = 0;
     let changed = false;
     for (let page = 0; page < MAX_PAGES; page++) {
-      const res = await this.fetch(conn, `/api/me/listening-sessions?itemsPerPage=${PAGE}&page=${page}`, signal);
+      const res = await this.fetch(
+        conn,
+        `/api/me/listening-sessions?itemsPerPage=${PAGE}&page=${page}`,
+        signal,
+      );
       const body = (await res.json()) as { sessions?: AbsSession[]; numPages?: number };
-      const sessions = (body.sessions ?? []).filter((s) => s && typeof s.id === 'string' && num(s.startedAt));
+      const sessions = (body.sessions ?? []).filter(
+        (s) => s && typeof s.id === 'string' && num(s.startedAt),
+      );
       for (const s of sessions) {
         const slim = slimSession(s);
         const before = known.get(s.id);
@@ -148,7 +157,11 @@ export class AudiobookshelfClient {
 
   /** A book's cover. */
   async cover(conn: AbsConnection, libraryItemId: string, signal?: AbortSignal): Promise<Buffer> {
-    const res = await this.fetch(conn, `/api/items/${encodeURIComponent(libraryItemId)}/cover`, signal);
+    const res = await this.fetch(
+      conn,
+      `/api/items/${encodeURIComponent(libraryItemId)}/cover`,
+      signal,
+    );
     return Buffer.from(await res.arrayBuffer());
   }
 
@@ -173,7 +186,8 @@ export class AudiobookshelfClient {
     } catch (e) {
       throw new Error(`Audiobookshelf could not be reached (${(e as Error).message})`);
     }
-    if (res.status === 401 || res.status === 403) throw new Error('Audiobookshelf refused the token.');
+    if (res.status === 401 || res.status === 403)
+      throw new Error('Audiobookshelf refused the token.');
     if (!res.ok) throw new Error(`HTTP ${res.status} from Audiobookshelf`);
     return res;
   }
@@ -201,6 +215,8 @@ function slimSession(s: AbsSession): AbsSession {
     currentTime: s.currentTime ?? null,
     startedAt: s.startedAt,
     updatedAt: s.updatedAt ?? null,
-    deviceInfo: s.deviceInfo ? { clientName: s.deviceInfo.clientName, deviceName: s.deviceInfo.deviceName } : null,
+    deviceInfo: s.deviceInfo
+      ? { clientName: s.deviceInfo.clientName, deviceName: s.deviceInfo.deviceName }
+      : null,
   };
 }

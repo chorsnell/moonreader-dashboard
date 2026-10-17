@@ -205,7 +205,7 @@ export class MediaBuildService {
     await utimes(join(this.library.data, MEDIA_META), builtFrom, builtFrom);
     const counts = { items: history.items.length, sessions: history.sessions.length };
     lines.push(
-      `Media: ${counts.items} seasons and films, ${counts.sessions} sittings, ${history.daily.length} watching days`,
+      `Media: ${counts.items} seasons, films and audiobooks, ${counts.sessions} sittings, ${history.daily.length} days`,
     );
     if (history.items.length) {
       const posters = await this.fetchPosters(history, meta, itemKeys, Boolean(key), signal);
