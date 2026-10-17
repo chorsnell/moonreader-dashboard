@@ -33,11 +33,11 @@ export class UploadController {
     private readonly activity: ActivityLogService,
   ) {}
 
-  /** An old bookmark: open the dashboard with the upload dialog. */
+  /** An old bookmark: open the admin page. */
   @Get()
   @Redirect()
   open(@Headers() headers: IncomingHttpHeaders) {
-    return { url: `${publicPrefix(headers, this.config.basePath)}/#upload`, statusCode: 302 };
+    return { url: `${publicPrefix(headers, this.config.basePath)}/#admin`, statusCode: 302 };
   }
 
   @Put()
