@@ -40,7 +40,9 @@
       const s0 = dayNo(opts.schedule.start), end = s0 + Math.ceil(100 / opts.schedule.pct_per_week * 7);
       const a = mode === 'date' ? s0 : 0, b = mode === 'date' ? end : end - s0;
       rh.refLine(svg, x(a), y(0), x(Math.min(b, hi + 1)), y(Math.min(100, ((Math.min(b, hi + 1) - a) / 7) * opts.schedule.pct_per_week)));
-      svg.append('text').attr('class', 'axl').attr('x', x(Math.min(b, hi + 1)) - 4).attr('y', y(Math.min(100, ((Math.min(b, hi + 1) - a) / 7) * opts.schedule.pct_per_week)) - 6).attr('text-anchor', 'end').text('schedule');
+      // labelled part way along, clear of the lanes' end labels
+      const mid = a + (Math.min(b, hi + 1) - a) * 0.55;
+      svg.append('text').attr('class', 'axl').attr('x', x(mid)).attr('y', y(Math.min(100, ((mid - a) / 7) * opts.schedule.pct_per_week)) + 14).attr('text-anchor', 'middle').text('schedule');
     }
 
     // a step up at the end of each reading day, from where the read began
