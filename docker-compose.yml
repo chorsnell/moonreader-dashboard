@@ -5,7 +5,9 @@ services:
       args:
         # shown in the page's footer: GIT_COMMIT=$(git rev-parse HEAD) docker compose build
         GIT_COMMIT: ${GIT_COMMIT:-}
-    image: moonreader-dashboard
+    # IMAGE=ghcr.io/chorsnell/moonreader-dashboard:latest in .env runs the image CI builds
+    # instead (docker compose pull && docker compose up -d), which the deploy hook below needs
+    image: ${IMAGE:-moonreader-dashboard}
     container_name: moonreader-dashboard
     restart: unless-stopped
     ports:
@@ -44,3 +46,22 @@ services:
       # Every other setting is in the README's Settings table.
     volumes:
       - ./library:/library       # everything the app keeps: backups, data, covers, settings
+
+  # Optional: pulls the new image and restarts the dashboard when GitHub Actions says so
+  # after a push to main (no polling). Off unless started with --profile deploy; set
+  # DEPLOY_SECRET and DEPLOY_DIR in .env first. See "Deploy on push" in the README.
+  deploy-hook:
+    profiles: [deploy]
+    build: ./deploy
+    container_name: moonreader-deploy-hook
+    restart: unless-stopped
+    ports:
+      - "9081:9000"
+    environment:
+      DEPLOY_SECRET: ${DEPLOY_SECRET:-}
+      DEPLOY_DIR: ${DEPLOY_DIR:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # mounted at the same path as on the host, so ./library in this file still means
+      # the host's folder when the hook runs docker compose
+      - ${DEPLOY_DIR:-./deploy}:${DEPLOY_DIR:-/unset}

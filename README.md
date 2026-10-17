@@ -271,6 +271,26 @@ Every link is relative, so the dashboard works at a sub-path such as `/reading`:
 
 Allow request bodies of at least 200 MB, because backups are often over 100 MB (Nginx: `client_max_body_size 200m;`). Use HTTPS when sharing it, because passwords travel with every sign-in, upload and sync.
 
+## Deploy on push
+
+Your server can update itself when you push to `main`, without polling or cron. After the `test` workflow passes, the `docker` workflow builds the image, pushes it to `ghcr.io/<owner>/moonreader-dashboard`, and sends a signed POST to a small deploy hook on your server ([`deploy/hook.mjs`](deploy/hook.mjs)). The hook then runs `docker compose pull` and `up -d` for the dashboard.
+
+1. Run the `docker` workflow once by hand (Actions → docker → Run workflow). Then open the package under your GitHub profile → **Packages** and set it to **Public**, so the server can pull it without signing in.
+2. On the server, add these to `.env`:
+   ```sh
+   IMAGE=ghcr.io/<owner>/moonreader-dashboard:latest
+   DEPLOY_SECRET=...            # openssl rand -hex 32
+   DEPLOY_DIR=/abs/path/to/moonreader-dashboard
+   ```
+   then switch over to the published image and start the hook:
+   ```sh
+   docker compose pull && docker compose --profile deploy up -d
+   ```
+3. Make `http://SERVER_IP:9081/deploy` reachable from the internet. For example, add a Traefik router for `/hooks/moonreader` that strips that prefix down to `/deploy`. Only POSTs carrying a valid signature from the last five minutes are acted on.
+4. In the repo, go to Settings → Secrets and variables → Actions, and add `DEPLOY_URL` (the public URL of the hook) and `DEPLOY_SECRET` (the same value as in `.env`).
+
+Until both secrets exist, the workflow still pushes the image but skips the deploy step. The hook mounts the Docker socket, which gives it root-level control of Docker on the host, so keep `DEPLOY_SECRET` long and private. If you don't want anything open to the internet, a [Tailscale](https://tailscale.com/kb/1276/tailscale-github-action) step in the workflow can join your tailnet before the `curl`, and `DEPLOY_URL` can then be the server's tailnet address.
+
 ## Settings
 
 All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` is read from `.env` (copied from `.env.example`, ignored by git) so the secret stays out of the compose file. Tautulli, Audiobookshelf and TMDB can also be set on the admin page; the *arr book manager is set there only.
