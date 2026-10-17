@@ -360,14 +360,14 @@
   rh.adminSection({ id: 'catalogue', title: 'Catalogue', order: 40, draw(box, a) {
     let books = [], filter = 'untagged', query = '', limit = 30, flash = '';
     const search = h('input', { type: 'search', placeholder: 'Search titles, authors, files', 'aria-label': 'Search books' });
-    const which = h('select', { 'aria-label': 'Which books' }, h('option', { value: 'untagged' }, 'Untagged'), h('option', { value: 'all' }, 'All books'));
+    const which = h('select', { 'aria-label': 'Which books' }, h('option', { value: 'untagged' }, 'Untagged'), h('option', { value: 'unfinished' }, 'Not finished'), h('option', { value: 'all' }, 'All books'));
     const count = h('p', { class: 'up-note' });
     const list = h('ul', { class: 'ad-list ad-books' });
     const more = h('button', { class: 'up-link', type: 'button', hidden: true, onclick: () => { limit += 30; render(); } }, 'Show more');
     const lists = h('div', {});
     search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); limit = 30; render(); });
     which.addEventListener('change', () => { filter = which.value; limit = 30; render(); });
-    box.append(h('p', { class: 'up-note' }, 'Books Moon+ knows by file name only show as "Untagged". Give them a title, author, series and genre here; it is saved to catalogue.json and the stats rebuild.'),
+    box.append(h('p', { class: 'up-note' }, 'Books Moon+ knows by file name only show as "Untagged". Give them a title, author, series and genre here; it is saved to catalogue.json and the stats rebuild. Under "Not finished", mark books you finished that Moon+ didn’t see reach the end (a broken file, or before it recorded progress).'),
       h('div', { class: 'ad-toolbar' }, which, search), count, list, more, lists);
 
     function datalist(id, values) {
@@ -384,7 +384,7 @@
       render();
     }
     function render() {
-      const rows = books.filter((b) => (filter === 'all' || b.untagged) &&
+      const rows = books.filter((b) => (filter === 'all' || (filter === 'untagged' ? b.untagged : b.status !== 'finished')) &&
         (!query || [b.title, b.author, b.series, ...b.files].some((s) => s && s.toLowerCase().includes(query))));
       const untagged = books.filter((b) => b.untagged).length;
       count.textContent = !books.length ? 'No books yet: upload a backup first.'
@@ -396,11 +396,12 @@
     function row(b) {
       const item = h('li', { class: 'ad-book' });
       const edit = h('button', { class: 'up-copy', type: 'button', 'aria-expanded': 'false' }, 'Edit');
+      const done = b.status === 'finished' ? null : h('button', { class: 'up-copy', type: 'button', onclick: () => markFinished(b, done) }, 'Mark finished');
       item.append(h('div', { class: 'ad-book-head' },
         h('div', { class: 'ad-book-text' },
           h('div', {}, rh.linkBook(h('span', { class: 'ad-name' }, b.title), b.id), b.untagged ? h('span', { class: 'ad-tag' }, 'Untagged') : null),
           rh.byline('div', 'ad-meta', b, ['author', 'series', ...(b.genre === 'Untagged' ? [] : ['genre', 'subgenre'])])),
-        edit));
+        h('div', { class: 'ad-buttons' }, done, edit)));
       edit.addEventListener('click', () => {
         const open = item.querySelector('form');
         if (open) { open.remove(); edit.setAttribute('aria-expanded', 'false'); return; }
@@ -408,6 +409,18 @@
         item.append(editor(b));
       });
       return item;
+    }
+    // a quick save of what the book already has, plus finished; the rebuild runs in the background
+    async function markFinished(b, btn) {
+      btn.disabled = true;
+      const keep = (g) => (g === 'Untagged' ? '' : g);
+      try {
+        await a.put('api/admin/catalogue', { files: b.files, title: b.title, author: b.author, series: b.series, series_no: b.series_no,
+          genre: keep(b.genre), subgenre: keep(b.subgenre), finished: true });
+        b.status = 'finished'; b.finished = true;
+        flash = `Marked "${b.title}" finished; the stats rebuild in a moment. `;
+        render();
+      } catch (e) { btn.disabled = false; count.textContent = e.message; }
     }
     function editor(b) {
       const id = 'ad-' + b.id;
@@ -418,6 +431,9 @@
       const save = h('button', { class: 'up-primary ad-auto', type: 'submit' }, 'Save');
       const notBook = h('button', { class: 'up-link', type: 'button' }, 'Not a book: hide it');
       const keepGenre = (g) => (g === 'Untagged' ? '' : g);
+      const finished = h('select', { id: `${id}-finished`, name: 'finished' },
+        h('option', { value: '' }, 'Automatic: from progress'), h('option', { value: 'yes' }, 'Yes: I finished it'), h('option', { value: 'no' }, 'No: never guess'));
+      finished.value = b.finished === true ? 'yes' : b.finished === false ? 'no' : '';
       const form = h('form', { class: 'ad-edit' },
         field('title', 'Title', b.title, { required: true, wide: true }),
         field('author', 'Author', b.author, { list: 'ad-authors' }),
@@ -426,6 +442,7 @@
         field('genre', 'Genre', keepGenre(b.genre), { list: 'ad-genres' }),
         field('subgenre', 'Subgenre', keepGenre(b.subgenre), { list: 'ad-subgenres' }),
         field('isbn', 'ISBN', b.isbn13, { inputmode: 'numeric', placeholder: 'ISBN-13 or ISBN-10' }),
+        h('div', { class: 'ad-field' }, h('label', { for: finished.id }, 'Finished'), finished),
         h('p', { class: 'up-note ad-wide ad-files' }, `File${b.files.length === 1 ? '' : 's'}: ${b.files.join(', ')}`),
         h('div', { class: 'ad-actions ad-wide' }, save, notBook), msg);
       async function send(body, done) {
@@ -442,7 +459,7 @@
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         const v = Object.fromEntries(new FormData(form));
-        send({ ...v, series_no: v.series_no === '' ? null : Number(v.series_no) }, 'Saved.');
+        send({ ...v, series_no: v.series_no === '' ? null : Number(v.series_no), finished: { yes: true, no: false }[v.finished] ?? null }, 'Saved.');
       });
       notBook.addEventListener('click', () => { if (confirm(`Hide "${b.title}" from the dashboard? It is listed under exclude in catalogue.json.`)) send({ exclude: true }, 'Hidden.'); });
       return form;

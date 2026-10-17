@@ -179,6 +179,8 @@ With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or i
 }
 ```
 
+**Finished by hand.** When you finished a book Moon+ didn't see you finish (a broken file with blank pages at the end, or a book from before it recorded progress), add `"finished": true` to its entry, or use **Mark finished** in the Catalogue section (its **Not finished** list shows the candidates). Its latest read then counts as finished. `"finished": false` stops the guesses above for a book you really didn't finish.
+
 Add a lower-case file name to `"exclude"` to hide something that isn't a book. Per author, `"authors": { "Author Name": { "country": "Ireland", "gender": "male" } }`. What you put in the catalogue always wins over lookups.
 
 **ISBNs and editions.** ISBN-13 or ISBN-10, with or without hyphens (the other form is worked out; invalid ones are ignored). Copies count as one book when they share a title and author, an ISBN, or a `"work_id"` (any id you give every edition, such as an Open Library work id).
@@ -307,7 +309,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 ## How the numbers are worked out
 
 - **New reads:** returning to a book after 365 days or more starts a new read. A single day back in a book only counts as a read if the book has no longer one.
-- **Finished:** a read is finished when it ends at 99% or more. Before about 2019, Moon+ often didn't record progress, so early years undercount.
+- **Finished:** a read is finished when it ends at 99% or more, or at 95% or more once it's over (not opened for 14 days, or read again since), the rest being afterwords and credits. Before about 2019 Moon+ often didn't record progress; those reads count as finished when the words read (or the minutes, at your usual speed) come to 80% of the book's page count × 250 words. **Data checks → Guessed finished** lists every read counted this way. The rules are at the top of `src/backup-import/finish-rules.ts`.
 - **Minutes and words:** only logged per day from 2019 onwards. Per-book totals use the app's lifetime counters.
 - **Speed:** words divided by minutes, over days where Moon+ logged both. Days above 800 wpm (flicking through) or below 40 wpm (book left open) are skipped, and a book needs 2+ hours of timed reading to get a speed.
 - **Time of day:** the reading log only records days, not times. Highlights and notes carry a time, so time-of-day views use them as a stand-in.
