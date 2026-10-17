@@ -3,6 +3,7 @@ import { AccessModule } from '../access/access.module';
 import { CoversModule } from '../covers/covers.module';
 import { LibraryModule } from '../library/library.module';
 import { StatsModule } from '../stats/stats.module';
+import { BadgesController } from './badges.controller';
 import { NowController } from './now.controller';
 import { OutboundService } from './outbound.service';
 
@@ -12,7 +13,7 @@ import { OutboundService } from './outbound.service';
  */
 @Module({
   imports: [AccessModule, LibraryModule, CoversModule, StatsModule],
-  controllers: [NowController],
+  controllers: [NowController, BadgesController],
   providers: [OutboundService],
   exports: [OutboundService],
 })

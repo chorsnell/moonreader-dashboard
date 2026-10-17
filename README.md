@@ -357,6 +357,30 @@ automation:
 
 To show the cover on a card, use a [template image](https://www.home-assistant.io/integrations/template/#image) whose `url` is `https://reading.example.com/api/now/cover?token=<token>`.
 
+### Badges for a blog, README or forum signature
+
+Three SVG images you can embed anywhere an image goes, like GitHub's stats cards:
+
+| Image | What it shows |
+|---|---|
+| `/badge/reading.svg` | What you're reading now: the cover, title, author and progress (up to three books) |
+| `/badge/year.svg` | Books finished this year (against your goal, if you set one) as a small badge; `?style=card` for a card with the pace and hours |
+| `/badge/heatmap.svg` | Minutes read per day for the last 26 weeks (`?weeks=4` to `53`) |
+
+Add `?theme=dark` for dark backgrounds and `?title=…` to change the heading. They always show what the **public** may see, whoever asks: "what you're reading now" hidden means the reading card says "Not shared", no day-by-day reading means no hours and no heatmap (a 404), weeks instead of days means one square per week, and private books never appear. They're off (404) while the dashboard has a read password. Each is cached for 30 minutes (`Cache-Control: public, max-age=1800`, with an `ETag`), and the cover is embedded in the image, because GitHub and most forums don't let an SVG load anything else.
+
+```markdown
+![Currently reading](https://reading.example.com/badge/reading.svg)
+![Books this year](https://reading.example.com/badge/year.svg)
+```
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://reading.example.com/badge/heatmap.svg?theme=dark">
+  <img alt="My reading, last 26 weeks" src="https://reading.example.com/badge/heatmap.svg">
+</picture>
+```
+
 ## Behind a reverse proxy
 
 Every link is relative, so the dashboard works at a sub-path such as `/reading`:
@@ -405,6 +429,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/api/config`: who you're signed in as and the last rebuild.
 - `/api/covers`: the saved covers.
 - `/api/now`, `/api/now/cover`: what you're reading, today's minutes, the streak and the year's goal, for Home Assistant and other devices (see [Widgets and devices](#widgets-and-devices) and [docs/api.md](docs/api.md)).
+- `/badge/reading.svg`, `/badge/year.svg`, `/badge/heatmap.svg`: embeddable SVG badges of what the public may see (see [Badges](#badges-for-a-blog-readme-or-forum-signature)).
 - `/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`: every number the page shows, worked out on the server for each viewer from only what they may see. See [docs/api.md](docs/api.md).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 
