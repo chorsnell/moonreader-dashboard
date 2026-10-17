@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AdminModule } from './admin/admin.module';
+import { ArrModule } from './arr/arr.module';
 import { appConfig } from './config/app.config';
 import { ClubsModule } from './clubs/clubs.module';
 import { DavModule } from './dav/dav.module';
@@ -26,6 +27,7 @@ import { WebModule } from './web/web.module';
     StatsModule,
     UploadModule,
     AdminModule,
+    ArrModule,
     MediaModule,
     PricesModule,
     DavModule,
