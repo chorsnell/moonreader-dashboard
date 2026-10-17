@@ -1,0 +1,35 @@
+name: screenshots
+# Regenerates the README screenshots from the demo (with covers) and uploads them as an
+# artifact. Run by hand only (Actions > screenshots > Run workflow) to save Actions
+# minutes: it is not part of every push. Nothing is committed; download the artifact,
+# look it over and commit docs/screenshots/ yourself.
+on:
+  workflow_dispatch:
+    inputs:
+      demo_today:
+        description: "The demo's today as YYYY-MM-DD (blank: the real today)"
+        required: false
+        default: ""
+permissions:
+  contents: read
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Take the screenshots
+        run: npm run screenshots
+        env:
+          DEMO_TODAY: ${{ inputs.demo_today }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: docs/screenshots/
+          retention-days: 7

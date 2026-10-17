@@ -1,0 +1,7 @@
+/* What your reading time is worth (time-value.js) */
+.tv-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tv-rate{display:flex;align-items:center;gap:6px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.tv-rate input{width:6.5rem;font:inherit;font-size:var(--cds-font-size-caption);padding:3px 6px;border:1px solid var(--color-border-line);border-radius:6px;background:var(--color-bg);color:var(--color-fg)}
+.tv-default{margin:var(--cds-gap-sm) 0 0}
+.tv-page .rh-kpis{margin-top:var(--cds-gap-sm)}
+.chart.tv-box{min-height:0}
