@@ -19,5 +19,8 @@ services:
       BASE_PATH: ""
       # Covers missing from the backup are looked up on openlibrary.org. "off" stops that.
       COVER_LOOKUP: "on"
+      # Publication years, page counts and author countries/genders from Open Library and
+      # wikidata.org. "off" stops that.
+      METADATA_LOOKUP: "on"
     volumes:
       - ./library:/library       # inbox/, data/, dav/, covers/, catalogue.json and update.log

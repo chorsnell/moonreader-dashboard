@@ -29,13 +29,27 @@ export interface CatalogueBook {
   has_cover: boolean;
 }
 
+/** Fields the editor doesn't show; a save keeps whatever the entry has. */
+type KeptFields =
+  | 'isbn'
+  | 'work_id'
+  | 'isbn13'
+  | 'isbn10'
+  | 'published_year'
+  | 'pages'
+  | 'author_country'
+  | 'author_gender';
+
 /** A change to the catalogue entries of a book's files. */
 export interface CatalogueChange {
   files: string[];
   /** True to list the files as "not a book" instead. */
   exclude: boolean;
-  /** isbn13/isbn10 are left as they were when the body has no isbn; work_id always is. */
-  entry: Required<Omit<CatalogueEntry, 'isbn' | 'work_id' | 'isbn13' | 'isbn10'>> &
+  /**
+   * isbn13/isbn10 are left as they were when the body has no isbn; work_id and the
+   * hand-entered metadata (published_year, pages, author_country, author_gender) always are.
+   */
+  entry: Required<Omit<CatalogueEntry, KeptFields>> &
     Partial<Pick<CatalogueEntry, 'isbn13' | 'isbn10'>>;
 }
 
@@ -164,6 +178,11 @@ export class CatalogueService {
             isbn10: prev?.isbn10 ?? null,
             ...(prev?.isbn && !prev.isbn13 && !prev.isbn10 ? { isbn: prev.isbn } : {}),
             ...(prev?.work_id ? { work_id: prev.work_id } : {}),
+            ...Object.fromEntries(
+              (['published_year', 'pages', 'author_country', 'author_gender'] as const)
+                .filter((k) => prev?.[k] != null)
+                .map((k) => [k, prev![k]]),
+            ),
           };
           const entry: CatalogueEntry = { ...kept, ...change.entry };
           if (change.entry.isbn13 !== undefined) delete entry.isbn;

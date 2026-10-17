@@ -165,6 +165,21 @@ Books without a cover show a tile with their first letter. Covers appear when yo
 
 Each cover is saved as `library/covers/<book id>.jpg` (or `.png`), and an existing file is never replaced. To fix a wrong cover or add a missing one, save your own image under that name. The book id is the title in lower case with dashes, such as `project-hail-mary`. Set `COVER_LOOKUP: "off"` to never contact Open Library.
 
+## Publication years, pages and authors
+
+After the covers, the dashboard looks up each book on [Open Library](https://openlibrary.org) (by ISBN when it has one, otherwise by title and author) for the year it was first published, its page count and an ISBN, and each author on [Wikidata](https://www.wikidata.org) for their country and gender. It goes one request a second, in the background, and stores what it finds in `library/metadata.json`; saving that file rebuilds the data, so the results appear on the next reload. Books and authors it can't find are tried again after 30 days (`library/.metadata-misses.json`). Delete an entry from `metadata.json` to look it up again.
+
+The country is the author's citizenship, or, for a country that no longer exists, the country their birthplace is in today. Lookups can be wrong, and what you put in `catalogue.json` always wins. Per book:
+
+```json
+"some new book - author.epub": {
+  "title": "Some New Book", "author": "Author Name",
+  "published_year": 1965, "pages": 412, "author_country": "GB", "author_gender": "female"
+}
+```
+
+or once per author, under `"authors"` next to `"books"`: `"authors": { "Author Name": { "country": "Ireland", "gender": "male" } }`. Countries can be an ISO code (`GB`) or an English name; genders are `female`, `male`, `non-binary` or `other`. Set `METADATA_LOOKUP: "off"` to never look anything up.
+
 ## Settings
 
 All of these are optional environment variables in `docker-compose.yml`. `UPLOAD_TOKEN` is read from `.env` (copied from `.env.example`, and ignored by git) so the secret never lands in the compose file:
@@ -177,6 +192,7 @@ All of these are optional environment variables in `docker-compose.yml`. `UPLOAD
 | `POLL_SECONDS` | `30` | How often to check the inbox |
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
 | `COVER_LOOKUP` | `on` | Set to `off` to stop looking up missing covers on Open Library |
+| `METADATA_LOOKUP` | `on` | Set to `off` to stop looking up publication years, page counts and authors on Open Library and Wikidata |
 | `TZ` | UTC | Time zone for the log |
 
 The server also has three JSON endpoints: `/healthz`, which Docker uses as its health check, `/api/config`, which reports who you're signed in as and the last rebuild, and `/api/covers`, which lists the saved covers.
