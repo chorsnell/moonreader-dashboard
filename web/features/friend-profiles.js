@@ -7,6 +7,38 @@
 // rh.friends is what the other friends-*.js views build with: the list, each friend's data,
 // the friend picked in "Compare with", their colour, a book matcher, and calcs worked out
 // from a friend's data (dash.calcWith).
+
+// Matching books across libraries, kept apart from the page so calcs (and tests) can use it:
+// dash.sameBook.{keys, matcher, shared, authorKey}.
+(() => {
+  // the same book has the same ISBN or work id; failing that, the same title and author once
+  // case, accents, punctuation and a leading article are ignored
+  const norm = (s) => String(s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const titleKey = (t) => norm(t).replace(/^(the|a|an)\s+/, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  const authorKey = (a) => norm(a).replace(/[^a-z]+/g, '');
+  function keys(b) {
+    const out = [];
+    if (b.isbn13) out.push('isbn:' + String(b.isbn13).replace(/[^0-9X]/gi, ''));
+    if (b.work_id) out.push('work:' + b.work_id);
+    if (b.title) out.push('ta:' + titleKey(b.title) + '|' + authorKey(b.author));
+    return out;
+  }
+  // a finder over a list of books: find(book) gives the matching one, or null
+  function matcher(books) {
+    const by = new Map();
+    (books || []).forEach((b) => keys(b).forEach((k) => { if (!by.has(k)) by.set(k, b); }));
+    return (b) => { for (const k of keys(b)) if (by.has(k)) return by.get(k); return null; };
+  }
+  // books you both have: [{ mine, theirs }]
+  function shared(mine, theirs) {
+    const find = matcher(mine), seen = new Set(), out = [];
+    (theirs || []).forEach((t) => { const m = find(t); if (m && !seen.has(m.id)) { seen.add(m.id); out.push({ mine: m, theirs: t }); } });
+    return out;
+  }
+
+  dash.sameBook = { keys, matcher, shared, authorKey };
+})();
+
 (() => {
   const { el, fmt, plural, fShort, pDate } = rh;
   const st = { status: 'loading', me: { name: 'You', leaderboards: [] }, list: [], data: {} };
@@ -48,32 +80,7 @@
   }
   window.addEventListener('dash:config', (e) => { if (e.detail && e.detail.can_read !== false) load(); });
 
-  // ---------- matching books across libraries ----------
-  // the same book has the same ISBN or work id; failing that, the same title and author once
-  // case, accents, punctuation and a leading article are ignored
-  const norm = (s) => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const titleKey = (t) => norm(t).replace(/^(the|a|an)\s+/, '').replace(/[^a-z0-9]+/g, ' ').trim();
-  const authorKey = (a) => norm(a).replace(/[^a-z]+/g, '');
-  function keys(b) {
-    const out = [];
-    if (b.isbn13) out.push('isbn:' + String(b.isbn13).replace(/[^0-9X]/gi, ''));
-    if (b.work_id) out.push('work:' + b.work_id);
-    if (b.title) out.push('ta:' + titleKey(b.title) + '|' + authorKey(b.author));
-    return out;
-  }
-  // a finder over a list of books: find(book) gives the matching one, or null
-  function matcher(books) {
-    const by = new Map();
-    (books || []).forEach((b) => keys(b).forEach((k) => { if (!by.has(k)) by.set(k, b); }));
-    return (b) => { for (const k of keys(b)) if (by.has(k)) return by.get(k); return null; };
-  }
-  // books you both have: [{ mine, theirs }]
-  function shared(mine, theirs) {
-    const find = matcher(mine), seen = new Set(), out = [];
-    (theirs || []).forEach((t) => { const m = find(t); if (m && !seen.has(m.id)) { seen.add(m.id); out.push({ mine: m, theirs: t }); } });
-    return out;
-  }
-  const authorName = (a) => authorKey(a);
+  const { keys, matcher, shared, authorKey } = dash.sameBook;
 
   // ---------- colours: you first, then each friend in order ----------
   const color = (slug) => (slug === 'me' || !slug ? rh.C[0] : rh.C[(st.list.findIndex((f) => f.slug === slug) + 1) % rh.C.length]);
@@ -112,13 +119,14 @@
     me: () => st.me,
     list: () => st.list.slice(),
     get: (slug) => st.data[slug] || null,
-    selected, select, color, calc, matcher, shared, keys, authorKey: authorName, freshness,
+    selected, select, color, calc, matcher, shared, keys, authorKey, freshness,
     reload: load,
   };
 
   // ---------- the Friends tab ----------
   rh.tab('friends', 'Friends', { after: 'library' });
-  document.getElementById('tab-friends').hidden = true;
+  const tabButton = document.getElementById('tab-friends');
+  if (tabButton) tabButton.hidden = true;
 
   // "Compare with": the friend the one-to-one views compare you with
   rh.card({
