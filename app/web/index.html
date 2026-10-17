@@ -228,14 +228,20 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
   .chart.tall{min-height:260px}
 }
 @media (max-width:520px){.dy-day{grid-template-columns:1fr;gap:var(--cds-gap-xs)}.dy-date b,.dy-date span{display:inline;margin-right:8px}.dy-gap{padding-left:0}}
-[data-book],[data-link],[data-day],[data-read]{cursor:pointer}
-.lk[data-link]:hover,.chip[data-link]:hover{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+[data-link],[data-day],[data-read]{cursor:pointer}
 [data-link]:focus-visible{outline:2px solid var(--series-1);outline-offset:2px;border-radius:4px}
+.rh-list li[data-link]:hover .ttl,.dy-book[data-link]:hover .t,.go-one[data-link]:hover .go-title,.rh-kpi[data-link]:hover .val{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+.rh tr[data-link]:hover td,.rh tr[data-day]:hover td,.rh tr[data-read]:hover td{background:var(--color-bg)}
+.ck-list li[data-link]:hover .ttl{text-decoration:none}.ck-list li[data-link]:hover .ck-title{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+/* an author, series or genre inside a book row: its own link, underlined on its own */
+.lk[data-link]{text-decoration:underline dotted;text-decoration-color:var(--cds-chart-axis);text-underline-offset:3px}
+.lk[data-link]:hover,.rh-list li[data-link]:hover .lk[data-link]:hover{text-decoration:underline solid;text-decoration-color:currentColor;color:var(--color-fg)}
+.rh-list li[data-link]:hover small .lk,.dy-book[data-link]:hover small .lk{text-decoration-style:dotted}
+.chip[data-link]:hover{border-color:currentColor}
+.legend span[data-link]:hover,svg [data-link]:hover text,svg text[data-link]:hover{text-decoration:underline;fill:var(--color-fg)}
+.legend span[data-link]:hover{color:var(--color-fg)}
+.dy-book .t small.by{display:block}
 .pg-body{display:flex;flex-direction:column;gap:var(--cds-gap-lg)}
-[data-book]:focus-visible{outline:2px solid var(--series-1);outline-offset:2px;border-radius:4px}
-.rh-list li[data-book]:hover .ttl,.dy-book[data-book]:hover .t,.go-one[data-book]:hover .go-title,.rh-kpi[data-book]:hover .val{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
-.rh tr[data-book]:hover td,.rh tr[data-day]:hover td,.rh tr[data-read]:hover td{background:var(--color-bg)}
-.ck-list li[data-book]:hover .ttl{text-decoration:none}.ck-list li[data-book]:hover .ck-title{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
 .rh .bk-tbl th{padding:var(--cds-pad-xs) var(--cds-pad-sm)}
 .rh .bk-tbl td{white-space:nowrap}
 .rh tr.sel td{background:color-mix(in srgb,var(--series-1) 10%,transparent)}

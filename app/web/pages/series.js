@@ -216,7 +216,7 @@
         const xs = x0(d.start), xe = xs + bw(d) + 5, len = this.getComputedTextLength();
         if (xe + len < w) t.attr('x', xe); else if (xs - 5 - len > 0) t.attr('x', xs - 5).attr('text-anchor', 'end'); else t.attr('x', 4).style('fill', 'var(--color-fg)');
       });
-    g.append('rect').attr('width', w).attr('height', rh).attr('fill', 'transparent').attr('data-book', (d) => d.book_id)
+    g.append('rect').attr('width', w).attr('height', rh).attr('fill', 'transparent').each(function (d) { linkBook(this, d.book_id); })
       .on('mousemove', (e, d) => showTip(tip, box, e, (t) => {
         const opened = d.active ? d3.sum(d.active, ([a, b]) => span(a, b)) : d.days_read;
         const lines = [[col(d), READ[d.kind][1], d.read_no > 1 ? `read ${d.read_no}` : ''], [null, 'From', fDay(pDate(d.start))], [null, 'To', fDay(pDate(d.end))],

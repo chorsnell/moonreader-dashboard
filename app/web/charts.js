@@ -50,27 +50,78 @@
     });
   }
   function axis(g, ax) { g.call(ax).attr('font-size', null).attr('font-family', null); }
-  function legend(el, items) {
-    el.replaceChildren(...items.map(([c, n]) => { const s = document.createElement('span'); const i = document.createElement('i'); i.className = 'sw'; i.style.background = c; s.append(i, n); return s; }));
+  function legend(el, items, kind) {
+    el.replaceChildren(...items.map(([c, n]) => { const s = document.createElement('span'); const i = document.createElement('i'); i.className = 'sw'; i.style.background = c; s.append(i, n); return link(s, kind, n); }));
   }
+  const genreLegend = (box, genres) => legend(box, genres.map((g) => [gColor(g), g]), 'genre');
   let genreOrder = [];
   const gColor = (g) => { const i = genreOrder.indexOf(g); return i >= 0 && i < C.length ? C[i] : 'var(--cds-chart-muted)'; };
 
+  // ---------- links ----------
+  // Everything you can click through to, keyed by kind, with the row field that names it.
+  // Nothing else needs wiring: ref(), byline(), chip(), legend(), hbars(), table() and list()
+  // link any of these fields they show, and #<kind>/<id> opens the page (book: the book
+  // page; the rest: the page pages/<kind>.js registers). Add a kind here and it links
+  // everywhere it's shown.
+  const LINKS = {
+    book: { field: 'title', id: (r) => r.book_id ?? r.id, label: 'Book', many: 'Books' },
+    author: { field: 'author', label: 'Author', many: 'Authors' },
+    series: { field: 'series', label: 'Series', many: 'Series' },
+    genre: { field: 'genre', label: 'Genre', many: 'Genres' },
+    subgenre: { field: 'subgenre', label: 'Subgenre', many: 'Subgenres' },
+    year: { field: 'year', label: 'Year', many: 'Years' },
+  };
+  const KIND_OF = Object.fromEntries(Object.entries(LINKS).map(([k, o]) => [o.field, k]));
+  const idOf = (kind, r) => (LINKS[kind].id ? LINKS[kind].id(r) : r[LINKS[kind].field]);
+  // make any node (HTML or SVG) open that thing's page; a missing id unlinks it
+  function link(node, kind, id) {
+    if (!node) return node;
+    if (LINKS[kind] && id != null && id !== '') {
+      node.setAttribute('data-link', kind); node.setAttribute('data-id', id);
+      if (!(node instanceof SVGElement)) { node.tabIndex = 0; node.setAttribute('role', 'link'); }
+    } else ['data-link', 'data-id', 'role', 'tabindex'].forEach((a) => node.removeAttribute(a));
+    return node;
+  }
+  // for d3 selections: .call(links, 'genre', (d) => d.genre)
+  const links = (sel, kind, id) => sel.each(function (d) { link(this, kind, id(d)); });
+  // a row's field as text, linked to its page: ref(r, 'author'), or with other text
+  function ref(r, field, text) {
+    const kind = KIND_OF[field], v = r[field];
+    return link(el('span', 'lk', text ?? v ?? ''), kind, kind ? idOf(kind, r) : null);
+  }
+  const seriesText = (r) => r.series + (r.series_no != null ? ' #' + r.series_no : '');
+  // a row about a book (a read, a day…) with any fields it lacks filled in from the book
+  let bookMap = null, bookData = null;
+  function withBook(r) {
+    const all = D('books').data;
+    if (all !== bookData) { bookData = all; bookMap = new Map(all.map((b) => [b.id, b])); }
+    const b = bookMap.get(idOf('book', r));
+    return b ? { ...b, ...Object.fromEntries(Object.entries(r).filter(([, v]) => v != null && v !== '')) } : r;
+  }
+  // "Author · Series #2 · extra", each part linked; parts the book doesn't have are skipped
+  function byline(tag, cls, r, fields = ['author', 'series'], ...extra) {
+    r = withBook(r);
+    const box = el(tag, cls), parts = fields.filter((f) => r[f]).map((f) => ref(r, f, f === 'series' ? seriesText(r) : null)).concat(extra.filter(Boolean));
+    parts.forEach((p, i) => { if (i) box.append(' · '); box.append(p); });
+    return box;
+  }
+  const chip = (kind, id, text) => { const c = link(el('span', 'chip', text ?? id), kind, id); if (kind === 'genre') c.style.color = gColor(id); return c; };
+
   // ---------- horizontal bars ----------
-  function hbars(el, rows, { label, value, color, tipFn, link }) {
+  // one bar per row; give it a field ('genre', 'author'…) and its label links to that page
+  function hbars(el, rows, { field, label = (r) => r[field], value, color, tipFn, link: to = KIND_OF[field] ? (d) => [KIND_OF[field], d[field]] : null }) {
     const bh = 22, gap = 6, h = rows.length * (bh + gap) + 4;
     el.style.minHeight = h + 'px';
     const { svg, w, tip } = svgIn(el, h);
     const lw = Math.min(w * 0.45, measure(svg, rows.map(label)) + 10);
     const vw = measure(svg, rows.map((r) => fmt(value(r)))) + 8;
     const x = d3.scaleLinear([0, d3.max(rows, value) || 1], [0, Math.max(10, w - lw - vw)]);
-    const g = svg.selectAll('g.r').data(rows).join('g').attr('transform', (d, i) => `translate(0,${i * (bh + gap)})`);
+    const g = svg.selectAll('g.r').data(rows).join('g').attr('transform', (d, i) => `translate(0,${i * (bh + gap)})`).each(function (d) { if (to) link(this, ...to(d)); });
     g.append('text').attr('class', 'axl').attr('x', lw - 8).attr('y', bh / 2).attr('dy', '0.35em').attr('text-anchor', 'end')
       .text((d) => { const s = label(d); return s.length > 34 ? s.slice(0, 33) + '…' : s; });
     g.append('rect').attr('x', lw).attr('height', bh).attr('rx', 4).attr('width', (d) => Math.max(2, x(value(d)))).attr('fill', color);
     g.append('text').attr('class', 'lbl-in').attr('x', (d) => lw + x(value(d)) + 6).attr('y', bh / 2).attr('dy', '0.35em').text((d) => fmt(value(d)));
     g.append('rect').attr('width', w).attr('height', bh + gap).attr('fill', 'transparent')
-      .each(function (d) { if (link) linkPage(this, ...link(d)); })
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipFn(t, d))).on('mouseleave', () => hideTip(tip));
   }
 
@@ -90,7 +141,7 @@
     g.append('rect').attr('y', (d) => y(d.first_reads)).attr('height', (d) => y(0) - y(d.first_reads)).attr('width', bw).attr('fill', C[0]);
     g.append('rect').attr('y', (d) => y(d.finished)).attr('height', (d) => y(d.first_reads) - y(d.finished)).attr('width', bw).attr('fill', C[1]);
     g.append('text').attr('class', 'lbl-in').attr('x', bw / 2).attr('y', (d) => y(d.finished) - 5).attr('text-anchor', 'middle').text((d) => (d.finished ? d.finished : ''));
-    g.append('rect').attr('x', -off).attr('width', x.step()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent').attr('data-link', (d) => 'year/' + d.year)
+    g.append('rect').attr('x', -off).attr('width', x.step()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent').call(links, 'year', (d) => d.year)
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, String(d.year), [[C[0], 'First reads', d.first_reads], [C[1], 'Re-reads', d.rereads], [null, 'Reads started', d.started], [null, 'Hours logged', d.hours ? fmt(d.hours) : '—']])))
       .on('mouseleave', () => hideTip(tip));
   }
@@ -117,22 +168,22 @@
 
   function drawGenre() {
     const el = $('#ch-genre'), rows = state(el, 'genre_counts'); if (!rows) return;
-    hbars(el, rows, { label: (r) => r.genre, value: (r) => r.books, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.genre, [[null, 'Books finished', d.books], [null, 'Hours', fmt(d.hours)]]), link: (d) => ['genre', d.genre] });
+    hbars(el, rows, { field: 'genre', value: (r) => r.books, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.genre, [[null, 'Books finished', d.books], [null, 'Hours', fmt(d.hours)]]) });
   }
   function drawSub() {
     const el = $('#ch-sub'), rows = state(el, 'subgenres'); if (!rows) return;
-    hbars(el, rows, { label: (r) => r.subgenre, value: (r) => r.books, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.subgenre, [[gColor(d.genre), d.genre, d.books + ' books']]), link: (d) => ['subgenre', d.subgenre] });
+    hbars(el, rows, { field: 'subgenre', value: (r) => r.books, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.subgenre, [[gColor(d.genre), d.genre, d.books + ' books']]) });
   }
   function drawAuthors() {
     const el = $('#ch-authors'), rows = state(el, 'authors'); if (!rows) return;
-    hbars(el, rows, { label: (r) => r.author, value: (r) => r.finished, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.author, [[null, 'Books finished', d.finished], [null, 'Hours', fmt(d.hours)]]), link: (d) => ['author', d.author] });
+    hbars(el, rows, { field: 'author', value: (r) => r.finished, color: (r) => gColor(r.genre), tipFn: (t, d) => tipLines(t, d.author, [[null, 'Books finished', d.finished], [null, 'Hours', fmt(d.hours)]]) });
   }
 
   function drawGenreYear() {
     const el = $('#ch-gy'), rows = state(el, 'genre_year'); if (!rows) return;
     const years = [...new Set(rows.map((r) => r.year))].sort();
     const genres = genreOrder.filter((g) => rows.some((r) => r.genre === g));
-    legend($('#leg-gy'), genres.map((g) => [gColor(g), g]));
+    genreLegend($('#leg-gy'), genres);
     const tbl = years.map((year) => { const o = { year, total: 0 }; genres.forEach((g) => { o[g] = (rows.find((r) => r.year === year && r.genre === g) || {}).reads || 0; o.total += o[g]; }); return o; }).filter((o) => o.total > 0);
     const series = d3.stack().keys(genres).offset(d3.stackOffsetExpand)(tbl);
     const h = 260, { svg, w, tip } = svgIn(el, h), m = { t: 6, r: 4, b: 24, l: 38 };
@@ -144,7 +195,7 @@
     axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).tickValues(tbl.filter((r, i) => i % every === 0).map((r) => r.year)).tickFormat(String).tickSize(0).tickPadding(8));
     svg.append('g').selectAll('g').data(series).join('g').attr('fill', (s) => gColor(s.key))
       .selectAll('rect').data((s) => s).join('rect').attr('x', (d) => x(d.data.year)).attr('width', x.bandwidth()).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1]) - 1));
-    svg.append('g').selectAll('rect').data(tbl).join('rect').attr('x', (d) => x(d.year)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent').attr('data-link', (d) => 'year/' + d.year)
+    svg.append('g').selectAll('rect').data(tbl).join('rect').attr('x', (d) => x(d.year)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent').call(links, 'year', (d) => d.year)
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, `${d.year} · ${d.total} finished`, genres.filter((g) => d[g]).map((g) => [gColor(g), g, d[g]]))))
       .on('mouseleave', () => hideTip(tip));
   }
@@ -274,7 +325,7 @@
     const R = resolveRange('gantt'); if (!R) return;
     const rows = all.filter((r) => r.end >= R.start && r.start <= R.end);
     const genres = genreOrder.filter((g) => rows.some((r) => r.genre === g));
-    legend($('#leg-gantt'), genres.map((g) => [gColor(g), g]));
+    genreLegend($('#leg-gantt'), genres);
     $('#gantt-note').textContent = `${rangeLabel(R)}: ${fmt(rows.length)} read${rows.length === 1 ? '' : 's'}, one bar from first to last day, solid on the days the book was opened. Colour is genre; faded bars weren't finished. ↻ marks a re-read.`;
     if (!rows.length) { el.style.minHeight = '80px'; el.replaceChildren(Object.assign(document.createElement('div'), { className: 'dy-empty', textContent: 'No reads in this period.' })); return; }
     const rh = 16, m = { t: 22, r: 8, b: 4, l: 8 }, h = m.t + rows.length * rh + m.b;
@@ -301,7 +352,7 @@
         const xe = x1(d) + 5, len = this.getComputedTextLength();
         if (xe + len < w) t.attr('x', xe); else if (x0(d) - 5 - len > 0) t.attr('x', x0(d) - 5).attr('text-anchor', 'end'); else t.attr('x', x0(d) + 4).style('fill', 'var(--color-fg)');
       });
-    g.append('rect').attr('width', w).attr('height', rh).attr('fill', 'transparent').attr('data-book', (d) => d.book_id)
+    g.append('rect').attr('width', w).attr('height', rh).attr('fill', 'transparent').call(links, 'book', (d) => d.book_id)
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.title, [[gColor(d.genre), d.genre, ''], [null, 'From', fDay(pDate(d.start))], [null, 'To', fDay(pDate(d.end))], [null, 'Opened on', `${fmt(d3.sum(d.active || [], ([a, b]) => d3.utcDay.count(pDate(a), pDate(b)) + 1))} of ${fmt(d3.utcDay.count(pDate(d.start), pDate(d.end)) + 1)} days`], [null, 'Reached', d.progress != null ? d.progress + '%' : '—']])))
       .on('mouseleave', () => hideTip(tip));
   }
@@ -315,7 +366,7 @@
     const avg = avgWpm();
     if (!rows.length) { el.style.minHeight = '80px'; el.replaceChildren(Object.assign(document.createElement('div'), { className: 'dy-empty', textContent: 'Not enough timed reading yet.' })); return; }
     const genres = genreOrder.filter((g) => rows.some((r) => r.genre === g)).concat([...new Set(rows.map((r) => r.genre))].filter((g) => !genreOrder.includes(g)));
-    legend($('#leg-speed'), genres.map((g) => [gColor(g), g]));
+    genreLegend($('#leg-speed'), genres);
     const w0 = Math.max(280, el.clientWidth), probe = d3.select(el).append('svg').attr('width', 0).attr('height', 0);
     const lab = Math.min(w0 * 0.3, measure(probe, genres) + 12); probe.remove();
     const m = { t: 22, r: 12, b: 26, l: lab };
@@ -345,10 +396,10 @@
       svg.append('text').attr('class', 'axl').attr('x', x(avg)).attr('y', m.t - 10).attr('text-anchor', 'middle').text(`your average ${avg} wpm`);
     }
     lanes.forEach((l) => {
-      svg.append('text').attr('class', 'axl').attr('x', m.l - 10).attr('y', l.top + l.h / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text(l.g);
+      link(svg.append('text').attr('class', 'axl').attr('x', m.l - 10).attr('y', l.top + l.h / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text(l.g).node(), 'genre', l.g);
       svg.append('g').selectAll('circle').data(l.dots).join('circle')
         .attr('cx', (d) => d.x).attr('cy', (d) => l.mid + d.y).attr('r', (d) => d.r)
-        .attr('fill', gColor(l.g)).attr('fill-opacity', 0.75).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1).attr('data-book', (d) => d.book_id)
+        .attr('fill', gColor(l.g)).attr('fill-opacity', 0.75).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1).call(links, 'book', (d) => d.book_id)
         .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.title, [[gColor(d.genre), d.subgenre || d.genre, ''], [null, 'Author', d.author || '—'], [null, 'Speed', `${d.wpm} wpm (${vsAvg(d.vs_avg)})`], [null, 'Timed', `${d.hours} h over ${d.days} days`]])))
         .on('mouseleave', () => hideTip(tip));
     });
@@ -363,7 +414,7 @@
     const showBooks = params().speedtl_books !== 0; tlBooks.checked = showBooks;
     const rows = all.filter((r) => r.date >= R.start && r.date <= R.end);
     const genres = genreOrder.filter((g) => rows.some((r) => r.genre === g));
-    legend($('#leg-speedtl'), genres.map((g) => [gColor(g), g]));
+    genreLegend($('#leg-speedtl'), genres);
     if (!rows.length) {
       $('#speedtl-note').textContent = `${rangeLabel(R)}: no timed reading in this period (Moon+ logs minutes and words from 2019).`;
       el.style.minHeight = '80px'; el.replaceChildren(Object.assign(document.createElement('div'), { className: 'dy-empty', textContent: 'No timed reading in this period.' })); return;
@@ -424,7 +475,7 @@
     g.append('text').attr('class', 'lbl-in').attr('x', bx0).attr('y', (b) => cy(b.wpm) - 7).text((b) => b.title)
       .each(function (b) { if (this.getComputedTextLength() > bx1(b) - bx0(b) + 24) this.remove(); });
     g.append('rect').attr('x', (b) => bx0(b) - 2).attr('y', (b) => cy(b.wpm) - 8).attr('height', 16)
-      .attr('width', (b) => Math.max(8, bx1(b) - bx0(b) + 4)).attr('fill', 'transparent').attr('data-book', (b) => b.id)
+      .attr('width', (b) => Math.max(8, bx1(b) - bx0(b) + 4)).attr('fill', 'transparent').call(links, 'book', (b) => b.id)
       .on('mousemove', (e, b) => showTip(tip, el, e, (tp) => tipLines(tp, b.title, [[gColor(b.genre), b.genre, ''], [null, 'Author', b.author || '—'],
         [null, 'Speed', `${Math.round(b.wpm)} wpm${avg ? ` (${vsAvg(b.wpm / avg - 1)})` : ''}`], [null, 'Timed', `${mins(b.m)} over ${b.days} day${b.days === 1 ? '' : 's'}`],
         [null, 'Dates', `${fDay(pDate(b.start))} – ${fDay(pDate(b.end))}`]])))
@@ -446,14 +497,14 @@
       svg.append('line').attr('x1', x(avg)).attr('x2', x(avg)).attr('y1', m.t - 4).attr('y2', h - m.b).attr('stroke', 'var(--cds-chart-reference, var(--color-fg-muted))').attr('stroke-dasharray', '4 3');
       svg.append('text').attr('class', 'axl').attr('x', x(avg)).attr('y', m.t - 8).attr('text-anchor', 'middle').text(`avg ${avg}`);
     }
-    const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (d, i) => `translate(0,${m.t + i * rh + rh / 2})`);
+    const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (d, i) => `translate(0,${m.t + i * rh + rh / 2})`).each(function (d) { link(this, d.kind, d.name); });
     g.append('text').attr('class', 'axl').attr('x', lab - 10).attr('dy', '0.35em').attr('text-anchor', 'end').text((d) => short(d.name));
     if (avg) g.append('line').attr('x1', x(avg)).attr('x2', (d) => x(d.wpm)).attr('stroke', (d) => gColor(d.genre)).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-opacity', 0.6);
     g.append('circle').attr('cx', (d) => x(d.wpm)).attr('r', 5.5).attr('fill', (d) => gColor(d.genre));
     const leftOf = (d) => avg && d.wpm < avg && x(d.wpm) - lab > 40; // room for the number between name and dot?
     g.append('text').attr('class', 'lbl-in').attr('x', (d) => (leftOf(d) ? x(d.wpm) - 10 : avg && d.wpm < avg ? x(avg) + 8 : x(d.wpm) + 10)).attr('dy', '0.35em')
       .attr('text-anchor', (d) => (leftOf(d) ? 'end' : 'start')).text((d) => d.wpm);
-    g.append('rect').attr('x', 0).attr('y', -rh / 2).attr('width', w0).attr('height', rh).attr('fill', 'transparent').attr('data-link', (d) => d.kind + '/' + d.name)
+    g.append('rect').attr('x', 0).attr('y', -rh / 2).attr('width', w0).attr('height', rh).attr('fill', 'transparent')
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, d.name, [[gColor(d.genre), 'Speed', `${d.wpm} wpm`], [null, 'vs average', avg ? vsAvg(d.wpm / avg - 1) : '—'], [null, 'Timed', `${fmt(d.hours)} h · ${d.books} book${d.books === 1 ? '' : 's'}`]])))
       .on('mouseleave', () => hideTip(tip));
   }
@@ -462,11 +513,11 @@
   function drawSpeedTab() {
     fillMetrics('speed_overall');
     const bsp = D('book_speed').status === 'ok' ? D('book_speed').data : [];
-    linkTo($('#kpi-fastest'), bsp.length ? bsp[0].book_id : null); linkTo($('#kpi-slowest'), bsp.length ? bsp[bsp.length - 1].book_id : null);
+    link($('#kpi-fastest'), 'book', bsp.length ? bsp[0].book_id : null); link($('#kpi-slowest'), 'book', bsp.length ? bsp[bsp.length - 1].book_id : null);
     drawSpeedTimeline();
     drawSpeedBooks();
     const avg = avgWpm();
-    const li = (r) => [r.title, `${r.author || ''} · ${r.hours} h timed`, `${r.wpm} wpm · ${vsAvg(r.vs_avg)}`, null, r.book_id];
+    const li = (r) => ({ note: `${r.hours} h timed`, meta: `${r.wpm} wpm · ${vsAvg(r.vs_avg)}` });
     list('#fast', 'book_speed', li, (rows) => rows.slice(0, 10));
     list('#slow', 'book_speed', li, (rows) => rows.slice(-10).reverse());
     const gs = D('group_speed'), kind = (params().speed_kind) || 'genre';
@@ -523,11 +574,11 @@
       dc.append(el('b', null, d3.utcFormat('%a %-d')(d)), el('span', null, total ? mins(total) : '—'));
       const books = el('div');
       entries.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
-        const bk = linkTo(el('div', 'dy-book'), r.book_id), t = el('div', 't');
+        const bk = link(el('div', 'dy-book'), 'book', r.book_id), t = el('div', 't');
         bk.append(cover(r.book_id, r.title, r.genre, 'xs'));
         t.append(document.createTextNode(r.title));
         if (r.event) t.append(el('span', 'ev ' + r.event, r.event === 'finished' ? 'Finished' : r.event === 'reread' ? 'Started re-read' : 'Started'));
-        if (r.author) { t.append(document.createElement('br')); t.append(linkPage(el('small', 'lk', r.author), 'author', r.author)); }
+        t.append(byline('small', 'by', r));
         const bits = [];
         if (r.minutes) bits.push(mins(r.minutes));
         if (r.words) bits.push(fmt(r.words) + ' words');
@@ -567,7 +618,7 @@
     if (!days.length) { el.hidden = lg.hidden = true; return; }
     el.hidden = lg.hidden = false;
     const genres = genreOrder.filter((g) => inR.some((r) => r.genre === g));
-    legend(lg, genres.map((g) => [gColor(g), g]));
+    genreLegend(lg, genres);
     const byDate = new Map(days);
     const h = 160, { svg, w, tip } = svgIn(el, h), m = { t: 8, r: 4, b: 22, l: 30 };
     el.style.minHeight = h + 'px';
@@ -608,7 +659,8 @@
       .on('click', (e) => { hideTip(tip); jumpToDay(iso(d3.utcDay.floor(x.invert(d3.pointer(e)[0]))), days); });
   }
 
-  function vbars(el, rows, key, val, color, unit, link) {
+  // to(d) → ['year', 2024] links each bar
+  function vbars(el, rows, key, val, color, unit, to) {
     const h = 220, { svg, w, tip } = svgIn(el, h), m = { t: 18, r: 4, b: 24, l: 30 };
     const x = d3.scaleBand(rows.map(key), [m.l, w - m.r]).padding(0.3);
     const y = d3.scaleLinear([0, d3.max(rows, val) || 1], [h - m.b, m.t]).nice();
@@ -622,7 +674,7 @@
     g.append('rect').attr('y', (d) => y(val(d))).attr('height', (d) => y(0) - y(val(d))).attr('width', bw).attr('rx', 4).attr('fill', color);
     g.append('text').attr('class', 'lbl-in').attr('x', bw / 2).attr('y', (d) => y(val(d)) - 5).attr('text-anchor', 'middle').text((d) => fmt(val(d)));
     g.append('rect').attr('x', -off).attr('width', x.step()).attr('y', m.t).attr('height', h - m.t - m.b).attr('fill', 'transparent')
-      .each(function (d) { if (link) linkPage(this, ...link(d)); })
+      .each(function (d) { if (to) link(this, ...to(d)); })
       .on('mousemove', (e, d) => showTip(tip, el, e, (t) => tipLines(t, String(key(d)), [[null, unit, fmt(val(d))]]))).on('mouseleave', () => hideTip(tip));
   }
   function drawWeek() { const el = $('#ch-week'), rows = state(el, 'weekday'); if (rows) vbars(el, rows, (r) => r.weekday, (r) => r.avg_minutes, C[0], 'Avg minutes'); }
@@ -644,10 +696,10 @@
   // "On the go": a list, or one book shown large when it's the only one
   function onGo() {
     const ul = $('#current'), rows = state(ul, 'current'); if (!rows) return;
-    if (rows.length !== 1) return list('#current', 'current', (r) => [r.title, r.author, 'last ' + d3.utcFormat('%-d %b')(pDate(r.last_read)), r.progress, r.id]);
-    const r = rows[0], li = linkTo(el('li', 'go-one'), r.id), info = el('div', 'go-info'), p = r.progress || 0;
+    if (rows.length !== 1) return list('#current', 'current', (r) => ({ meta: 'last ' + d3.utcFormat('%-d %b')(pDate(r.last_read)), prog: r.progress }));
+    const r = rows[0], li = link(el('li', 'go-one'), 'book', r.id), info = el('div', 'go-info'), p = r.progress || 0;
     info.append(el('div', 'go-title', r.title));
-    info.append(el('div', 'go-sub', [r.author, r.series ? r.series + (r.series_no != null ? ' #' + r.series_no : '') : null].filter(Boolean).join(' · ')));
+    info.append(byline('div', 'go-sub', r));
     const prog = el('div', 'go-prog'), bar = el('div', 'pbar'), fill = el('i');
     fill.style.width = Math.min(100, p) + '%'; fill.style.background = C[0]; bar.append(fill);
     prog.append(el('b', null, (Math.round(p * 10) / 10) + '%'), bar);
@@ -667,18 +719,21 @@
   }
 
   // ---------- lists ----------
+  // a list of books from a data source: cover, title, linked author and series, and item(r)'s
+  // { meta, prog, note } (note joins the byline; title overrides the row's title)
   function list(sel, id, item, pick) {
-    const el = $(sel), all = state(el, id); if (!all) return;
-    const rows = pick ? pick(all) : all;
-    if (!rows.length) { el.replaceChildren(Object.assign(document.createElement('li'), { className: 'meta', textContent: 'Nothing here right now.' })); return; }
-    el.replaceChildren(...rows.map((r) => {
-      const [title, sub, meta, prog, book] = item(r);
-      const li = document.createElement('li'), a = document.createElement('div'), b = document.createElement('div');
-      if (book) { li.append(cover(book, r.title, r.genre)); linkTo(li, book); }
-      a.className = 'ttl'; a.append(document.createTextNode(title));
-      const s = document.createElement('small'); s.textContent = sub; a.append(s);
-      if (prog != null) { const p = document.createElement('div'), i = document.createElement('i'); p.className = 'pbar'; i.style.width = Math.min(100, prog) + '%'; i.style.background = C[0]; p.append(i); a.append(p); }
-      b.className = 'meta'; b.textContent = meta; li.append(a, b); return li;
+    const ul = $(sel), all = state(ul, id); if (!all) return;
+    bookList(ul, pick ? pick(all) : all, item);
+  }
+  function bookList(ul, rows, item = () => ({}), { fields = ['author', 'series'], cur } = {}) {
+    if (!rows.length) { ul.replaceChildren(el('li', 'meta', 'Nothing here right now.')); return; }
+    ul.replaceChildren(...rows.map((r) => {
+      const { title, meta, prog, note } = item(r), id = idOf('book', r), li = el('li', id === cur ? 'cur' : null), a = el('div', 'ttl');
+      li.append(cover(id, r.title, r.genre));
+      if (id !== cur) link(li, 'book', id);
+      a.append(document.createTextNode(title ?? r.title), byline('small', null, r, fields, note));
+      if (prog != null) { const p = el('div', 'pbar'), i = el('i'); i.style.width = Math.min(100, prog) + '%'; i.style.background = C[0]; p.append(i); a.append(p); }
+      li.append(a, el('div', 'meta', meta ?? '')); return li;
     }));
   }
 
@@ -694,7 +749,7 @@
     const key = tblEl.dataset.rowKey;
     body.replaceChildren(...rows.map((row) => {
       const tr = document.createElement('tr'); tr.dataset.key = row[key];
-      if (opts.book) linkTo(tr, opts.book(row));
+      link(tr, 'book', idOf('book', row));
       cols.forEach((c) => { const td = document.createElement('td'); if (c.num) td.className = 'n'; if (c.cls) td.className += ' ' + c.cls; c.render(td, row); tr.append(td); });
       return tr;
     }));
@@ -707,10 +762,10 @@
     }
     return rows.length;
   }
-  const txt = (f, fn) => (td, r) => { td.textContent = fn ? fn(r[f], r) : r[f] ?? '—'; };
+  // a cell showing r[f]; authors, series, genres… link to their page
+  const txt = (f, fn) => (td, r) => { const v = fn ? fn(r[f], r) : r[f] ?? '—'; if (r[f] && KIND_OF[f] && KIND_OF[f] !== 'book') td.append(ref(r, f, v)); else td.textContent = v; };
   const pct = (v) => (v == null ? '—' : (v >= 99.95 ? 100 : Math.round(v * 10) / 10) + '%');
   const date = (v) => (v ? fDay(pDate(v)) : '—');
-  const titleCell = (td, r) => { td.textContent = r.title; if (r.series) { td.append(document.createElement('br')); const s = document.createElement('small'); s.textContent = r.series + (r.series_no != null ? ' #' + r.series_no : ''); td.append(s); } };
 
   let speedMap = new Map();
   const speedOf = (id) => speedMap.get(id) ?? null;
@@ -719,12 +774,11 @@
     const q = $('#lib-q').value.trim().toLowerCase(), gsel = $('#lib-genre').value, ssel = $('#lib-status').value, rr = $('#lib-reread').value;
     const n = table('#tbl-books', 'books', [
       { f: 'title', render: (td, r) => { const w = el('div', 'tt'); w.append(cover(r.id, r.title, r.genre, 'sm'), el('span', null, r.title)); td.append(w); } },
-      { f: 'author', render: (td, r) => td.append(linkPage(el('span', 'lk', r.author ?? '—'), 'author', r.author)), cls: 'hide-sm' },
-      { f: 'genre', render: (td, r) => td.append(linkPage(el('span', 'lk', r.genre ?? '—'), 'genre', r.genre)), cls: 'hide-sm' },
+      { f: 'author', render: txt('author'), cls: 'hide-sm' }, { f: 'genre', render: txt('genre'), cls: 'hide-sm' },
       { f: 'last_read', render: txt('last_read', date) }, { f: 'times_read', num: true, render: txt('times_read') }, { f: 'hours', num: true, render: txt('hours', (v) => (v ? fmt(v) : '—')), cls: 'hide-sm' },
       { f: 'wpm', num: true, cls: 'hide-sm', get: (r) => speedOf(r.id), render: (td, r) => { const v = speedOf(r.id); td.textContent = v ?? '—'; } },
       { f: 'progress', num: true, render: txt('progress', pct) },
-    ], { book: (r) => r.id, filter: (b) => (!q || [b.title, b.author, b.series].join(' ').toLowerCase().includes(q)) && (!gsel || b.genre === gsel) && (!ssel || b.status === ssel) && (!rr || b.times_read > 1) });
+    ], { filter: (b) => (!q || [b.title, b.author, b.series].join(' ').toLowerCase().includes(q)) && (!gsel || b.genre === gsel) && (!ssel || b.status === ssel) && (!rr || b.times_read > 1) });
     const total = D('books').status === 'ok' ? D('books').data.length : 0;
     $('#lib-count').textContent = n == null ? '' : `Showing ${fmt(n)} of ${fmt(total)} books.`;
     if (D('books').status === 'ok' && $('#lib-genre').options.length === 1) {
@@ -733,11 +787,11 @@
     table('#tbl-rereads', 'rereads', [
       { f: 'title', render: txt('title') }, { f: 'read_no', num: true, render: txt('read_no') }, { f: 'start', render: txt('start', date) }, { f: 'end', render: txt('end', date) },
       { f: 'days_read', num: true, render: txt('days_read'), cls: 'hide-sm' }, { f: 'hours', num: true, render: txt('hours', (v) => (v ? v : '—')), cls: 'hide-sm' }, { f: 'progress', num: true, render: txt('progress', pct) },
-    ], { book: (r) => r.book_id });
-    table('#tbl-series', 'series', [
-      { f: 'series', render: txt('series') }, { f: 'author', render: (td, r) => td.append(linkPage(el('span', 'lk', r.author ?? '—'), 'author', r.author)), cls: 'hide-sm' }, { f: 'finished', num: true, render: (td, r) => { td.textContent = `${r.finished} of ${r.books}`; } }, { f: 'hours', num: true, render: txt('hours', fmt) },
     ]);
-    $('#tbl-series').querySelectorAll('tbody tr').forEach((tr) => linkPage(tr, 'series', tr.dataset.key));
+    table('#tbl-series', 'series', [
+      { f: 'series', render: txt('series') }, { f: 'author', render: txt('author'), cls: 'hide-sm' }, { f: 'finished', num: true, render: (td, r) => { td.textContent = `${r.finished} of ${r.books}`; } }, { f: 'hours', num: true, render: txt('hours', fmt) },
+    ]);
+    $('#tbl-series').querySelectorAll('tbody tr').forEach((tr) => link(tr, 'series', tr.dataset.key));
   }
   ['#lib-q', '#lib-genre', '#lib-status', '#lib-reread'].forEach((s) => $(s).addEventListener('input', () => drawTables()));
 
@@ -784,9 +838,8 @@
     else if (cur === 'busy') shown.sort((a, b) => b.books - a.books || (a.date < b.date ? 1 : -1));
     if (!shown.length) { list.replaceChildren(el('li', 'meta', 'Nothing to check here.')); more.hidden = true; return; }
     list.replaceChildren(...shown.slice(0, ckLimit).map((r) => {
-      const li = linkTo(el('li'), r.book_id), a = el('div', 'ttl');
-      a.append(el('span', 'ck-title', r.title));
-      if (r.author) a.append(el('small', null, r.author));
+      const li = link(el('li'), 'book', r.book_id), a = el('div', 'ttl');
+      a.append(el('span', 'ck-title', r.title), byline('small', null, r));
       a.append(el('p', null, r.detail));
       if (r.active) a.append(strip(r));
       const right = el('div', 'meta');
@@ -828,31 +881,17 @@
     }
   }
 
-  // ---------- one book ----------
-  // any element with data-book opens that book's page
-  function linkTo(node, id) {
-    if (!node) return node;
-    if (id) {
-      node.setAttribute('data-book', id);
-      if (!(node instanceof SVGElement)) { node.tabIndex = 0; node.setAttribute('role', 'link'); }
-    } else ['data-book', 'role', 'tabindex'].forEach((a) => node.removeAttribute(a));
-    return node;
-  }
-  // any element with data-link="<kind>/<id>" opens that page: author, series, genre, subgenre, year
-  function linkPage(node, kind, id) {
-    if (!node || id == null || id === '') return node;
-    node.setAttribute('data-link', kind + '/' + id);
-    if (!(node instanceof SVGElement)) { node.tabIndex = 0; node.setAttribute('role', 'link'); }
-    return node;
-  }
-  // pages/*.js register { draw(id, root) } for each kind; the page renders everything into root
+  // ---------- pages for one book, author, series, genre, year… ----------
+  // a book opens the book page; any other kind in LINKS opens the page pages/<kind>.js registered
   const pages = {};
-  let bookId = null, bookRead = null, prevTab = 'overview', pageKind = null, pageId = null;
+  let bookId = null, bookRead = null, prevTab = 'overview', pageKind = null, pageId = null, detailName = '';
   const onPage = () => tab === 'book' || tab === 'entity';
+  const tabName = (t) => $('#tab-' + t)?.textContent || 'Overview';
   function openLink(kind, id) {
-    if (id == null || id === '') return;
+    if (!LINKS[kind] || id == null || id === '') return;
+    const back = onPage() ? detailName : tabName(tab);
     if (!onPage()) prevTab = tab;
-    try { history.pushState({ link: kind + '/' + id, from: prevTab }, '', '#' + kind + '/' + encodeURIComponent(id)); } catch (e) { /* sandboxed */ }
+    try { history.pushState({ link: kind, from: prevTab, back }, '', '#' + kind + '/' + encodeURIComponent(id)); } catch (e) { /* sandboxed */ }
     go(kind, String(id));
     window.scrollTo(0, 0);
   }
@@ -860,20 +899,19 @@
     if (kind === 'book') { if (id !== bookId) bookRead = null; bookId = id; show('book', false); }
     else { pageKind = kind; pageId = id; show('entity', false); }
   }
-  const openBook = (id) => openLink('book', id);
+  // one handler for every link on the page; the innermost wins (an author inside a book row)
   document.addEventListener('click', (e) => {
-    const t = e.target.closest && e.target.closest('[data-book],[data-link],[data-day],[data-read]');
+    const t = e.target.closest && e.target.closest('[data-link],[data-day],[data-read]');
     if (!t || e.target.closest('button,input,select,a')) return;
-    if (t.hasAttribute('data-book')) openBook(t.getAttribute('data-book'));
-    else if (t.hasAttribute('data-link')) { const s = t.getAttribute('data-link'), i = s.indexOf('/'); openLink(s.slice(0, i), s.slice(i + 1)); }
+    if (t.hasAttribute('data-link')) openLink(t.getAttribute('data-link'), t.getAttribute('data-id'));
     else if (t.hasAttribute('data-day')) openDiary(t.getAttribute('data-day'));
     else { bookRead = +t.getAttribute('data-read'); drawBook(); $('#card-bk-days').scrollIntoView({ block: 'nearest' }); }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' || !e.target.hasAttribute || !(e.target.hasAttribute('data-book') || e.target.hasAttribute('data-link'))) return;
+    if (e.key !== 'Enter' || !e.target.hasAttribute || !e.target.hasAttribute('data-link')) return;
     e.target.click();
   });
-  document.querySelectorAll('.bk-back').forEach((b) => b.addEventListener('click', () => { if (history.state && (history.state.book || history.state.link)) history.back(); else show(prevTab); }));
+  document.querySelectorAll('.bk-back').forEach((b) => b.addEventListener('click', () => { if (history.state && history.state.link) history.back(); else show(prevTab); }));
   function drawEntity() {
     const root = $('#pg-body'), p = pages[pageKind];
     if (!p) { document.title = 'Reading history'; root.replaceChildren(el('div', 'dy-empty', 'Nothing to show here.')); return; }
@@ -888,12 +926,15 @@
   const progStep = (d) => (d.progress == null ? '—' : d.prev_progress != null && d.prev_progress !== d.progress ? `${pct(d.prev_progress)} → ${pct(d.progress)}` : pct(d.progress));
   const STATUS = { finished: 'Finished', in_progress: 'In progress', not_started: 'Not started', unknown: 'Progress unknown' };
 
+  // a book in a list on a book page: its status, progress and when it was last opened
+  const relItem = (numbered) => (x) => ({ title: (numbered && x.series_no != null ? `#${x.series_no} ` : '') + x.title, note: STATUS[x.status] || '', prog: x.progress, meta: x.last_read ? fShort(pDate(x.last_read)) : '' });
+
   function drawBook() {
     const head = $('#bk-head'), books = state(head, 'books'); if (!books) return;
     const b = books.find((x) => x.id === bookId);
     ['#bk-kpis', '#card-bk-days', '#card-bk-reads', '#card-bk-related', '#card-bk-log'].forEach((s) => ($(s).hidden = !b));
     if (!b) { document.title = 'Reading history'; head.replaceChildren(el('div', 'dy-empty', 'That book isn’t in your library.')); return; }
-    document.title = `${b.title} · Reading history`;
+    detailName = b.title; document.title = `${b.title} · Reading history`;
     const reads = (D('reads').data || []).filter((r) => r.book_id === b.id).sort((x, y) => x.read_no - y.read_no);
     const days = (D('diary').status === 'ok' ? D('diary').data : []).filter((d) => d.book_id === b.id);
     const latest = reads[reads.length - 1];
@@ -901,14 +942,11 @@
     // header: cover, title, author, series, genre, status and progress
     const info = el('div', 'go-info');
     info.append(el('div', 'bk-title', b.title));
-    const sub = el('div', 'go-sub');
-    if (b.author) sub.append(linkPage(el('span', 'lk', b.author), 'author', b.author));
-    if (b.series) { if (b.author) sub.append(' · '); sub.append(linkPage(el('span', 'lk', b.series), 'series', b.series), b.series_no != null ? ' #' + b.series_no : ''); }
-    info.append(sub);
+    info.append(byline('div', 'go-sub', b));
     const chips = el('div', 'bk-chips');
     chips.append(el('span', 'chip' + (b.status === 'finished' ? ' ok' : ''), STATUS[b.status] || b.status));
     if (b.times_read > 1) chips.append(el('span', 'chip', `Read ${b.times_read} times`));
-    [['genre', b.genre], ['subgenre', b.subgenre]].filter(([, g]) => g).forEach(([k, g]) => { const c = linkPage(el('span', 'chip', g), k, g); c.style.color = gColor(b.genre); chips.append(c); });
+    chips.append(...['genre', 'subgenre'].filter((f) => b[f]).map((f) => { const c = chip(KIND_OF[f], b[f]); c.style.color = gColor(b.genre); return c; }));
     info.append(chips);
     if (b.progress != null) {
       const prog = el('div', 'go-prog'), bar = el('div', 'pbar'), fill = el('i');
@@ -968,17 +1006,9 @@
     const rel = ser.length > 1 ? ser.sort((x, y) => (x.series_no ?? 1e9) - (y.series_no ?? 1e9) || x.title.localeCompare(y.title))
       : books.filter((x) => x.author && x.author === b.author && x.id !== b.id).sort((x, y) => ((x.last_read || '') < (y.last_read || '') ? 1 : -1));
     $('#card-bk-related').hidden = !rel.length;
-    $('#bk-rel-h').replaceChildren(linkPage(el('span', 'lk', ser.length > 1 ? b.series : `More by ${b.author}`), ser.length > 1 ? 'series' : 'author', ser.length > 1 ? b.series : b.author));
+    $('#bk-rel-h').replaceChildren(...(ser.length > 1 ? [ref(b, 'series')] : ['More by ', ref(b, 'author')]));
     $('#bk-rel-note').textContent = ser.length > 1 ? `${fmt(ser.filter((x) => x.status === 'finished').length)} of ${fmt(ser.length)} in the series finished.` : `${plural(rel.length, 'other book')} in your library.`;
-    $('#bk-related').replaceChildren(...rel.map((x) => {
-      const li = el('li', x.id === b.id ? 'cur' : null), a = el('div', 'ttl');
-      li.append(cover(x.id, x.title, x.genre));
-      if (x.id !== b.id) linkTo(li, x.id);
-      a.append(document.createTextNode((ser.length > 1 && x.series_no != null ? `#${x.series_no} ` : '') + x.title), el('small', null, STATUS[x.status] || ''));
-      if (x.progress != null) { const pb = el('div', 'pbar'), i = el('i'); i.style.width = Math.min(100, x.progress) + '%'; i.style.background = C[0]; pb.append(i); a.append(pb); }
-      li.append(a, el('div', 'meta', x.last_read ? fShort(pDate(x.last_read)) : ''));
-      return li;
-    }));
+    bookList($('#bk-related'), rel, relItem(ser.length > 1), { fields: ser.length > 1 ? [] : ['series'], cur: b.id });
 
     // every day, newest first
     $('#tbl-bk-log tbody').replaceChildren(...days.slice().reverse().map((d) => {
@@ -1050,7 +1080,7 @@
   const syncTopH = () => document.documentElement.style.setProperty('--top-h', top.offsetHeight + 8 + 'px');
   new ResizeObserver(syncTopH).observe(top); syncTopH();
 
-  function show(name, link = true, dir = 0) {
+  function show(name, setLink = true, dir = 0) {
     const page = document.getElementById(name);
     if (!page) return;
     const changed = name !== tab;
@@ -1058,8 +1088,9 @@
     tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     document.querySelectorAll('.rh-page').forEach((p) => (p.hidden = p.id !== name));
     if (!onPage()) document.title = 'Reading history';
-    document.querySelectorAll('.bk-back').forEach((b) => (b.textContent = '← Back to ' + ($('#tab-' + prevTab)?.textContent || 'Overview')));
-    if (link) dash.setLink(name);
+    const back = '← Back to ' + ((history.state && history.state.back) || tabName(prevTab));
+    document.querySelectorAll('.bk-back').forEach((b) => (b.textContent = back));
+    if (setLink) dash.setLink(name);
     redraw();
     // bring the active tab into view inside the (horizontally scrolling) tab strip
     const b = tabs.find((t) => t.dataset.tab === name);
@@ -1133,15 +1164,15 @@
     if (tab === 'overview') {
       drawYears(); drawMonths();
       onGo();
-      list('#recent', 'recent', (r) => [(r.read_no > 1 ? '↻ ' : '') + r.title, r.author, fDay(pDate(r.end)) + (r.hours ? ` · ${r.hours} h` : ''), null, r.book_id]);
+      list('#recent', 'recent', (r) => ({ title: (r.read_no > 1 ? '↻ ' : '') + r.title, meta: fDay(pDate(r.end)) + (r.hours ? ` · ${r.hours} h` : '') }));
     } else if (tab === 'genres') { drawGenre(); drawSub(); drawGenreYear(); drawAuthors(); drawTables(); }
     else if (tab === 'diary') drawDiary();
     else if (tab === 'speed') drawSpeedTab();
     else if (tab === 'checks') drawChecks();
     else if (tab === 'timeline') {
       drawHeat(); drawGantt(); drawWeek();
-      list('#big', 'big_reads', (r) => [r.title, r.author, `${r.hours} h · ${r.days_read} days`, null, r.book_id]);
-      list('#stalled', 'stalled', (r) => [r.title, r.author, 'last ' + fShort(pDate(r.last_read)), r.progress, r.id]);
+      list('#big', 'big_reads', (r) => ({ meta: `${r.hours} h · ${r.days_read} days` }));
+      list('#stalled', 'stalled', (r) => ({ meta: 'last ' + fShort(pDate(r.last_read)), prog: r.progress }));
     } else if (tab === 'book') drawBook();
     else if (tab === 'entity') drawEntity();
     else drawTables();
@@ -1150,7 +1181,7 @@
   // #speed, #diary… open a tab; #book/<id>, #author/<name>… open a page
   function route() {
     const named = decodeURIComponent(location.hash.slice(1)), i = named.indexOf('/');
-    if (i > 0) {
+    if (i > 0 && LINKS[named.slice(0, i)]) {
       if (history.state && history.state.from) prevTab = history.state.from;
       go(named.slice(0, i), named.slice(i + 1));
     } else show(named && !['book', 'entity'].includes(named) && document.getElementById(named)?.classList.contains('rh-page') ? named : 'overview', false);
@@ -1164,7 +1195,8 @@
     register: (kind, page) => { pages[kind] = page; if (tab === 'entity' && pageKind === kind) redraw(); },
     D, state, el, fmt, pDate, iso, fDay, fShort, C, gColor, genres: () => genreOrder.slice(),
     svgIn, measure, showTip, hideTip, tipLines, axis, legend, hbars, vbars, cover,
-    linkBook: linkTo, linkPage, openLink, openDiary, setTitle: (s) => (document.title = s ? `${s} · Reading history` : 'Reading history'),
+    link, links, ref, byline, chip, linkBook: (n, id) => link(n, 'book', id), linkPage: link, openLink, openDiary,
+    setTitle: (s) => { detailName = s || ''; document.title = s ? `${s} · Reading history` : 'Reading history'; },
     mins, pct, date, plural, span, okDay, speedFrom, avgWpm, vsAvg, STATUS,
   };
 })();

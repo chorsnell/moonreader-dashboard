@@ -1,6 +1,6 @@
 // genre and subgenre pages: #genre/<name>, #subgenre/<name>
 (() => {
-  const { D, el, fmt, pDate, fDay, fShort, gColor, hbars, vbars, cover, linkBook, linkPage, mins, pct, date, plural, avgWpm, vsAvg, STATUS } = rh;
+  const { D, el, fmt, pDate, fDay, fShort, gColor, hbars, vbars, cover, linkBook, linkPage, byline, mins, pct, date, plural, avgWpm, vsAvg, STATUS } = rh;
   const BOOKS_CAP = 25;
   const expanded = {}; // 'genre/<name>' → true once "Show all" is clicked
   const ok = (id) => { const r = D(id); return r.status === 'ok' ? r.data : null; };
@@ -135,7 +135,7 @@
       const c = card('Series', `${plural(series.length, 'series')} with books in ${id}.`), ul = el('ul', 'rh-list');
       ul.append(...series.slice(0, 12).map((s) => {
         const li = linkPage(el('li'), 'series', s.name), a = el('div', 'ttl');
-        a.append(document.createTextNode(s.name)); if (s.author) a.append(el('small', null, s.author));
+        a.append(document.createTextNode(s.name)); a.append(byline('small', null, s, ['author']));
         li.append(a, el('div', 'meta', `${fmt(s.finished)} of ${plural(s.books, 'book')} finished`));
         return li;
       }));

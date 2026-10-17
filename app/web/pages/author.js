@@ -1,7 +1,7 @@
 // author page: #author/<name>, everything about how you've read one author
 (() => {
   const { D, el, fmt, pDate, fDay, fShort, C, gColor, svgIn, measure, showTip, hideTip, tipLines, axis, vbars, cover,
-    linkBook, linkPage, setTitle, mins, pct, date, plural, speedFrom, avgWpm, vsAvg, STATUS } = rh;
+    linkBook, linkPage, ref, setTitle, mins, pct, date, plural, speedFrom, avgWpm, vsAvg, STATUS } = rh;
   const ok = (id) => { const r = D(id); return r.status === 'ok' ? r.data : null; };
   const yr = (s) => +s.slice(0, 4);
   const hrs = (h) => (h >= 10 ? fmt(Math.round(h)) : fmt(Math.round(h * 10) / 10));
@@ -133,7 +133,7 @@
         li.append(cover(b.id, b.title, b.genre));
         sm.append(STATUS[b.status] || b.status || '');
         if (b.times_read > 1) sm.append(` · read ${b.times_read} times`);
-        if (b.series) { sm.append(' · '); sm.append(linkPage(el('span', 'lk', b.series), 'series', b.series)); if (b.series_no != null) sm.append(' #' + b.series_no); }
+        if (b.series) sm.append(' · ', ref(b, 'series', b.series + (b.series_no != null ? ' #' + b.series_no : '')));
         t.append(document.createTextNode(b.title), sm);
         if (b.progress != null) t.append(pbar(b.progress, gColor(b.genre)));
         const s = speedFrom(byBook.get(b.id) || []), meta = el('div', 'meta au-meta');
