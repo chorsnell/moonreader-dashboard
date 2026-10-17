@@ -42,6 +42,26 @@ A feature script is an IIFE that uses `dash` (data and calcs) and `rh` (drawing 
 })();
 ```
 
+## Calcs run on the server too
+
+The server loads these same scripts in Node (`src/stats/`) and works out every calc for each
+viewer, so the page can skip them (see `docs/api.md`). Nothing extra is needed as long as a
+calc's `fn` is a pure function of its inputs: rh helpers such as `rh.okDay` and d3 are fine,
+but a calc that reads `dash.params()`, `dash.data()` or the DOM is left to the browser, and
+so is one whose rows hold a `Date`, a `Map` or `NaN` (JSON can't carry them). Calcs run in
+the order the scripts register them, in Node as in the page. `test/web/server-stats.spec.ts`
+checks that both give identical rows.
+
+## Friends' data
+
+`rh.friends` (from `friend-profiles.js`) has each friend's books, reads and daily rows, the
+friend picked under "Compare with" (`selected()`), a colour per person (`color(slug)`, `'me'`
+for you) and `calc(slug, id)`: any calc worked out again from that friend's data. A calc that
+compares you with a friend takes their files as inputs named `friend_books`, `friend_reads`…
+and is run with `dash.calcWith(id, { books, …, friend_books, … })`; the server leaves those
+to the page. `dash.sameBook.matcher(books)` finds the same book in another library (ISBN,
+work id, then title and author).
+
 ## Privacy
 
 The owner chooses what visitors (public, or with the read password) may see; the admin
