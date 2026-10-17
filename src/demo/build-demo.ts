@@ -11,44 +11,26 @@
  * DEMO_TODAY=YYYY-MM-DD builds it as if run on that day (for repeatable screenshots).
  */
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { NestFactory } from '@nestjs/core';
 import { exists } from '../common/files';
 import { localDate } from '../common/time';
-import { BackupImportService } from '../backup-import/backup-import.service';
-import type { Catalogue } from '../backup-import/reading-history.types';
-import { CoverLookupService } from '../covers/cover-lookup.service';
 import { WEB_DIR } from '../paths';
+import { loadPageCalcs } from '../stats/page-sandbox';
+import { bundleJson, computeStats, readInputs } from '../stats/stats';
 import { withFeatures } from '../web/features';
-import { MediaBuildService } from '../media/media-build.service';
-import { MediaFiles } from '../media/media-files.service';
-import { servedPrices } from '../prices/prices';
-import { writeDemoBackup } from './demo-backup';
-import { demoPrices } from './demo-prices';
-import { simulateHighlights } from './demo-highlights';
-import { DemoModule } from './demo.module';
-import { BOOKS, fileName, ISBN } from './demo-books';
-import { demoMediaCatalogue, simulateNetflix } from './demo-media';
-import { demoMetadata } from './demo-metadata';
-import { Random } from './random';
-import { simulate } from './simulate';
+import { buildDemoLibrary } from './demo-library';
 
 const DAY_MS = 86_400_000;
 
 async function main(): Promise<void> {
   const out = resolve(process.argv[2] ?? 'site');
   const seed = Number(process.env.DEMO_SEED ?? 7);
-  const { log, days } = simulate(new Random(seed));
-  const highlights = simulateHighlights(log, seed);
   const today = process.env.DEMO_TODAY || localDate();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(today) || Number.isNaN(Date.parse(today))) {
     throw new Error(`DEMO_TODAY must be a date as YYYY-MM-DD, not ${today}`);
   }
-  const yesterday = Date.parse(today) / DAY_MS - 1;
-  let firstDay = yesterday - days + 1;
-  firstDay -= firstDay % 7; // keep simulated weekends on real weekends (day 0 is a Thursday)
-  const lastDay = firstDay + days - 1;
 
   // a library of our own, so the import runs exactly as on the server
   const lib = await mkdtemp(join(tmpdir(), 'demo-library-'));
@@ -57,73 +39,17 @@ async function main(): Promise<void> {
     if (await exists(join(out, 'covers'))) {
       await cp(join(out, 'covers'), covers, { recursive: true }); // the lookup is slow: keep them
     }
-    const catalogue: Catalogue = {
-      exclude: [],
-      books: Object.fromEntries(
-        BOOKS.map(([title, author, genre, subgenre, series, seriesNo]) => [
-          fileName(title, author).toLowerCase(),
-          { title, author, series, series_no: seriesNo, genre, subgenre, isbn: ISBN[title] },
-        ]),
-      ),
-    };
-    await writeFile(join(lib, 'catalogue.json'), JSON.stringify(catalogue), 'utf8');
-    // what the metadata lookup would find, so the demo needs no network for it
-    await writeFile(join(lib, 'metadata.json'), JSON.stringify(demoMetadata()), 'utf8');
-    const backup = join(lib, 'demo-library.mrpro');
-    await writeDemoBackup(backup, log, firstDay, highlights);
-
-    // TV and film, as a Netflix export of two profiles; the demo's own is "You"
-    const readingMinutes = new Map<number, number>();
-    for (const entries of log.values()) {
-      for (const e of entries)
-        readingMinutes.set(e.day, (readingMinutes.get(e.day) ?? 0) + e.minutes);
-    }
-    const media = join(lib, 'media');
-    await mkdir(join(media, 'inbox', 'netflix'), { recursive: true });
-    await writeFile(
-      join(media, 'inbox', 'netflix', 'ViewingActivity.csv'),
-      simulateNetflix(seed, firstDay, days, readingMinutes),
-    );
-    await writeFile(join(media, 'catalogue.json'), JSON.stringify(demoMediaCatalogue(), null, 1));
-
-    process.env.LIBRARY = lib; // read when the app context starts
-    const app = await NestFactory.createApplicationContext(DemoModule, {
-      logger: ['error', 'warn'],
+    const { log, firstDay, lastDay, summary } = await buildDemoLibrary(lib, seed, {
+      lookUpCovers: true,
+      today,
     });
-    try {
-      const summary = await app.get(BackupImportService).importBackup(backup);
-      summary.lines.forEach((line) => console.log(line));
-      // a Netflix plan from the start, with a price rise halfway through
-      const month = (d: number) => new Date(d * DAY_MS).toISOString().slice(0, 7);
-      const rise = month(firstDay + Math.floor(days / 2));
-      const before = month(firstDay + Math.floor(days / 2) - 31);
-      await app.get(MediaFiles).update((st) => {
-        st.netflix.profiles = ['You'];
-        st.subscriptions = [
-          {
-            service: 'Netflix',
-            monthly: 10.99,
-            currency: 'GBP',
-            from: month(firstDay),
-            to: before,
-          },
-          { service: 'Netflix', monthly: 12.99, currency: 'GBP', from: rise, to: null },
-        ];
-      });
-      (await app.get(MediaBuildService).build()).lines.forEach((line) => console.log(line));
-      await app.get(CoverLookupService).run();
-    } finally {
-      await app.close();
-    }
+    summary.lines.forEach((line) => console.log(line));
 
     await rm(out, { recursive: true, force: true });
     await cp(WEB_DIR, out, { recursive: true });
     const page = await readFile(join(out, 'index.html'), 'utf8');
     await writeFile(join(out, 'index.html'), await withFeatures(page, WEB_DIR));
     await cp(join(lib, 'data'), join(out, 'data'), { recursive: true });
-    // what the server writes from library/prices.json
-    const prices = servedPrices(demoPrices(log, firstDay, seed));
-    await writeFile(join(out, 'data', 'prices.json'), JSON.stringify(prices));
     await mkdir(join(out, 'covers'), { recursive: true });
     const coverUrls: Record<string, string> = {};
     for (const f of (await readdir(covers)).sort()) {
@@ -149,10 +75,29 @@ async function main(): Promise<void> {
       }),
     );
     await writeFile(join(out, 'api', 'covers'), JSON.stringify(coverUrls));
+    // the stats the server would work out, so the demo page takes the same path
+    const pageCalcs = await loadPageCalcs(WEB_DIR);
+    const stats = computeStats(
+      pageCalcs,
+      await readInputs(join(out, 'data'), pageCalcs.files, null),
+    );
+    const generated = (meta as { generated?: string }).generated ?? null;
+    const version = createHash('sha256')
+      .update(JSON.stringify(stats.rows))
+      .digest('base64url')
+      .slice(0, 22);
+    await mkdir(join(out, 'api', 'stats'), { recursive: true });
+    const bundle = (ids?: string[]) => bundleJson(version, generated, stats.rows, ids);
+    await writeFile(join(out, 'api', 'stats', 'all'), bundle());
+    await writeFile(join(out, 'api', 'stats', 'page'), bundle(stats.page));
+    for (const [id, value] of Object.entries(stats.rows)) {
+      await writeFile(join(out, 'api', 'stats', id), JSON.stringify(value));
+    }
     await writeFile(join(out, '.nojekyll'), '');
     const iso = (d: number) => new Date(d * DAY_MS).toISOString().slice(0, 10);
     console.log(
       `Demo site in ${out}: ${log.size} books, ${Object.keys(coverUrls).length} covers, ` +
+        `${Object.keys(stats.rows).length} calcs worked out ahead (${stats.page.length} for the page), ` +
         `${iso(firstDay)} to ${iso(lastDay)}`,
     );
   } finally {
