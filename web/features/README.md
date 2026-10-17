@@ -42,6 +42,16 @@ A feature script is an IIFE that uses `dash` (data and calcs) and `rh` (drawing 
 })();
 ```
 
+## Calcs run on the server too
+
+The server loads these same scripts in Node (`src/stats/`) and works out every calc for each
+viewer, so the page can skip them (see `docs/api.md`). Nothing extra is needed as long as a
+calc's `fn` is a pure function of its inputs: rh helpers such as `rh.okDay` and d3 are fine,
+but a calc that reads `dash.params()`, `dash.data()` or the DOM is left to the browser, and
+so is one whose rows hold a `Date`, a `Map` or `NaN` (JSON can't carry them). Calcs run in
+the order the scripts register them, in Node as in the page. `test/web/server-stats.spec.ts`
+checks that both give identical rows.
+
 ## Privacy
 
 The owner chooses what visitors (public, or with the read password) may see; the admin
