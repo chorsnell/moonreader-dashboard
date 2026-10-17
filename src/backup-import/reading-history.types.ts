@@ -1,3 +1,5 @@
+import type { ImportSource } from '../imports/imports.types';
+
 /** What catalogue.json says about one book. */
 export interface CatalogueEntry {
   title: string;
@@ -66,6 +68,8 @@ export interface ReadEntry {
   minutes: number | null;
   progress: number | null;
   finished: boolean | null;
+  /** Set when the read came from an import rather than Moon+. */
+  source?: ImportSource;
 }
 
 export type BookStatus = 'finished' | 'in_progress' | 'not_started' | 'unknown';
@@ -93,6 +97,14 @@ export interface BookHistory {
   daily: DayEntry[];
   synced: string | null;
   source_files: string[];
+  /** Set when the book is only known from an import, not from Moon+. */
+  source?: ImportSource;
+  /** The reader's rating (1 to 5), from an import. */
+  rating?: number | null;
+  /** The reader's own shelves or tags, from an import. */
+  shelves?: string[];
+  /** Each import's id for the book, e.g. { goodreads: '1885' }. */
+  imports?: Partial<Record<ImportSource, string>>;
 }
 
 export interface HistoryInput {

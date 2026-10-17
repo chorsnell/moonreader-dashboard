@@ -6,6 +6,8 @@ import { Injectable } from '@nestjs/common';
 import { findFiles, mtimeMs } from '../common/files';
 import { localDateTime, round1 } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
+import { ImportsStore } from '../imports/imports.store';
+import { mergeImports, type MergeResult } from '../imports/merge';
 import { LibraryService } from '../library/library.service';
 import { readBackup } from './backup-archive';
 import { buildHighlights, type Highlight, type NoteRow, readNotes } from './highlights';
@@ -27,6 +29,8 @@ export interface ImportSummary {
   /** "<file>  ->  <title>" for every file not in catalogue.json. */
   untagged: string[];
   highlights: number;
+  /** What the Goodreads/StoryGraph imports added, when there are any. */
+  imported: (MergeResult & { sources: string[] }) | null;
   lines: string[];
 }
 
@@ -48,6 +52,7 @@ export class BackupImportService {
   constructor(
     private readonly library: LibraryService,
     private readonly covers: CoverStore,
+    private readonly imports: ImportsStore,
   ) {}
 
   async importBackup(backup: string): Promise<ImportSummary> {
@@ -66,6 +71,14 @@ export class BackupImportService {
         positions: parsePositions(contents.positionsXml),
         synced: await this.readSyncedPositions(),
       });
+      // books read elsewhere, ratings and shelves (Goodreads, StoryGraph)
+      const importFiles = await this.imports.all();
+      const imported = importFiles.length
+        ? {
+            ...mergeImports(result.books, importFiles, catalogue),
+            sources: importFiles.map((f) => f.source),
+          }
+        : null;
 
       const { highlights } = buildHighlights(result.books, notes);
 
@@ -86,6 +99,7 @@ export class BackupImportService {
         highlights,
         result.untagged.length,
         result.syncedApplied,
+        importFiles.map((f) => ({ source: f.source, file: f.file, imported: f.imported })),
       );
       // The watcher rebuilds when an input is newer than meta.json. Date it to when this
       // build started reading its inputs, so a position synced (or a catalogue saved) while
@@ -98,6 +112,12 @@ export class BackupImportService {
           (result.syncedApplied ? `, ${result.syncedApplied} synced position(s) applied` : '') +
           (newCovers ? `, ${newCovers} new cover(s) from the backup` : ''),
       ];
+      if (imported) {
+        lines.push(
+          `Imports (${imported.sources.join(', ')}): ${imported.matched} matched, ${imported.added} added` +
+            (imported.skipped ? `, ${imported.skipped} to-read or excluded left out` : ''),
+        );
+      }
       if (result.unreadableSyncs.length) {
         lines.push(
           `${result.unreadableSyncs.length} synced .po file(s) not understood (please report):`,
@@ -115,6 +135,7 @@ export class BackupImportService {
         syncedApplied: result.syncedApplied,
         newCovers,
         untagged: result.untagged,
+        imported,
         lines,
       };
     } finally {
@@ -142,6 +163,7 @@ export class BackupImportService {
     highlights: Highlight[],
     untagged: number,
     synced: number,
+    imports: { source: string; file: string; imported: string }[] = [],
   ): Promise<Pick<ImportSummary, 'books' | 'reads' | 'readingDays' | 'highlights'>> {
     const booksRows = [];
     const readsRows = [];
@@ -160,11 +182,15 @@ export class BackupImportService {
         work_id: b.work_id,
         status: b.status,
         progress: b.progress,
-        hours: round1(b.total_minutes / 60),
+        hours: b.source ? null : round1(b.total_minutes / 60),
         words: b.total_words,
         times_read: b.times_read,
         first_read: b.first_read,
         last_read: b.last_read,
+        // only with an import, so the files stay as they were without one
+        ...(b.rating ? { rating: b.rating } : {}),
+        ...(b.shelves?.length ? { shelves: b.shelves } : {}),
+        ...(b.source ? { source: b.source } : {}),
       });
       for (const r of b.reads) {
         readsRows.push({
@@ -183,6 +209,7 @@ export class BackupImportService {
           hours: r.minutes ? round1(r.minutes / 60) : null,
           progress: r.progress,
           finished: r.finished,
+          ...(r.source ? { source: r.source } : {}),
         });
       }
       for (const d of b.daily) {
@@ -224,6 +251,7 @@ export class BackupImportService {
       generated,
       untagged,
       synced_positions: synced,
+      ...(imports.length ? { imports } : {}),
     });
     return {
       books: books.length,

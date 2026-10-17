@@ -20,7 +20,9 @@ import type { Catalogue } from '../backup-import/reading-history.types';
 import { CoverLookupService } from '../covers/cover-lookup.service';
 import { WEB_DIR } from '../paths';
 import { withFeatures } from '../web/features';
+import { parseReadingExport } from '../imports/goodreads';
 import { writeDemoBackup } from './demo-backup';
+import { demoGoodreadsCsv } from './demo-goodreads';
 import { simulateHighlights } from './demo-highlights';
 import { DemoModule } from './demo.module';
 import { BOOKS, fileName, ISBN } from './demo-books';
@@ -58,6 +60,19 @@ async function main(): Promise<void> {
     await writeFile(join(lib, 'catalogue.json'), JSON.stringify(catalogue), 'utf8');
     const backup = join(lib, 'demo-library.mrpro');
     await writeDemoBackup(backup, log, firstDay, highlights);
+    // a Goodreads export, as if uploaded on the admin page: ratings and a few paper books
+    const goodreads = parseReadingExport(demoGoodreadsCsv(log, firstDay, lastDay, seed));
+    await writeFile(
+      join(lib, 'goodreads.json'),
+      JSON.stringify({
+        schema_version: 1,
+        source: goodreads.source,
+        file: 'goodreads_library_export.csv',
+        imported: `${localDate()}T09:00:00`,
+        books: goodreads.books,
+      }),
+      'utf8',
+    );
 
     process.env.LIBRARY = lib; // read when the app context starts
     const app = await NestFactory.createApplicationContext(DemoModule, {
