@@ -24,6 +24,10 @@ export class Random {
     return a + Math.floor(this.random() * (b - a + 1));
   }
 
+  pick<T>(items: T[]): T {
+    return items[Math.floor(this.random() * items.length)];
+  }
+
   shuffle<T>(items: T[]): void {
     for (let i = items.length - 1; i > 0; i--) {
       const j = Math.floor(this.random() * (i + 1));
