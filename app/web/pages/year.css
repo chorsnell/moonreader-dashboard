@@ -1,1 +1,9 @@
 /* year page */
+.yr-top{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:var(--cds-gap-sm) var(--cds-gap-md)}
+.yr-nav{display:flex;gap:var(--cds-gap-xs)}
+.yr-nav .chip{font-size:var(--cds-font-size-body);padding:2px 10px;color:var(--color-fg)}
+.yr-head .rh-take{margin-top:var(--cds-gap-sm)}
+.yr-head .yr-note{margin:var(--cds-gap-xs) 0 0}
+.rh-kpi[data-day]:hover .val{text-decoration:underline;text-decoration-color:var(--color-fg-muted);text-underline-offset:3px}
+.yr-months{min-height:220px}
+@media (max-width:520px){.yr-kpis{grid-template-columns:1fr 1fr;gap:var(--cds-gap-sm)}.yr-kpis .rh-kpi{padding:var(--cds-pad-sm) var(--cds-pad-md)}.yr-kpis .val{font-size:20px}}

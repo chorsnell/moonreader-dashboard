@@ -558,7 +558,9 @@
     const h = 220, { svg, w, tip } = svgIn(el, h), m = { t: 18, r: 4, b: 24, l: 30 };
     const x = d3.scaleBand(rows.map(key), [m.l, w - m.r]).padding(0.3);
     const y = d3.scaleLinear([0, d3.max(rows, val) || 1], [h - m.b, m.t]).nice();
-    axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(4).tickSize(-(w - m.l - m.r)));
+    // counts get whole-number ticks only
+    const whole = rows.every((r) => Number.isInteger(val(r))), ticks = whole ? Math.min(4, y.domain()[1]) : 4;
+    axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(ticks, whole ? 'd' : undefined).tickSize(-(w - m.l - m.r)));
     svg.select('.domain').remove();
     axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).tickSize(0).tickPadding(8));
     const bw = Math.min(32, x.bandwidth()), off = (x.bandwidth() - bw) / 2;

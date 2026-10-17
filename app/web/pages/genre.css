@@ -1,1 +1,10 @@
-/* genre page */
+/* genre and subgenre pages */
+.rh-card.ge-head{border-left:4px solid var(--ge,var(--cds-chart-muted))}
+.ge-title{color:var(--ge,var(--color-fg))}
+.ge-covers{display:flex;gap:var(--cds-gap-sm);margin-top:var(--cds-gap-sm);overflow:hidden;max-height:48px;flex-wrap:wrap}
+.ge-covers .cv{align-self:auto}
+.rh .ge-tbl td.ge-t{white-space:normal;min-width:0}
+.ge-tbl .tt small{display:block;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.ge-tbl td.n .pbar{width:4rem;margin-left:auto}
+.ge-tbl td.n small{display:block;white-space:nowrap}
+.rh-list li.ge-gap{justify-content:center;font-style:italic}
