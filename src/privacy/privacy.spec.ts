@@ -265,4 +265,36 @@ describe('filterDataFile', () => {
       { book_id: 'dune', nested: { finish: '2026-03-01' } },
     ]);
   });
+
+  it('keeps catalogue facts like ISBNs for visible books but not for private ones', () => {
+    const facts = {
+      isbn13: '9780141439587',
+      isbn10: '0141439580',
+      work_id: 'OL1W',
+      published_year: 1815,
+      pages: 474,
+      author_country: 'GB',
+      author_gender: 'female',
+    };
+    const rows = books.map((b) => ({ ...b, ...facts }));
+    const shown = filterDataFile('books.json', rows, ctxFor(PRESETS.taste)) as typeof rows;
+    expect(
+      shown.every(
+        (b) => b.isbn13 === facts.isbn13 && b.published_year === 1815 && b.author_country === 'GB',
+      ),
+    ).toBe(true);
+    const hidden = filterDataFile(
+      'books.json',
+      rows,
+      ctxFor(PRESETS.everything, { private_books: ['emma'] }),
+    ) as typeof rows;
+    expect(hidden.map((b) => b.id)).not.toContain('emma');
+    const anon = filterDataFile(
+      'books.json',
+      rows,
+      ctxFor(PRESETS.everything, { private_books: ['emma'], private_mode: 'anonymise' }),
+    ) as Record<string, unknown>[];
+    const p = anon.find((b) => b.id === 'private-1')!;
+    for (const k of Object.keys(facts)) expect([k, p[k]]).toEqual([k, null]);
+  });
 });

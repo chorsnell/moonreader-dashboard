@@ -297,6 +297,34 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   return filtered;
 }
 
+/** What an anonymised row keeps: how it was read, not what it is. */
+const ANON_KEEP = new Set([
+  'id',
+  'book_id',
+  'read_id',
+  'title',
+  'author',
+  'series',
+  'series_no',
+  'genre',
+  'subgenre',
+  'status',
+  'progress',
+  'prev_progress',
+  'hours',
+  'minutes',
+  'words',
+  'times_read',
+  'read_no',
+  'first_read',
+  'last_read',
+  'start',
+  'end',
+  'date',
+  'days_read',
+  'finished',
+]);
+
 function anonymised(
   row: Record<string, unknown>,
   bookId: string,
@@ -304,6 +332,9 @@ function anonymised(
   isBooks: boolean,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
+  // anything else that could name the book (ISBNs, work ids, year, pages, the author's
+  // country…) is emptied: only the reading itself is kept
+  for (const k of Object.keys(row)) if (!ANON_KEEP.has(k)) out[k] = null;
   if (isBooks) out.id = alias;
   if ('book_id' in row) out.book_id = alias;
   if (typeof row.read_id === 'string') out.read_id = row.read_id.replace(bookId, alias);
