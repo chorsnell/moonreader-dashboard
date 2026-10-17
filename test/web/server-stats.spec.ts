@@ -9,12 +9,15 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildDemoLibrary, importInto } from '../../src/demo/demo-library';
+import { localDate } from '../../src/common/time';
 import { WEB_DIR } from '../../src/paths';
 import {
   buildContext,
+  filterDataFile,
   PRESETS,
   toPrivacySettings,
   type BookFacts,
+  type FilterContext,
 } from '../../src/privacy/privacy';
 import { loadPageCalcs, pageScripts, type PageCalcs } from '../../src/stats/page-sandbox';
 import {
@@ -38,7 +41,7 @@ beforeAll(async () => {
   page = await loadPageCalcs(WEB_DIR);
   libs.demo = join(tmp, 'demo');
   await mkdir(libs.demo);
-  await buildDemoLibrary(libs.demo, 7, { lookUpCovers: false });
+  await buildDemoLibrary(libs.demo, 7, { lookUpCovers: false, today: localDate() });
   libs.fake = join(tmp, 'fake');
   await mkdir(join(libs.fake, 'inbox'), { recursive: true });
   await makeBackup(join(libs.fake, 'inbox', 'test.mrpro'));
@@ -50,8 +53,17 @@ afterAll(async () => {
 });
 
 const ids = () => [...new Set(page.calcs.map((c) => c.id))];
-const asFiles = (inputs: Inputs) =>
-  Object.fromEntries([...inputs].filter(([, rows]) => rows).map(([id, rows]) => [id, rows]));
+/** What /data/<name> serves this viewer, read straight from disk (missing: a 404). */
+async function served(data: string, ctx: FilterContext | null) {
+  const out: Record<string, unknown> = {};
+  for (const f of page.files) {
+    const raw = await readFile(join(data, f.name), 'utf8').catch(() => null);
+    if (raw === null) continue;
+    const value = ctx ? filterDataFile(f.name, JSON.parse(raw), ctx) : JSON.parse(raw);
+    if (value !== null) out[f.id] = value;
+  }
+  return out;
+}
 
 describe('the page scripts in Node', () => {
   it('load without errors and register every calc the page has', async () => {
@@ -64,15 +76,16 @@ describe('the page scripts in Node', () => {
     expect(declared.size).toBeGreaterThanOrEqual(40);
     expect(new Set(ids())).toEqual(declared);
     expect(page.files.map((f) => f.id)).toEqual(
-      expect.arrayContaining(['books', 'reads', 'daily', 'highlights']),
+      expect.arrayContaining(['books', 'reads', 'daily', 'highlights', 'prices']),
     );
   });
 });
 
 describe.each(['demo', 'fake'] as const)('on the %s data', (which) => {
-  async function check(inputs: Inputs) {
-    const server = computeStats(page, inputs);
-    const browser = await runPage(asFiles(inputs), ids());
+  async function check(data: string, ctx: FilterContext | null) {
+    const server = computeStats(page, await readInputs(data, page.files, ctx));
+    const files = await served(data, ctx);
+    const browser = await runPage(files, ids());
     for (const id of ids()) {
       const b = browser.state[id];
       if (server.failed.includes(id)) {
@@ -87,7 +100,7 @@ describe.each(['demo', 'fake'] as const)('on the %s data', (which) => {
     }
     // with the server's bundle the page skips those calcs and ends up in the same place
     const bundle = Object.fromEntries(server.page.map((id) => [id, server.rows[id]]));
-    const mixed = await runPage(asFiles(inputs), ids(), bundle);
+    const mixed = await runPage(files, ids(), bundle);
     expect(mixed.precomputed.sort()).toEqual([...server.page].sort());
     for (const id of server.page) expect(mixed.ran.has(id)).toBe(false);
     for (const id of ids()) expect([id, mixed.state[id]]).toEqual([id, browser.state[id]]);
@@ -95,7 +108,7 @@ describe.each(['demo', 'fake'] as const)('on the %s data', (which) => {
   }
 
   it('gives the admin the same numbers as the browser, for every calc', async () => {
-    const server = await check(await readInputs(join(libs[which], 'data'), page.files, null));
+    const server = await check(join(libs[which], 'data'), null);
     expect(Object.keys(server.rows).length).toBeGreaterThanOrEqual(which === 'demo' ? 45 : 30);
     // on the demo the server works out every calc; one that needed the viewer's filters or
     // the page would be left to the browser. With very little data (or with the diary
@@ -113,7 +126,7 @@ describe.each(['demo', 'fake'] as const)('on the %s data', (which) => {
     });
     for (const policy of [PRESETS.taste, PRESETS.no_dates]) {
       const ctx = buildContext(policy, settings, books, '2026-10-01');
-      await check(await readInputs(data, page.files, ctx));
+      await check(data, ctx);
     }
   });
 });

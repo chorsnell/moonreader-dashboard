@@ -297,4 +297,93 @@ describe('filterDataFile', () => {
     const p = anon.find((b) => b.id === 'private-1')!;
     for (const k of Object.keys(facts)) expect([k, p[k]]).toEqual([k, null]);
   });
+
+  describe('prices.json', () => {
+    const prices = {
+      currency: 'GBP',
+      budgets: { '2026': 100 },
+      benchmarks: [],
+      subscriptions: [
+        {
+          name: 'Kindle Unlimited',
+          monthly_fee: 9.49,
+          currency: 'GBP',
+          start: '2026-01',
+          end: null,
+        },
+      ],
+      books: [
+        {
+          book_id: 'emma',
+          title: 'Emma',
+          author: 'Jane Austen',
+          price: 2.99,
+          list_price: null,
+          paid: 2.99,
+          paid_currency: 'GBP',
+          date: '2026-01-04',
+          acquisition: 'bought',
+          store: 'Austen Books',
+          subscription: null,
+          bundle: null,
+        },
+        {
+          book_id: 'dune',
+          title: 'Dune',
+          author: 'Frank Herbert',
+          price: 8,
+          list_price: null,
+          paid: 8,
+          paid_currency: 'GBP',
+          date: '2026-03-02',
+          acquisition: 'bought',
+          store: 'Shop',
+          subscription: null,
+          bundle: null,
+        },
+        // bought but never opened, so not in books.json
+        {
+          book_id: 'secret-unopened',
+          title: 'Secret Unopened',
+          author: 'Hidden Writer',
+          price: 5,
+          list_price: null,
+          paid: 5,
+          paid_currency: 'GBP',
+          date: '2026-02-10',
+          acquisition: 'bought',
+          store: 'Shop',
+          subscription: null,
+          bundle: null,
+        },
+      ],
+    };
+    const priv = { private_books: ['emma', 'secret-unopened'] };
+
+    it('leaves private books out when money is shown', () => {
+      const out = filterDataFile(
+        'prices.json',
+        prices,
+        ctxFor(PRESETS.everything, priv),
+      ) as typeof prices;
+      expect(out.books.map((b) => b.book_id)).toEqual(['dune']);
+      expect(JSON.stringify(out)).not.toMatch(/Emma|Austen|Secret|Hidden/);
+      expect(out.subscriptions).toEqual(prices.subscriptions);
+    });
+
+    it('or keeps what they cost under "A private book"', () => {
+      const ctx = ctxFor(PRESETS.everything, { ...priv, private_mode: 'anonymise' });
+      const out = filterDataFile('prices.json', prices, ctx) as typeof prices;
+      expect(JSON.stringify(out)).not.toMatch(/Emma|Austen|Secret|Hidden|emma|secret/);
+      const anon = out.books.filter((b) => b.title === 'A private book');
+      expect(anon.map((b) => [b.price, b.store, b.author])).toEqual([
+        [2.99, null, ''],
+        [5, null, ''],
+      ]);
+    });
+
+    it('is served empty when money is hidden', () => {
+      expect(filterDataFile('prices.json', prices, ctxFor(PRESETS.taste))).toEqual([]);
+    });
+  });
 });

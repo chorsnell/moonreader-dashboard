@@ -7,16 +7,18 @@
  * It writes a fake Moon+ backup, turns it into data/*.json, looks up covers on Open Library
  * (skipped with COVER_LOOKUP=off), and adds static stand-ins for /api/config and /api/covers
  * so the page works on any static host, such as GitHub Pages. The history always ends
- * yesterday, so "this year" is never empty. DEMO_SEED picks another made-up history.
+ * yesterday, so "this year" is never empty. DEMO_SEED picks another made-up history, and
+ * DEMO_TODAY=YYYY-MM-DD builds it as if run on that day (for repeatable screenshots).
  */
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { exists } from '../common/files';
+import { localDate } from '../common/time';
+import { WEB_DIR } from '../paths';
 import { loadPageCalcs } from '../stats/page-sandbox';
 import { bundleJson, computeStats, readInputs } from '../stats/stats';
-import { WEB_DIR } from '../paths';
 import { withFeatures } from '../web/features';
 import { buildDemoLibrary } from './demo-library';
 
@@ -25,6 +27,10 @@ const DAY_MS = 86_400_000;
 async function main(): Promise<void> {
   const out = resolve(process.argv[2] ?? 'site');
   const seed = Number(process.env.DEMO_SEED ?? 7);
+  const today = process.env.DEMO_TODAY || localDate();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(today) || Number.isNaN(Date.parse(today))) {
+    throw new Error(`DEMO_TODAY must be a date as YYYY-MM-DD, not ${today}`);
+  }
 
   // a library of our own, so the import runs exactly as on the server
   const lib = await mkdtemp(join(tmpdir(), 'demo-library-'));
@@ -35,6 +41,7 @@ async function main(): Promise<void> {
     }
     const { log, firstDay, lastDay, summary } = await buildDemoLibrary(lib, seed, {
       lookUpCovers: true,
+      today,
     });
     summary.lines.forEach((line) => console.log(line));
 

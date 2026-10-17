@@ -7,11 +7,13 @@ import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { BackupImportService, type ImportSummary } from '../backup-import/backup-import.service';
 import type { Catalogue } from '../backup-import/reading-history.types';
-import { localDate } from '../common/time';
 import { CoverLookupService } from '../covers/cover-lookup.service';
+import { servedPrices } from '../prices/prices';
 import { writeDemoBackup } from './demo-backup';
 import { BOOKS, fileName, ISBN } from './demo-books';
 import { simulateHighlights } from './demo-highlights';
+import { demoMetadata } from './demo-metadata';
+import { demoPrices } from './demo-prices';
 import { DemoModule } from './demo.module';
 import { Random } from './random';
 import { simulate, type DemoDay } from './simulate';
@@ -26,15 +28,18 @@ export interface DemoLibrary {
   summary: ImportSummary;
 }
 
-/** Writes the demo's backup into `lib` and imports it. The history always ends yesterday. */
+/**
+ * Writes the demo's backup into `lib` and imports it, then adds the prices the server would
+ * serve. The history always ends the day before `today` (YYYY-MM-DD).
+ */
 export async function buildDemoLibrary(
   lib: string,
   seed: number,
-  { lookUpCovers }: { lookUpCovers: boolean },
+  { lookUpCovers, today }: { lookUpCovers: boolean; today: string },
 ): Promise<DemoLibrary> {
   const { log, days } = simulate(new Random(seed));
   const highlights = simulateHighlights(log, seed);
-  const yesterday = Date.parse(localDate()) / DAY_MS - 1;
+  const yesterday = Date.parse(today) / DAY_MS - 1;
   let firstDay = yesterday - days + 1;
   firstDay -= firstDay % 7; // keep simulated weekends on real weekends (day 0 is a Thursday)
   const lastDay = firstDay + days - 1;
@@ -48,9 +53,14 @@ export async function buildDemoLibrary(
     ),
   };
   await writeFile(join(lib, 'catalogue.json'), JSON.stringify(catalogue), 'utf8');
+  // what the metadata lookup would find, so the demo needs no network for it
+  await writeFile(join(lib, 'metadata.json'), JSON.stringify(demoMetadata()), 'utf8');
   const backup = join(lib, 'demo-library.mrpro');
   await writeDemoBackup(backup, log, firstDay, highlights);
   const summary = await importInto(lib, backup, { lookUpCovers });
+  // what the server writes from library/prices.json
+  const prices = servedPrices(demoPrices(log, firstDay, seed));
+  await writeFile(join(lib, 'data', 'prices.json'), JSON.stringify(prices));
   return { log, firstDay, lastDay, summary };
 }
 

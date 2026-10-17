@@ -52,7 +52,7 @@ async function fromServedFiles(cookie: string) {
   const inputs: Inputs = new Map();
   for (const f of calcs.files) {
     const r = await get(`/data/${f.name}`, cookie);
-    inputs.set(f.id, r.status === 200 ? (r.body as unknown[]) : f.optional ? [] : null);
+    inputs.set(f.id, r.status === 200 ? (r.body as unknown) : f.optional ? [] : undefined);
   }
   return computeStats(calcs, inputs).rows;
 }

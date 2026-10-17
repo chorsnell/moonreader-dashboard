@@ -8,8 +8,11 @@ import { join } from 'node:path';
 import { filterDataFile, type FilterContext } from '../privacy/privacy';
 import type { DataFileDef, PageCalcs } from './page-sandbox';
 
-/** A data file's rows, or null when it can't be had (the page then can't work out its calcs). */
-export type Inputs = Map<string, unknown[] | null>;
+/**
+ * Each data file's contents (usually rows, but any JSON), or undefined when it can't be had
+ * (the page then can't work out the calcs that use it).
+ */
+export type Inputs = Map<string, unknown>;
 
 export interface StatsResult {
   /** calc id -> rows (as JSON), for every calc the server could work out. */
@@ -38,15 +41,16 @@ export async function readInputs(
 ): Promise<Inputs> {
   const out: Inputs = new Map();
   for (const f of files) {
-    let rows: unknown = null;
+    let value: unknown;
     try {
-      rows = JSON.parse(await readFile(join(dataDir, f.name), 'utf8'));
-      if (ctx) rows = filterDataFile(f.name, rows, ctx);
+      value = JSON.parse(await readFile(join(dataDir, f.name), 'utf8')) as unknown;
+      // null: not this viewer's to see (a 404 for the page)
+      if (ctx) value = filterDataFile(f.name, value, ctx) ?? undefined;
     } catch {
-      rows = null;
+      value = undefined;
     }
     // as in the page: an optional file it can't have loads as []
-    out.set(f.id, Array.isArray(rows) ? rows : f.optional ? [] : null);
+    out.set(f.id, value === undefined && f.optional ? [] : value);
   }
   return out;
 }
@@ -68,7 +72,7 @@ export function survivesJson(v: unknown): boolean {
 /** Runs every calc the page registered on these inputs. */
 export function computeStats(page: PageCalcs, inputs: Inputs): StatsResult {
   const state = new Map<string, unknown>();
-  for (const [id, rows] of inputs) if (rows) state.set(id, rows);
+  for (const [id, value] of inputs) if (value !== undefined) state.set(id, value);
   const rows: Record<string, unknown> = {};
   const clientOnly = new Set<string>();
   const failed = new Set<string>();
