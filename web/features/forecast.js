@@ -102,7 +102,10 @@
       if (f.ytd > f.ghost_total) box.append(` You’ve already passed its whole year.`);
       else if (f.days_left > 0) {
         const beat = f.proj > f.ghost_total;
-        box.append(beat ? ' At this pace you’ll beat it' : ` To catch it you’d need ${show[m]((f.ghost_total - f.ytd) / f.days_left * (m === 'hours' ? 60 : 1))}${m === 'hours' ? ' minutes' : m === 'books' ? ' books' : ' words'} a day`);
+        const perDay = (f.ghost_total - f.ytd) / f.days_left;
+        // under a book a day reads better as "a book every n days"
+        const need = m === 'books' && perDay < 1 ? (Math.round(1 / perDay) <= 1 ? 'a book a day' : `a book every ${Math.round(1 / perDay)} days`) : `${show[m](perDay * (m === 'hours' ? 60 : 1))}${m === 'hours' ? ' minutes' : m === 'books' ? ' books' : ' words'} a day`;
+        box.append(beat ? ' At this pace you’ll beat it' : ` To catch it you’d need ${need}`);
         if (beat) {
           const pass = f.series.find((r) => r.proj != null && r.proj > f.ghost_total);
           box.append(pass ? ` around ${fDay(pDate(pass.date))}.` : '.');

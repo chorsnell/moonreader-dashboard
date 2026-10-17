@@ -957,6 +957,8 @@
     if (r.status === 'ok') {
       const v = Object.fromEntries(r.data.map((x) => [x.metric, x.value]));
       $('#lbl-ytd').textContent = `Finished in ${v.year}`;
+      $('#unit-streak-now').textContent = v.streak_now === 1 ? 'day' : 'days';
+      $('#unit-streak-best').textContent = v.streak_best === 1 ? 'day' : 'days';
       const cmp = (sel, a, b) => { const el = $(sel); el.classList.remove('up', 'down'); if (a !== b) el.classList.add(a > b ? 'up' : 'down'); };
       cmp('#kpi-ytd .val', v.finished_ytd, v.finished_prev_ytd); cmp('#kpi-hours-ytd .val', v.hours_ytd, v.hours_prev_ytd);
     }
@@ -1388,6 +1390,11 @@
   window.addEventListener('popstate', route);
   // after pages/*.js have registered
   document.addEventListener('DOMContentLoaded', route);
+  // a #tab link makes the browser jump to that section, hiding the intro under the sticky bar
+  window.addEventListener('load', () => {
+    const intro = $('.rh-intro');
+    if (location.hash && intro && scrollY > 0 && scrollY <= intro.getBoundingClientRect().bottom + scrollY) scrollTo(0, 0);
+  }, { once: true });
 
   // what pages/*.js build with
   window.rh = {
