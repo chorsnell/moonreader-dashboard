@@ -258,6 +258,7 @@
       ['streaks', 'Streaks and quiet spells'],
       ['highlights', 'Highlights and notes'],
       ['money', 'Prices and spending'],
+      ['ratings', 'My ratings and shelves (from Goodreads or StoryGraph)'],
     ];
     const wrap = h('div', {}, h('p', { class: 'note' }, 'Loading…'));
     const block = a.block('What visitors can see', "You always see everything. Anything hidden here is taken out of the data on the server, so visitors can't get at it; cards that need it are left out of their page.", wrap);
