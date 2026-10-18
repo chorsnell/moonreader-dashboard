@@ -225,7 +225,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Covers** | Books without a cover: look them up again or upload your own |
 | **Challenges** | Reading challenges on the Overview: authors from N countries, a book from every decade, series finished, % women authors, a streak or N genres, this year or all time (a default set until you change it) |
 | **Book manager** | Your *arr book manager's URL and API key |
-| **Widgets & devices** | The year's reading goal, the device token for Home Assistant and other devices, and their setup |
+| **Widgets & devices** | The year's reading goal, the device token for Home Assistant and other devices, their setup, and a preview of the e-ink view |
 
 ## Who can see it
 
@@ -360,6 +360,24 @@ automation:
 
 To show the cover on a card, use a [template image](https://www.home-assistant.io/integrations/template/#image) whose `url` is `https://reading.example.com/api/now/cover?token=<token>`.
 
+### E-ink display (TRMNL and others)
+
+An always-on, black-and-white view for a shelf: the book you're reading with its cover, your streak, this week's minutes, the year against your goal, and the quote of the day. It's 800 × 480, the size of a TRMNL and most 7.5" e-paper panels. **Admin → Widgets & devices** shows a live preview and the URLs. Access works as for `/api/now`: with the device token, or by the dashboard's usual rules.
+
+- **`/eink.png`**: the whole view as a 1-bit PNG, drawn on the server (covers are dithered; text uses a built-in pixel font, so accents are dropped). Use it on any frame that shows a picture from a URL: an ESP32 or Inkplate sketch, a Kindle in kiosk mode, or a [TRMNL bring-your-own-server](https://docs.usetrmnl.com/go/diy/byos) setup. Devices that can't send headers can use `?token=…`.
+- **`/eink/cover.png`**: just the current cover, dithered to 1 bit (240 × 360).
+- **`/api/trmnl`**: JSON for a TRMNL **private plugin**, with `title`, `author`, `progress`, `cover_url`, `image_url`, `stats` (the three figures, each with `label`, `value` and `sub`), `streak`, `week_minutes`, `year`, `quote` and `quote_source`.
+
+**TRMNL, step by step.** TRMNL's private plugins can use a **Polling** strategy: TRMNL's server fetches your URL on the plugin's refresh schedule, merges the JSON fields into the plugin's Liquid markup, renders that at 800 × 480 and sends it to the device. The dashboard has to be reachable from the internet for this (TRMNL's server does the fetching, not the device on your Wi-Fi).
+
+1. In TRMNL, go to **Plugins → Private Plugin → Add new**, pick the **Polling** strategy and set the **Polling URL** to `https://reading.example.com/api/trmnl` with verb `GET`.
+2. Under **Polling headers**, add `authorization=Bearer <your device token>`.
+3. Pick a refresh rate. The data only changes when Moon+ syncs, so hourly is plenty.
+4. In **Edit markup**, paste [`examples/trmnl-full.liquid`](examples/trmnl-full.liquid). It uses TRMNL's own layout classes, with the dithered cover from `cover_url`. Or, for the server's picture exactly as in the preview, use just `<img src="{{ image_url }}" style="width:100%;height:100%">`.
+5. Add the plugin to a playlist.
+
+`image_url` and `cover_url` carry the token (TRMNL fetches images without your headers) and change when the picture does, so TRMNL doesn't show a stale copy. These details come from TRMNL's documentation and weren't tried on a device, so check them against [their docs](https://docs.usetrmnl.com/go/private-plugins/create-a-screen) if a field has been renamed.
+
 ### Badges for a blog, README or forum signature
 
 Three SVG images you can embed anywhere an image goes, like GitHub's stats cards:
@@ -433,6 +451,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/api/config`: who you're signed in as and the last rebuild.
 - `/api/covers`: the saved covers.
 - `/api/now`, `/api/now/cover`: what you're reading, today's minutes, the streak and the year's goal, for Home Assistant and other devices (see [Widgets and devices](#widgets-and-devices) and [docs/api.md](docs/api.md)).
+- `/eink.png`, `/eink/cover.png`, `/api/trmnl`: the 800 × 480 one-bit e-ink view, and JSON for a TRMNL private plugin (see [E-ink display](#e-ink-display-trmnl-and-others)).
 - `/badge/reading.svg`, `/badge/year.svg`, `/badge/heatmap.svg`: embeddable SVG badges of what the public may see (see [Badges](#badges-for-a-blog-readme-or-forum-signature)).
 - `/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`: every number the page shows, worked out on the server for each viewer from only what they may see. See [docs/api.md](docs/api.md).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
