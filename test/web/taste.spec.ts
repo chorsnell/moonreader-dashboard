@@ -2,7 +2,9 @@ import { loadCalcs } from '../support/feature-calcs';
 
 type Match = {
   score: number;
-  parts: { genre: number; author: number; books: number };
+  parts: { genre: number; author: number; books: number; ratings: number | null };
+  rated: number;
+  star_gap: number | null;
   authors: { both: { author: string }[]; mine: { author: string }[]; theirs: { author: string }[] };
   books: {
     book_id: string;
@@ -110,5 +112,57 @@ describe('taste match', () => {
     })[0];
     expect(none.score).toBe(0);
     expect(none.books).toEqual([]);
+  });
+
+  describe('rating agreement', () => {
+    const lib = (ratings: (number | null)[]) => {
+      const ids = ['a', 'b', 'c', 'd'];
+      return {
+        books: ids.map((id, i) => ({
+          ...book(id, id.toUpperCase(), 'Author ' + id, 'Classics'),
+          rating: ratings[i],
+        })),
+        reads: ids.map((id) => read(id, 'Classics', '2026-01-01', '2026-01-02')),
+        daily: [],
+      };
+    };
+    const match = (mine: (number | null)[], theirs: (number | null)[]) => {
+      const a = lib(mine),
+        b = lib(theirs);
+      return run<Match>('taste_match', {
+        ...a,
+        friend_books: b.books,
+        friend_reads: b.reads,
+        friend_daily: b.daily,
+      })[0];
+    };
+
+    it('scores how alike your stars are once you both rated 3 books', () => {
+      // genres, authors and books all match; only the ratings differ
+      const same = match([5, 4, 3, 2], [5, 4, 3, 2]);
+      expect(same.parts.ratings).toBe(100);
+      expect(same.rated).toBe(4);
+      expect(same.score).toBe(100);
+      // one star apart on average: 1 - 1/4
+      const near = match([5, 4, 3, null], [4, 5, 2, 1]);
+      expect(near.rated).toBe(3);
+      expect(near.star_gap).toBe(1);
+      expect(near.parts.ratings).toBe(75);
+      expect(near.score).toBe(Math.round(100 * (0.8 + 0.2 * 0.75)));
+      // as far apart as stars go
+      const far = match([5, 5, 5, 1], [1, 1, 1, 5]);
+      expect(far.parts.ratings).toBe(0);
+      expect(far.score).toBe(80);
+    });
+
+    it('keeps the old weights with fewer than 3 books rated by both', () => {
+      const two = match([5, 1, null, null], [1, 5, 3, 3]);
+      expect(two.rated).toBe(2);
+      expect(two.parts.ratings).toBeNull();
+      expect(two.score).toBe(100);
+      const none = match([null, null, null, null], [null, null, null, null]);
+      expect(none.rated).toBe(0);
+      expect(none.parts.ratings).toBeNull();
+    });
   });
 });

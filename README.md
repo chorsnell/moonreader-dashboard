@@ -255,7 +255,7 @@ Bring friends' reading into your dashboard to compare notes. There are two ways 
 
 Either way, what you share is set by the **friends** audience under Access & privacy (by default everything except prices and highlights), and private books are never shared. Friends' reading shows up as:
 
-- **Taste match:** a compatibility score from genres, authors and books in common, shared authors, and the books you both read.
+- **Taste match:** a compatibility score from genres (50%), authors (30%) and books in common (20%); once you've both rated 3 of the same books on Goodreads or StoryGraph, how alike your stars are counts for a fifth (40/24/16/20). Plus shared authors and the books you both read.
 - **Overlaid heatmaps** of the last 12 months, and **leaderboards** that each person opts into, stat by stat.
 - **Their favourites you haven't read:** books a friend devoured or re-read that aren't in your library.
 - **Buddy-read race** on a book's page: your progress against every friend who read it.
