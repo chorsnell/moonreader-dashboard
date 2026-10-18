@@ -1,0 +1,23 @@
+/* holidays and life events (Timeline & habits) */
+.le-card .chart{min-height:0;display:flex;flex-direction:column;gap:var(--cds-gap-md)}
+.le-kinds{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,13rem),1fr));gap:var(--cds-gap-sm)}
+.le-kind{display:flex;flex-direction:column;gap:4px;padding:var(--cds-pad-md);border-radius:8px;background:var(--color-bg);min-width:0}
+.le-name{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);display:flex;align-items:center;gap:6px}
+.le-name .sw{flex:none;width:10px;height:10px;border-radius:2px}
+.le-val b{font-family:var(--font-anthropic-serif);font-weight:400;font-size:24px;font-variant-numeric:tabular-nums}
+.le-val small{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.le-bar{height:6px;border-radius:3px;background:var(--cds-chart-grid);overflow:hidden}
+.le-bar i{display:block;height:100%;border-radius:3px}
+.le-sub{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.le-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.le-ev{display:grid;grid-template-columns:auto 1fr auto;gap:var(--cds-gap-sm);align-items:center;padding:6px var(--cds-pad-xs);border-bottom:1px solid var(--color-border-line)}
+.le-ev:last-child{border-bottom:0}
+.le-ev:hover{background:var(--color-bg)}
+.le-ev .sw{width:10px;height:10px;border-radius:2px}
+.le-what{min-width:0}.le-t{font-size:var(--cds-font-size-body)}
+.le-what small{display:block;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.le-m{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.le-add{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--cds-gap-sm);max-width:52rem;margin-bottom:var(--cds-gap-sm)}
+.le-cal{max-width:52rem;margin-bottom:var(--cds-gap-sm)}.le-cal input{width:100%;box-sizing:border-box}
+@media (max-width:640px){.le-add{grid-template-columns:1fr 1fr}.le-add input[type=text]{grid-column:1/-1}}
+.le-admin-list li{display:flex;justify-content:space-between;gap:var(--cds-gap-sm);align-items:center}

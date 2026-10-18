@@ -9,7 +9,7 @@
 // - or it says so itself: rh.card({ privacy: 'streaks' }) or data-privacy="streaks".
 (() => {
   // data files served empty when a category is hidden
-  const EMPTY = { diary: ['daily'], highlights: ['highlights'], money: ['prices'] };
+  const EMPTY = { diary: ['daily'], highlights: ['highlights'], money: ['prices'], life_events: ['life_events'] };
   // cards that need exact days, or show a category, by id
   const DAY_PRECISE = ['#tab-diary', '#card-diary', '#card-heat', '#card-week', '#card-bk-days', '#kpi-streak',
     '#card-heat-explorer', '#card-sprint', '#card-hangover', '#card-records', '#card-juggling', '#card-seasons-grid', '#card-clock'];
@@ -21,6 +21,7 @@
     highlights: ['#tab-highlights', '#highlights', '#card-bk-highlights', '#card-bk-hl-density', '#card-bk-hl-cloud', '#card-quote', '#card-hl-review', '#card-clock'],
     money: [],
     ratings: [],
+    life_events: [],
   };
   const OFF = 'rh-privacy-off';
   const NOTE = 'Some details are kept private by the owner.';

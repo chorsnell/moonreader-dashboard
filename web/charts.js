@@ -301,6 +301,22 @@
     if (s > e) [s, e] = [e, s];
     return { preset, start: s, end: e, days: d3.utcDay.count(pDate(s), pDate(e)) + 1 };
   }
+  // date ranges a feature marks on the heatmap, the reading timeline and the diary (life
+  // events): rh.markDays(() => [{ start, end, title, color }]), days as YYYY-MM-DD, end inclusive
+  const dayMarkers = [];
+  function marksIn(s, e) {
+    return dayMarkers.flatMap((fn) => { try { return fn() || []; } catch (err) { console.error(err); return []; } })
+      .filter((m) => m.end >= s && m.start <= e);
+  }
+  // marks as faint bands behind a time chart's marks, from y0 to y1
+  function markBands(svg, x, y0, y1, R) {
+    const ms = marksIn(R.start, R.end); if (!ms.length) return;
+    const lo = pDate(R.start), hi = d3.utcDay.offset(pDate(R.end), 1);
+    svg.insert('g', ':first-child').attr('class', 'day-marks').attr('aria-hidden', 'true').selectAll('rect').data(ms).join('rect')
+      .attr('x', (m) => x(d3.max([lo, pDate(m.start)]))).attr('y', y0).attr('height', y1 - y0)
+      .attr('width', (m) => Math.max(2, x(d3.min([hi, d3.utcDay.offset(pDate(m.end), 1)])) - x(d3.max([lo, pDate(m.start)]))))
+      .attr('fill', (m) => m.color || C[0]).attr('fill-opacity', 0.13);
+  }
   const rangeLabel = (R) => `${fDay(pDate(R.start))} – ${fDay(pDate(R.end))}`;
   function syncRanges() {
     document.querySelectorAll('.rng').forEach((box) => {
@@ -387,11 +403,20 @@
         .attr('fill', (r) => (r.minutes > 0 || r.books ? C[0] : 'var(--cds-chart-grid)'))
         .attr('fill-opacity', (r) => (r.minutes > 0 ? op(r.minutes) : r.books ? 0.18 : 1))
         .on('mousemove', (e, r) => showTip(tip, el, e, (t) => {
-          tipLines(t, d3.utcFormat('%a %-d %b %Y')(r.d), [[null, 'Minutes', r.minutes ? fmt(r.minutes) : '—']]);
+          tipLines(t, d3.utcFormat('%a %-d %b %Y')(r.d), [[null, 'Minutes', r.minutes ? fmt(r.minutes) : '—'], ...marksIn(r.date, r.date).map((m) => [m.color, '', m.title])]);
           if (r.books) r.books.split('; ').forEach((bk) => t.append('div').text(bk));
         }))
         .on('mouseleave', () => hideTip(tip))
         .on('click', (e, r) => { hideTip(tip); openDiary(r.date); });
+      // days a feature marks (a holiday…): an outline in the mark's colour
+      const ms = marksIn(b.days[0].date, b.days[b.days.length - 1].date);
+      if (ms.length) {
+        const marked = b.days.map((r) => ({ r, m: ms.find((m) => r.date >= m.start && r.date <= m.end) })).filter((x) => x.m);
+        g.append('g').attr('class', 'day-marks').attr('pointer-events', 'none').selectAll('rect').data(marked).join('rect')
+          .attr('x', ({ r }) => lab + weekOf(b, r.d) * cell - 0.75).attr('y', ({ r }) => top + ((r.d.getUTCDay() + 6) % 7) * cell - 0.75)
+          .attr('width', cs + 1.5).attr('height', cs + 1.5).attr('rx', Math.min(3, cs / 4) + 0.75)
+          .attr('fill', 'none').attr('stroke', ({ m }) => m.color || C[1]).attr('stroke-width', 1.5);
+      }
     });
     const read = days.filter((r) => r.minutes > 0 || r.books).length, mins = d3.sum(days, (r) => r.minutes);
     $('#heat-note').textContent = `${rangeLabel(R)}: read on ${fmt(read)} of ${fmt(days.length)} days, ${fmt(Math.round(mins / 60))} hours. Hover a square for the books; click it to open that day in the diary.`;
@@ -416,6 +441,7 @@
     const x0 = (d) => x(pDate(d.start < R.start ? R.start : d.start)), x1 = (d) => x(d3.utcDay.offset(pDate(d.end > R.end ? R.end : d.end), 1));
     axis(svg.append('g').attr('transform', `translate(0,${m.t - 4})`), d3.axisTop(x).ticks(Math.max(2, Math.floor(w / 90))).tickFormat(d3.utcFormat(R.days <= 120 ? '%-d %b' : '%b %y')).tickSize(-(h - m.t)));
     svg.select('.domain').remove();
+    markBands(svg, x, m.t - 4, h - m.b, R);
     const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (d, i) => `translate(0,${m.t + i * rh})`);
     // the whole span faintly, then the days the book was actually opened on top
     g.append('rect').attr('x', x0).attr('y', 2).attr('height', rh - 4).attr('rx', 3)
@@ -651,6 +677,7 @@
       const row = el('div', 'dy-day'); row.id = 'day-' + date;
       const total = d3.sum(entries, (r) => r.minutes || 0), dc = el('div', 'dy-date');
       dc.append(el('b', null, d3.utcFormat('%a %-d')(d)), el('span', null, total ? mins(total) : '—'));
+      marksIn(date, date).forEach((mk) => { const t = el('span', 'dy-mark', mk.title); t.style.setProperty('--mk', mk.color || C[0]); dc.append(t); });
       const books = el('div');
       entries.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
         const bk = link(el('div', 'dy-book'), 'book', r.book_id), t = el('div', 't');
@@ -708,6 +735,7 @@
     axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(4).tickFormat((v) => (v >= 60 && v % 60 === 0 ? v / 60 + 'h' : v)).tickSize(-(w - m.l - m.r)));
     svg.select('.domain').remove();
     axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).ticks(Math.max(2, Math.floor(w / 90))).tickFormat(d3.utcFormat(R.days <= 120 ? '%-d %b' : '%b %y')).tickSizeOuter(0));
+    markBands(svg, x, m.t, h - m.b, R);
     // stack each day's books, longest at the bottom; days with books but no minutes (before 2019) get a small muted tick
     const segs = [];
     days.forEach(([date, es]) => {
@@ -727,7 +755,7 @@
       .on('mousemove', (e) => {
         const day = iso(d3.utcDay.floor(x.invert(d3.pointer(e)[0]))), es = byDate.get(day) || [];
         showTip(tip, el, e, (t) => {
-          tipLines(t, d3.utcFormat('%a %-d %b %Y')(pDate(day)), es.length ? [[null, 'Total', dayMin(es) ? mins(dayMin(es)) : '—']] : [[null, '', 'No reading']]);
+          tipLines(t, d3.utcFormat('%a %-d %b %Y')(pDate(day)), [...(es.length ? [[null, 'Total', dayMin(es) ? mins(dayMin(es)) : '—']] : [[null, '', 'No reading']]), ...marksIn(day, day).map((mk) => [mk.color, '', mk.title])]);
           es.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
             const d = t.append('div'); d.append('span').attr('class', 'sw').style('background', gColor(r.genre));
             d.append('span').text(r.title + (r.minutes ? ': ' : '')); if (r.minutes) d.append('b').text(mins(r.minutes));
@@ -1486,5 +1514,6 @@
     show: (name) => show(name),
     current: () => tab,
     redraw: () => redraw(),
+    markDays: (fn) => { dayMarkers.push(fn); },
   };
 })();

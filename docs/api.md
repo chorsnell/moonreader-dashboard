@@ -262,3 +262,20 @@ book id and the highlight's text), so they survive rebuilds.
 
 The morning send is a `NotifierService` event of kind `highlight_review`, sent once a day from
 `hour` when `notify` is on; `data` has `{date, items}`.
+
+## Life events (admin)
+
+Holidays, trips and life events (`library/life_events.json`). Admin only (`UPLOAD_TOKEN` as
+`X-Upload-Token`, or the admin cookie); JSON bodies; errors are `{error}` with `400`, `403`
+or `404`. The page reads the events as `/data/life_events.json` (`[{id, title, kind, start,
+end, source}]`, `kind` one of `holiday`, `trip`, `job`, `baby`, `move`, `other`; `end`
+inclusive), which visitors get empty unless their policy has `life_events: true`.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/life-events` | `{events, kinds, calendar: {set, host, pulled, error, events}}`. The calendar's full address is never returned, only its host |
+| `POST /api/admin/life-events` | Adds an event: `{title, kind, start, end?}` (dates `YYYY-MM-DD`; `end` defaults to `start`) |
+| `PUT /api/admin/life-events/<id>` | Changes one, same body |
+| `DELETE /api/admin/life-events/<id>` | Removes one |
+| `PUT /api/admin/life-events/calendar` | Sets the iCal address (`{url}`: `https://`, `http://` or `webcal://`; `''` removes it and its events) and reads it: `{read, error, …}` as GET |
+| `POST /api/admin/life-events/calendar/refresh` | Reads the calendar again now. A failure keeps the last good events and is reported in `error` |

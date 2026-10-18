@@ -12,6 +12,7 @@ import { FederationModule } from './federation/federation.module';
 import { FeedsModule } from './feeds/feeds.module';
 import { FriendsModule } from './friends/friends.module';
 import { HighlightsModule } from './highlights/highlights.module';
+import { LifeEventsModule } from './life-events/life-events.module';
 import { MediaModule } from './media/media.module';
 import { NotifyModule } from './notify/notify.module';
 import { OutboundModule } from './outbound/outbound.module';
@@ -37,6 +38,7 @@ import { WebModule } from './web/web.module';
     ChallengesModule,
     MediaModule,
     PricesModule,
+    LifeEventsModule,
     DavModule,
     FriendsModule,
     FederationModule,
