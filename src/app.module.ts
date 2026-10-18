@@ -15,6 +15,7 @@ import { RebuildModule } from './rebuild/rebuild.module';
 import { StatsModule } from './stats/stats.module';
 import { StatusModule } from './status/status.module';
 import { UploadModule } from './upload/upload.module';
+import { WeatherModule } from './weather/weather.module';
 import { WebModule } from './web/web.module';
 
 @Module({
@@ -30,6 +31,7 @@ import { WebModule } from './web/web.module';
     ArrModule,
     MediaModule,
     PricesModule,
+    WeatherModule,
     DavModule,
     FriendsModule,
     FederationModule,

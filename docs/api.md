@@ -80,3 +80,17 @@ writes `api/stats/page`, `api/stats/all` and `api/stats/<calc>` as files at buil
 `test/web/server-stats.spec.ts` checks that the server and the page's own `runtime.js` give
 identical rows for every calc on the demo history and the fake backup, for the admin and for
 filtered visitors; `test/stats.e2e-spec.ts` checks the API's privacy.
+
+## Weather (admin)
+
+The home location for "Reading and the weather" (`library/weather.json`). Admin only. The
+page reads the days as `/data/weather.json` (`[{date, t_max, t_min, precip_mm,
+daylight_h}]`: °C, mm, hours), with no location in it. Visitors whose dates are rounded, or
+who don't get the diary, get it empty.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/weather` | `{enabled, location: {name, lat, lon} \| null, pulled, error, days, first, last}` |
+| `PUT /api/admin/weather/location` | `{place}`: a town (Open-Meteo geocoding, first match) or `"lat, lon"`; `''` removes it. A new location clears the cached days and fetches its weather. `400` with `error` if the place isn't found. Returns `{added, error, …}` as GET |
+| `POST /api/admin/weather/refresh` | Fetches the days not cached yet. A failure (offline) keeps the cache and is reported in `error` |
+

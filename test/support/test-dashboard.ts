@@ -30,6 +30,7 @@ export class TestDashboard {
       pollSeconds: 5,
       coverLookup: false,
       metadataLookup: false,
+      weatherLookup: false,
       ...overrides,
     };
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })

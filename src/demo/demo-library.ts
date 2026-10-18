@@ -21,6 +21,7 @@ import { demoMediaCatalogue, simulateAudiobookshelf, simulateNetflix } from './d
 import { demoMetadata } from './demo-metadata';
 import { demoPrices } from './demo-prices';
 import { DemoModule } from './demo.module';
+import { demoWeather } from './demo-weather';
 import { Random } from './random';
 import { simulate, type DemoDay } from './simulate';
 
@@ -91,6 +92,11 @@ export async function buildDemoLibrary(
   // what the server writes from library/prices.json
   const prices = servedPrices(demoPrices(log, firstDay, seed));
   await writeFile(join(lib, 'data', 'prices.json'), JSON.stringify(prices));
+  // made-up weather, as the server writes it from Open-Meteo (data/weather.json)
+  await writeFile(
+    join(lib, 'data', 'weather.json'),
+    JSON.stringify(demoWeather(log, firstDay, lastDay, seed)),
+  );
   // two friends to compare with, as if their share files had been added
   await writeDemoFriends(lib, firstDay, lastDay);
   return { log, firstDay, lastDay, summary };

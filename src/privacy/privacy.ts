@@ -268,6 +268,8 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   if (MONEY_FILE.test(name) && !p.money) return [];
   // the day-by-day log; for TV and film, the per-day file and the sittings with their clock times
   if (DIARY_FILES.has(name) && !p.diary) return [];
+  // daily weather at home only means something with exact days, and narrows down where you live
+  if (name === 'weather.json' && (!p.diary || p.dates !== 'day')) return [];
   const dates = effectiveDates(name, p);
   const isBooks = name === 'books.json';
 

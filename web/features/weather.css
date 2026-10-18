@@ -1,0 +1,17 @@
+/* reading and the weather (Patterns) */
+.wx-card .chart{min-height:0;display:flex;flex-direction:column;gap:var(--cds-gap-sm)}
+.wx-take{margin:0;font-family:var(--font-anthropic-serif);font-size:18px}
+.wx-leg{display:flex;gap:var(--cds-gap-md);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.wx-leg span{display:inline-flex;align-items:center;gap:6px}.wx-leg .sw{display:inline-block;width:10px;height:10px;border-radius:2px}
+.wx-panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr));gap:var(--cds-gap-lg)}
+.wx-panel h3{margin:0 0 var(--cds-gap-xs);font-size:var(--cds-font-size-body);font-weight:var(--cds-font-weight-medium)}
+.wx-row{display:grid;grid-template-columns:minmax(7rem,9rem) 1fr;gap:var(--cds-gap-sm);align-items:center;padding:4px 0;border-bottom:1px solid var(--color-border-line)}
+.wx-row:last-child{border-bottom:0}
+.wx-lbl{min-width:0;font-size:var(--cds-font-size-caption);line-height:1.3}
+.wx-lbl small{display:block;color:var(--color-fg-muted)}
+.wx-bars{display:flex;flex-direction:column;gap:3px}
+.wx-bar{display:grid;grid-template-columns:1fr 4rem;gap:6px;align-items:center}
+.wx-track{position:relative;height:10px;border-radius:0 4px 4px 0;background:var(--cds-chart-grid)}
+.wx-track i{display:block;height:100%;border-radius:0 4px 4px 0}
+.wx-ref{position:absolute;top:-2px;bottom:-2px;width:0;border-left:1.5px dashed var(--color-fg-muted)}
+.wx-val{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
