@@ -1,8 +1,59 @@
-# Overnight log: the BOO backlog (17 Oct 2026)
+# Overnight log
+
+## Run 2: EP-12 to 15 and EP-17 (18 Oct 2026)
+
+Eight parallel agents built the 24 tickets in EP-12 (Outbound), EP-13 (To-read pile & predictions), EP-14 (Highlights, everywhere), EP-15 (Reading in context) and EP-17 (Loose ends). EP-16 (Media, round two) was left out on purpose. Each ticket has its own PR (#82 to #105) with lint, tsc, unit and e2e tests green. **None was merged by the agents**: self-merging was refused ("Merge Without Review"), so every ticket is in **REVIEW**. **PR #106** combines all 24 with the conflicts resolved (343 unit and 135 e2e tests green, demo checked in light, dark and 390px with no console errors). Merge #106, then close the others; GitHub marks them merged.
+
+If you merge the individual PRs instead: #95 and #100 need #92 first, #91 needs #84, #96 and #99 need #92, #101 and #102 need #83. Once #83 is in, #86 and #95 need their `bookKeys` import moved to `src/common/book-match` (done in #106), and #88 with #102 clash in `src/demo/demo-friends.ts` (also fixed in #106).
+
+### Things for you
+
+- **Give these a real run**: they were only tested against fake servers: ntfy, Gotify and Discord (BOO-72), Readwise (BOO-82), Open-Meteo (BOO-85), a Google or iCloud calendar (BOO-86) and a TRMNL device (BOO-73, which needs the dashboard reachable from the internet).
+- **Check Moon+ `addTime`** in a real backup (BOO-76 assumes it's a timestamp; if not, books just have no added date).
+- **Tune the give-up thresholds** (BOO-78, the `R` constant in `web/features/giveup-risk.js`) and the read-next weights (BOO-79, top of `web/features/what-next.js`) against your real data.
+- **Decide on BOO-87**: the sleep spike says don't build it yet; a nightly "last read" record is the suggested first step.
+- **Set your reading goal** (Admin → Widgets & devices): there was no goal before BOO-71.
+- **Screenshots**: not retaken. New views to add: To read, What to read next, Highlights, Challenges, On this day, Today's highlights, the Day by day chart and the Wrapped screen slide. Locally, `npm run screenshots` needs `PLAYWRIGHT_CHROMIUM_PATH` here (Playwright expected a browser build that isn't installed).
+- **The stats worker** (BOO-95) is on by default; set `STATS_WORKER=off` if it misbehaves in Docker (the image itself wasn't run).
+
+### Decisions by ticket
+
+- **BOO-71 Home Assistant (#92)**: a JSON endpoint `/api/now` for HA's REST sensor, not MQTT (that would need a new dependency and a broker). A revocable device token chooses whose view a device gets. Streak at risk means you read yesterday but not yet today, and only updates when a sync arrives. README has the sensor YAML and a 9pm nudge automation.
+- **BOO-75 Badges (#96)**: always the public view, even for the admin, so they cache safely; 404 while a read password is set. Covers are embedded so GitHub's image proxy shows them.
+- **BOO-73 E-ink (#99)**: an 800×480 1-bit PNG drawn by hand (dithered cover, built-in pixel font), plus `/api/trmnl` JSON and a Liquid template for TRMNL's polling plugin. No new dependencies.
+- **BOO-74 Feeds (#86)**: Atom and iCal at secret URLs, each tied to one visitor level, never the admin view. Clubs have no meeting dates, so the calendar shows the start, a weekly check-in and the planned finish.
+- **BOO-72 Notifications (#95)**: ntfy, Gotify, Discord and a generic webhook, a toggle per event. Each check is diffed against a saved state written before sending, so nothing is resent; the first run is a silent baseline. Private books are never named. Streak at risk is checked every 10 minutes from 21:00.
+- **BOO-81 Highlights tab (#89)**: search runs in the browser (the file is small). "Most-highlighted passages" means the same passage highlighted more than once.
+- **BOO-82 Export (#97)**: a Markdown zip with stable file names (re-export overwrites, so edits in those files are lost), a Readwise CSV, and a Readwise API push that only sends what's new. Private books are included, since it's your own export.
+- **BOO-83 Daily review (#100)**: 5 a day from highlights over 30 days old. Keep returns in 7 days and doubles; Less often starts at 30 days. Morning send goes through the notifier; no email channel. Anki export is tab-separated text.
+- **BOO-94 Matching (#83)**: one module replaces four copies (not two). The three existing matching strengths are kept apart, since merging them would change behaviour.
+- **BOO-76 To read (#101)**: Goodreads to-read shelves stay out of books.json and only appear on the pile. Friends' favourites are suggestions and not counted.
+- **BOO-79 What next (#102)**: series pull 30, genre fit 20, friends' ratings 20, palate cleanser 15, season 10, waiting time 5. The server ranks without friends; the page reranks with them.
+- **BOO-77 Finish date (#84)**: the book's own pace, scaled by how much faster you usually finish from the same point; a range from the 20th to 80th percentile. New hook `rh.goFact`.
+- **BOO-78 Give-up risk (#91)**: four explained signals plus the 7 most similar past reads. No flag at all without two given-up reads to learn from. The demo gains Vanity Fair as a stalling current book.
+- **BOO-80 Challenges (#98)**: set in Admin → Challenges, defaults are the ticket's examples, plus a genres kind. Visitors' progress counts only what they may see.
+- **BOO-84 On this day (#87)**: every earlier year, not just 1, 2 and 5. Falls back to books on the go that day.
+- **BOO-86 Life events (#103)**: a new privacy flag `life_events`, off in every preset. The iCal parser keeps all-day and 20h+ events and doesn't expand repeats. New hook `rh.markDays`.
+- **BOO-85 Weather (#104)**: hidden from visitors without exact days or the diary, since daily weather hints at where you live. The card says it's correlation, not cause.
+- **BOO-87 Sleep (#105)**: docs only, `docs/spikes/sleep.md`.
+- **BOO-97 Catalogue (#82)**: first published year (BC allowed) and author country; a blank field goes back to the looked-up value.
+- **BOO-96 Day by day (#85)**: two panels on one date axis instead of two y-axes; also fixed repeated x-axis labels on long reads.
+- **BOO-93 Taste match (#88)**: with 3+ co-rated books, ratings take 20% (genres 40, authors 24, books 16); otherwise the old weights.
+- **BOO-98 Streaming vs books (#90)**: a card on Money; subscriptions in another currency are left out, since there are no exchange rates.
+- **BOO-92 Wrapped (#93)**: new `rh.wrappedSlide` extension point and a "Your year on screen" slide; the share image stays about reading.
+- **BOO-95 Stats worker (#94)**: on an 80-year synthetic library, requests during a stats run waited up to 7 s before and at most 81 ms after. A crashed worker's jobs rerun in-process; after 3 crashes it stays in-process.
+
+### Coordinator, combined PR #106
+
+Twelve merges conflicted, all parallel additions (README, docs/api.md, app module, config, privacy lists, demo data); both sides were kept. Fixes in their own commit: the two `bookKeys` imports, the demo friends' ratings clash, admin menu order (Challenges 52, Feeds 56, Widgets & devices 55) and the README tab order.
+
+---
+
+## Run 1: the BOO backlog (17 Oct 2026)
 
 Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by parallel agents, with one PR per ticket (or per small group). About 60 PRs (#13 to #74) were merged once CI was green, and each was checked on top of main first. This file records the decisions made along the way, so you can review them and reverse any you disagree with.
 
-## Status
+### Status
 
 63 of the 64 tickets are **DONE**. **BOO-54** (Anna's Archive) is in REVIEW: I decided not to build it, for the reasons below, and it needs your confirmation.
 
@@ -20,7 +71,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 | EP-10 Platform & architecture    | Done (BOO-56, 63)                                    |
 | EP-11 Admin & privacy            | Done (BOO-60 to 62)                                  |
 
-## Things for you
+### Things for you
 
 - **BOO-54 Anna's Archive**: confirm the decision not to build it (`docs/integrations.md`), then move the ticket to DONE.
 - **Moon+ notes table**: the layout comes from open-source exports, not a real `mrbooks.db`. Check `docs/moonplus-backup.md` against one of your backups.
@@ -28,7 +79,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **Screenshots**: the committed ones have letter tiles instead of covers. Run **Actions → screenshots → Run workflow**, check the artifact and commit it to get versions with real covers.
 - **Docker**: the image build now runs only when started by hand (Actions → docker). To build it on main again, add `push: branches: [main]` to `.github/workflows/docker.yml`.
 
-## Suggested follow-ups
+### Suggested follow-ups
 
 - A "watching" slide in Wrapped (Wrapped has no extension point yet).
 - Score rating agreement in taste match.
@@ -38,7 +89,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - Add inputs for published year and author country to the admin catalogue editor.
 - Compare streaming cost per hour with Money's book benchmarks.
 
-## Coordinator decisions
+### Coordinator decisions
 
 - **CI minutes**: the Docker build moved to its own manual-only workflow (`.github/workflows/docker.yml`, run from the Actions tab). To re-enable it on main, add `push: branches: [main]`. The test workflow also stopped running twice per PR: push now triggers only on main, and PRs cover branches. (PR #13)
 - **Foundation first** (PR #14): a feature-script registry (`web/features/*.js` is auto-injected, plus `rh.card`, `rh.bookCard`, `rh.extend`, `rh.tab` and `dash.file`). This lets about 40 new views be built in parallel without every PR conflicting in `charts.js` and `index.html`.
@@ -46,7 +97,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **Network**: the sandbox blocks openlibrary.org, wikidata.org, TMDB and annas-archive.org. Lookups are built against the documented APIs and tested with mocks. They are not verified against the live services, so give them a real run.
 - **Node**: the container has Node 22 and the tests need 24 (CI uses 24), so I installed 24 with nvm. No repo change was needed.
 
-## BOO-47 Media survey (PR #17, docs/media-verticals.md)
+### BOO-47 Media survey (PR #17, docs/media-verticals.md)
 
 - **One app with media tabs**, not separate dashboards. TV & film gets a new tab, with new link kinds `show` and `film`.
 - **Data files** `media_items.json`, `media_runs.json` and `media_daily.json` mirror books, reads and daily. `media_sessions.json`, `media_parts.json` and `media_meta.json` are added alongside them. Ids are prefixed (`tv-…`, `film-…`, `show-…`).
@@ -56,14 +107,14 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **Rejected**: scraping, unofficial APIs that need your password, and treating OPML lists as podcast history. TMDB posters are optional and fail soft.
 - **Unverified**: the Netflix CSV column names, Audible via Amazon's data request, and Trakt's free-tier limits.
 
-## BOO-38 Chart style (PR #21) and BOO-36 Transitions (PR #31)
+### BOO-38 Chart style (PR #21) and BOO-36 Transitions (PR #31)
 
 - **Palette**: replaced it with a colour-blind-validated palette, stepped separately for light and dark. The old teal and pink were nearly indistinguishable for deuteranopia. Every chart now looks a little more saturated.
 - **Bars**: capped at 24px wide, rounded at the data end, with 2px gaps in stacks. Dots are ringed, and hovering washes the row or column. Average lines stay dashed. Genre chips show their colour as a dot and keep the text in ink.
 - **Left as is**: the book page "Day by day" chart, which has dual axes (an anti-pattern). Fixing it needs a redesign, so it's a follow-up.
 - **Transitions**: tabs slide, pages fade up, bars grow, dots pop and lines draw in, all in 220ms or less. They run only on a new view, new data or that card's own setting change, never on resize. Reduced-motion turns them all off. A range change redraws the chart and animates it in rather than morphing the old shapes.
 
-## Book shapes: BOO-7, 8, 9, 14, 15 (PRs #19, #25, #30, #34, #35)
+### Book shapes: BOO-7, 8, 9, 14, 15 (PRs #19, #25, #30, #34, #35)
 
 - **BOO-7 shapes**: devoured, slow burn, stop-start and rescued, plus abandoned (no opening for 60+ days) and reading, so every read gets one. The rules, in order:
   - **rescued**: a break of 28+ days between 5% and 95%.
@@ -79,20 +130,20 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **BOO-14**: words come from each read's own log. An outlier means 2× away from your own log-log fit.
 - **BOO-15**: each re-read is compared with the first read, and a read needs 30+ timed minutes to count.
 
-## BOO-11 Series pull (PR #36), BOO-6 Ridgelines (PR #33), BOO-22 Highlight density (PR #32)
+### BOO-11 Series pull (PR #36), BOO-6 Ridgelines (PR #33), BOO-22 Highlight density (PR #32)
 
 - **BOO-11**: only real n → n+1 hops count. The gap runs from the first finish of book n to the first start of n+1. Waiting next books show as open dots with the gap so far. A gateway book is the first book started by any author with 2+ books read.
 - **BOO-11 for Arr (BOO-64)**: the `series_next` calc gives the next book per series, with status `not_in_library` meaning "request this one". Moon+ only lists books you have opened, so the next book usually isn't in the library.
 - **BOO-6**: ridgelines for minutes per day by year (Timeline tab) and wpm by genre (Speed tab). Speed is weighted by minutes, markers are medians, and the minutes axis is capped at the 98th-percentile day.
 - **BOO-22**: fixed 5% bins rather than smoothing, because most books have only a handful of highlights. The % positions are estimated from progress on the day each highlight was made.
 
-## Showpieces: BOO-1 Bookshelf (#16), BOO-2 Tree rings (#22), BOO-5 Streamgraph (#26)
+### Showpieces: BOO-1 Bookshelf (#16), BOO-2 Tree rings (#22), BOO-5 Streamgraph (#26)
 
 - **BOO-1**: Overview stays the home page and the Bookshelf is a new tab right after it. There is one spine per read, not per book, on the shelf of the year it ended. Width is words^0.6, so a 450k-word book doesn't swamp a shelf. Height is hours. Book length is estimated from words read and progress. The book you're reading now gets a ribbon.
 - **BOO-2**: colour is by genre, not by book, because 65 books on 8 colours would repeat. Spoke length uses a square-root scale capped at the 99th-percentile day.
 - **BOO-5**: replaced the "Genre mix by year" chart in place. It shows hours per genre per month rather than finished books per year. The streams are lightly smoothed, and the tooltip shows the real hours. The unused `genre_year` calc was removed.
 
-## Patterns & time: BOO-10, 12, 13, 16, 39 (PRs #29, #38, #24, #18)
+### Patterns & time: BOO-10, 12, 13, 16, 39 (PRs #29, #38, #24, #18)
 
 - **New "Patterns" tab** holding the chord diagram, series pull, gateway books, hangover and the heatmap explorer.
 - **BOO-16**: averages are per calendar day over the whole logged span. There are no season labels, because they depend on the hemisphere.
@@ -106,7 +157,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **BOO-10**: "next" is the next read started, so overlapping reads still count. Author mode shows the top 9 authors plus Other.
 - **BOO-12**: there are no ratings, so speed stands in for "loved" (the fastest quarter counts as devoured). The gap runs to the next day a different book was opened. This can switch to Goodreads ratings once they're imported.
 
-## Highlights: BOO-20 to BOO-25 (PRs #23, #32, #37, #39, #40)
+### Highlights: BOO-20 to BOO-25 (PRs #23, #32, #37, #39, #40)
 
 - **Unconfirmed against a real backup.** The `notes` table layout comes from open-source Moon+ note exports, not a real mrbooks.db. The parser reads only the columns a backup actually has and never fails on missing ones. Please check `docs/moonplus-backup.md` against one of your backups.
 - **"% through the book" is an estimate.** Moon+ stores a chapter and character offset but not the book's length, so each highlight is placed within the progress made on the day it was written.
@@ -116,7 +167,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **BOO-24**: I wrote the word-cloud layout myself (spiral, horizontal only, English stop words) rather than adding a dependency.
 - **BOO-25**: highlight, note and bookmark times stand in for reading times, and the card says so. Parts of the day are 05–12, 12–17, 17–21 and 21–05.
 
-## Records & story: BOO-19 Odometer (#15), BOO-18 Records (#20), BOO-17 Forecast (#28), BOO-3 + BOO-37 Wrapped (#41)
+### Records & story: BOO-19 Odometer (#15), BOO-18 Records (#20), BOO-17 Forecast (#28), BOO-3 + BOO-37 Wrapped (#41)
 
 - **BOO-19**: units are the King James Bible (783k words), Lord of the Rings (481k), War and Peace (587k) and 1 m of shelf (≈4M words). Milestones are round numbers. Words come only from the daily log, so the card says "since <first day>".
 - **BOO-18**: 9 records. "New record" means broken within 30 days of the backup date.
@@ -126,7 +177,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
   - Other pages were not turned into scrollytelling, because they're dashboards rather than stories.
 - **Tests**: added `test/support/feature-calcs.ts`, which runs feature calcs in Node for unit tests.
 
-## Metadata: BOO-55 ISBN (#42), BOO-26 Enrichment (#44), BOO-27/28/29 Origins tab (#46), BOO-4/35 Cover colours (#49)
+### Metadata: BOO-55 ISBN (#42), BOO-26 Enrichment (#44), BOO-27/28/29 Origins tab (#46), BOO-4/35 Cover colours (#49)
 
 - **BOO-55**: Moon+ has no known ISBN column. The import reads one only if a column named `isbn*` or `identifier` exists. Catalogue entries take `isbn`/`isbn13`/`isbn10` and `work_id`, checksum-validated and converted between 10 and 13 digits. Copies count as one book when they share title and author, a `work_id` or an ISBN-13. There is a new "No ISBN" data check.
 - **BOO-26 cache and settings**: results go in `library/metadata.json`, with misses retried after 30 days. It runs after the cover lookup with the same pause between requests. It's on by default; `METADATA_LOOKUP=off` turns it off, and `WIKIDATA_URL` is configurable.
@@ -138,7 +189,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **Follow-up**: ISBN fields in the admin catalogue editor, once the admin view (#27) is on main.
 - **BOO-54 Anna's Archive**: not built, because it has no stable public metadata API (see the integrations section).
 
-## Admin & privacy: BOO-60 Admin page (#27), BOO-61 Logs (#43), BOO-62 Privacy tier (#50)
+### Admin & privacy: BOO-60 Admin page (#27), BOO-61 Logs (#43), BOO-62 Privacy tier (#50)
 
 - **BOO-60**: the admin page lives at `#admin` and `#admin/<section>`. It's a hidden page, not a tab, so sections can be bookmarked and the back button works. The sections are Data, Sync & logs, Access & privacy, Catalogue and Covers.
   - The catalogue is edited per book, which updates all of that book's files.
@@ -158,20 +209,20 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
   - Cards hide rather than break; small core fallbacks were added for missing daily data.
 - **BOO-62 not done**: roles for friends and federated installations, which don't exist yet. The friends track will add them.
 
-## Coordinator: main broke briefly (fixed in PR #51)
+### Coordinator: main broke briefly (fixed in PR #51)
 
 - #42 (ISBN) and #27 (admin) were each green but failed `tsc` together on main. The fix adds an ISBN field to the admin editor and keeps ISBNs and work ids on save. Lesson applied: after merging two server PRs back to back, I now run the full suite on main before merging more.
 - **Metadata follow-up (#44)**: the admin catalogue save also keeps `published_year`, `pages`, `author_country` and `author_gender`. Metadata lookups are recorded in the activity log as a new `metadata` type. Inputs for those fields in the editor are an optional follow-up.
 - **Privacy follow-up (#50)**: an anonymised private book keeps only reading fields; every other field (ISBN, metadata, and anything added later) is nulled.
 
-## BOO-63 tooling (PR #54)
+### BOO-63 tooling (PR #54)
 
 - **`npm run screenshots`**: Playwright 1.63.0 shoots every tab (found at runtime) plus book, author, year and Wrapped pages, in light and dark plus phone width. It uses reduced motion and fails on any console error. `DEMO_TODAY=YYYY-MM-DD` makes the demo repeatable.
 - **CI**: screenshots are not taken on push, to save minutes. `.github/workflows/screenshots.yml` is manual-only and uploads an artifact (kept 7 days) rather than committing, so a person checks the pictures first.
 - **Docs**: added a PR template with a "README, screenshots and demo updated" checkbox, and `docs/contributing.md`.
 - **Covers**: the committed screenshots have letter placeholders instead of covers, because the sandbox can't reach Open Library. See "Things for you" for how to get versions with covers.
 
-## Money: BOO-40 (#45), BOO-41/42/43 (#48), BOO-44/45 (#52), BOO-46 (#55)
+### Money: BOO-40 (#45), BOO-41/42/43 (#48), BOO-44/45 (#52), BOO-46 (#55)
 
 - **BOO-40 storage**: prices live in their own `library/prices.json`, keyed by book id, keeping title and author so books bought but never opened can be listed. The page gets a home-currency copy without notes.
 - **BOO-40 currencies**: one home currency plus a fixed exchange-rate table you edit. There are no live rates. A price in a currency with no rate is left out, with a warning in admin.
@@ -188,7 +239,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **Core fix**: `.rh-card{display:flex}` overrode the `hidden` attribute, so hidden cards showed as empty boxes.
 - **Privacy fix (#56)**: private books bought but never opened were leaking their title and author in `prices.json` when money was visible. Now every id in `private_books` is private wherever it appears. Anonymised price rows keep their amounts, so totals still add up.
 
-## BOO-56 Backend stats & API (PR #61)
+### BOO-56 Backend stats & API (PR #61)
 
 - **One implementation**: the page's own calc scripts run on the server in a Node vm sandbox, so nothing was ported to TypeScript. All 67 calcs give identical results to the browser, checked by tests and in real Chromium.
 - **Per viewer**: results are computed separately for admin, public and reader from the same filtered data each one is served, so stats can never leak hidden data. Preview-as-visitor gets the visitor's numbers.
@@ -200,7 +251,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **Follow-up**: calcs run on the main thread, so a worker thread would help very large libraries.
 - **Coordinator, merge order**: I merged server stats (#61) before the media, Goodreads and friends stacks. Each of those then merged main itself and made its calcs pass the server/browser parity test, rather than me resolving conflicts inside their code.
 
-## TV & film: BOO-49 Netflix (#47), BOO-48 Tautulli (#53), BOO-50 TV views (#57), BOO-51 Cross-media (#63)
+### TV & film: BOO-49 Netflix (#47), BOO-48 Tautulli (#53), BOO-50 TV views (#57), BOO-51 Cross-media (#63)
 
 - **BOO-49 Netflix**: upload the CSV or the zip Netflix sends. With several profiles, nothing is imported until you choose which in admin.
   - An episode or film counts as watched at 90% or more, with fallbacks when the position is missing. Autoplay previews are dropped.
@@ -218,7 +269,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **Demo**: a made-up Netflix history of classic silent and mid-century films plus invented shows.
 - **BOO-52 (#67)**: Audiobookshelf was chosen as the next source over Spotify. It uses the same URL-plus-token route as Tautulli and gives time and position per session. Audiobooks count as "listening" in the cross-media views. Podcasts and a separate audiobook tab are deliberately left out. `docs/media-verticals.md` §7 lists the steps for adding further sources.
 
-## Integrations: BOO-53 Goodreads (#58), BOO-57 Kobo/Kindle (#66), BOO-54 Anna's Archive (#68), BOO-64 Arr (#71)
+### Integrations: BOO-53 Goodreads (#58), BOO-57 Kobo/Kindle (#66), BOO-54 Anna's Archive (#68), BOO-64 Arr (#71)
 
 - **BOO-53 upload and storage**: a new Admin → Imports section takes the Goodreads or StoryGraph CSV; the Moon+ upload stays `.mrpro`-only. Imports are stored normalised; the CSV isn't kept.
 - **BOO-53 matching**: by ISBN, then by title (series suffix, subtitle and leading article removed) plus surname.
@@ -247,7 +298,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **Fix in #71**: `AccessSettingsService.save` used to rewrite all of `settings.json`, wiping other features' sections. It now keeps them.
 - **Follow-up**: title/author matching is duplicated in `src/arr/match.ts` and `src/imports/merge.ts` and could be unified.
 
-## Friends: BOO-30 (#59), 31 (#60), 32 (#62), 33 (#64), 34 (#65), 59 (#69), 58 (#72)
+### Friends: BOO-30 (#59), 31 (#60), 32 (#62), 33 (#64), 34 (#65), 59 (#69), 58 (#72)
 
 - **BOO-30 profiles and sharing**: a friend is a profile in `library/friends/<slug>/` with the same row shapes as your own data. You share by exporting one JSON file (`moonreader-dashboard/share` v1, described in `docs/friends.md`) filtered by a new "friends" privacy role.
   - By default friends get everything except money and highlights.
@@ -270,7 +321,7 @@ Everything on the [BOO board](https://tasks.kiss.cat/BOO) was worked through by 
 - **Stats**: the friends role was added to the per-role stats. Calcs that take friends' data stay client-side.
 - **Coordinator mistake, fixed in #74**: I merged the stacked friends PRs (#60 to #72) without retargeting them to main first, so they merged into each other's branches and only #59 reached main. PR #74 brings the top of the stack (`boo-58-book-club`, already tested on main) into main.
 
-## BOO-63 README & demo sweep (PR #73)
+### BOO-63 README & demo sweep (PR #73)
 
 - **README**: rewritten to cover every tab, page, import, admin section, privacy audience, setting (including the new env vars), the API, and development. Config files were synced too. The README wrongly said port 8080; docker-compose publishes 9080.
 - **Screenshots**: all retaken, with new ones for TV, Money and Friends. They still have letter tiles instead of covers (see "Things for you").
