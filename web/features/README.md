@@ -33,6 +33,11 @@ A feature script is an IIFE that uses `dash` (data and calcs) and `rh` (drawing 
   // add to an entity page (author, series, genre, subgenre, year) after it draws
   rh.extend('year', (id, root) => {});
 
+  // facts about a book on the go: on the Overview's "On the go" card ('one' when it's the only
+  // book, 'list' for each of several) and in an unfinished book's page header ('book');
+  // row has the book's id; return [] to add nothing
+  rh.goFact((row, where) => [{ k: 'Likely finish', v: '9 Nov', title: 'a tooltip', cls: 'mine' }]);
+
   // a new tab; returns its <section>, then add cards with tab: 'mytab'
   rh.tab('mytab', 'My tab', { after: 'timeline' });
 

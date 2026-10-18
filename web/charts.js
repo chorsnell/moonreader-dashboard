@@ -772,10 +772,19 @@
     return box;
   }
 
+  // extra facts feature scripts add about a book on the go (rh.goFact): fn(row, where) gives
+  // [{ k, v, cls, title }], where is 'one' (the single book on the Overview), 'list' (one of
+  // several there) or 'book' (the book page header); row has the book's id
+  const goFactFns = [];
+  function goFacts(r, where) {
+    return goFactFns.flatMap((fn) => { try { return fn(r, where) || []; } catch (e) { console.error(e); return []; } });
+  }
+  const factEls = (fs) => fs.flatMap((f) => { const dt = el('dt', f.cls || null, f.k), dd = el('dd', f.cls || null); dd.append(f.v); if (f.title) dd.title = f.title; return [dt, dd]; });
+
   // "On the go": a list, or one book shown large when it's the only one
   function onGo() {
     const ul = $('#current'), rows = state(ul, 'current'); if (!rows) return;
-    if (rows.length !== 1) return list('#current', 'current', (r) => ({ meta: 'last ' + d3.utcFormat('%-d %b')(pDate(r.last_read)), prog: r.progress }));
+    if (rows.length !== 1) return list('#current', 'current', (r) => ({ meta: 'last ' + d3.utcFormat('%-d %b')(pDate(r.last_read)), prog: r.progress, extra: goFacts(r, 'list') }));
     const r = rows[0], li = link(el('li', 'go-one'), 'book', r.id), info = el('div', 'go-info'), p = r.progress || 0;
     info.append(el('div', 'go-title', r.title));
     info.append(byline('div', 'go-sub', r));
@@ -792,6 +801,7 @@
     if (r.hours && p >= 5 && p < 100) fact('Left at this pace', `about ${fmt(Math.max(1, Math.round(r.hours * (100 - p) / p)))} h`);
     const wpm = D('book_speed').status === 'ok' ? (D('book_speed').data.find((s) => s.book_id === r.id) || {}).wpm : null;
     fact('Speed', wpm ? `${wpm} wpm` : null);
+    facts.append(...factEls(goFacts(r, 'one')));
     info.append(facts);
     li.append(cover(r.id, r.title, r.genre, 'lg'), info);
     ul.replaceChildren(li);
@@ -807,11 +817,17 @@
   function bookList(ul, rows, item = () => ({}), { fields = ['author', 'series'], cur } = {}) {
     if (!rows.length) { ul.replaceChildren(el('li', 'meta', 'Nothing here right now.')); return; }
     ul.replaceChildren(...rows.map((r) => {
-      const { title, meta, prog, note } = item(r), id = idOf('book', r), li = el('li', id === cur ? 'cur' : null), a = el('div', 'ttl');
+      const { title, meta, prog, note, extra } = item(r), id = idOf('book', r), li = el('li', id === cur ? 'cur' : null), a = el('div', 'ttl');
       li.append(cover(id, r.title, r.genre));
       if (id !== cur) link(li, 'book', id);
       a.append(document.createTextNode(title ?? r.title), byline('small', null, r, fields, note));
       if (prog != null) { const p = el('div', 'pbar'), i = el('i'); i.style.width = Math.min(100, prog) + '%'; i.style.background = C[0]; p.append(i); a.append(p); }
+      // facts a feature added (rh.goFact): one line of "label value · label value"
+      if (extra && extra.length) {
+        const x = el('small', 'go-extra');
+        extra.forEach((f, i) => { const s = el('span', f.cls || null); const v = el('span', 'v'); v.append(f.v); s.append(f.k ? f.k + ' ' : '', v); if (f.title) s.title = f.title; if (i) x.append(' · '); x.append(s); });
+        a.append(x);
+      }
       li.append(a, el('div', 'meta', meta ?? '')); return li;
     }));
   }
@@ -1045,6 +1061,7 @@
     fact('Last opened', b.last_read ? fDay(pDate(b.last_read)) : null);
     const p = b.progress || 0;
     if (b.status !== 'finished' && latest && latest.hours && p >= 5 && p < 99) fact('Left at this pace', `about ${fmt(Math.max(1, Math.round(latest.hours * (100 - p) / p)))} h`);
+    if (b.status !== 'finished') facts.append(...factEls(goFacts(b, 'book')));
     fact('Published', b.published_year != null ? (b.published_year < 0 ? `${-b.published_year} BC` : String(b.published_year)) : null);
     fact('Pages', b.pages ? fmt(b.pages) : null);
     fact('ISBN', b.isbn13 ? b.isbn13 + (b.isbn10 ? ` · ${b.isbn10}` : '') : null);
@@ -1457,6 +1474,7 @@
     card: addCard,
     bookCard: (o) => { const parts = cardShell(o); bookCards.push({ ...o, parts, placed: false }); return parts; },
     extend: (kind, fn) => { (extensions[kind] = extensions[kind] || []).push(fn); },
+    goFact: (fn) => { goFactFns.push(fn); },
     tab: addTab,
     page: addPage,
     adminSection: (o) => { adminSections.push(o); window.dispatchEvent(new CustomEvent('rh:admin-section', { detail: o })); },
