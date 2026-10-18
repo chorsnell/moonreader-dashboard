@@ -197,3 +197,28 @@ describe('privacy', () => {
     expect(theirs.calcs.kpis).toEqual(await json('/api/stats/kpis', reader));
   });
 });
+
+describe('with STATS_WORKER=off', () => {
+  it('works the same numbers out on the main thread', async () => {
+    const other = await TestDashboard.start({ statsWorker: false });
+    try {
+      await request(other.server)
+        .put('/upload?name=test.mrpro')
+        .set('X-Upload-Token', TOKEN)
+        .type('application/octet-stream')
+        .send(await readFile(join(tmp, 'test.mrpro')))
+        .expect(200);
+      expect(await waitFor(fileExists(other.path('data', 'meta.json')))).toBe(true);
+      const login = await request(other.server).post('/api/login').send({ password: TOKEN });
+      const cookie = String(login.headers['set-cookie']?.[0] ?? '').split(';')[0];
+      const inline = await request(other.server)
+        .get('/api/stats/all')
+        .set('Cookie', cookie)
+        .expect(200);
+      const worker = (await json('/api/stats/all', admin)) as Bundle;
+      expect((inline.body as Bundle).calcs).toEqual(worker.calcs);
+    } finally {
+      await other.stop();
+    }
+  });
+});

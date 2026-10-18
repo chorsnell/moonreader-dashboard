@@ -300,6 +300,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `TAUTULLI_URL` / `TAUTULLI_API_KEY` | *(empty)* | Tautulli's address and API key, for Plex watch history |
 | `AUDIOBOOKSHELF_URL` / `AUDIOBOOKSHELF_TOKEN` | *(empty)* | Audiobookshelf's address and API token |
 | `MEDIA_POLL_MINUTES` | `60` | How often to pull from Tautulli and Audiobookshelf |
+| `STATS_WORKER` | `on` | Works out the server's stats in a background thread, so a big library doesn't slow other requests while they're worked out. `off` works them out on the main thread instead (try it if the stats misbehave; if the thread crashes 3 times the server switches to that by itself) |
 | `MIXPANEL_TOKEN` | *(empty)* | A Mixpanel project token: sends anonymous page views and clicks (no titles, names or dates) to Mixpanel. Off when empty |
 | `MIXPANEL_API_HOST` | `https://api-js.mixpanel.com` | Mixpanel's address, e.g. `https://api-eu.mixpanel.com` for EU data residency |
 
@@ -368,7 +369,7 @@ src/clubs/           book clubs and their spoiler-safe comments
 src/arr/             requests to the admin's own *arr book manager
 src/rebuild/         watches for new backups, edits and syncs, and rebuilds
 src/upload/, src/admin/, src/dav/, src/status/   uploads, the admin API, WebDAV, /healthz and /api/config
-src/stats/           runs the page's calcs on the server per viewer; /api/stats
+src/stats/           runs the page's calcs on the server per viewer, in a worker thread; /api/stats
 src/web/             serves the page, its data, feature scripts and covers
 src/share/           link previews: the Open Graph tags and the cover collage
 src/demo/            builds the demo site from made-up data

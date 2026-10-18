@@ -27,6 +27,7 @@ import {
   survivesJson,
   type Inputs,
 } from '../../src/stats/stats';
+import { StatsRunner } from '../../src/stats/stats-runner';
 import { makeBackup } from '../support/fake-backup';
 import { runPage } from '../support/page-runtime';
 
@@ -137,6 +138,34 @@ describe.each(['demo', 'fake'] as const)('on the %s data', (which) => {
     for (const policy of [PRESETS.taste, PRESETS.no_dates]) {
       const ctx = buildContext(policy, settings, books, '2026-10-01');
       await check(data, ctx);
+    }
+  });
+
+  it('gives the same numbers in the stats worker thread as on the main thread', async () => {
+    const data = join(libs[which], 'data');
+    const books = JSON.parse(await readFile(join(data, 'books.json'), 'utf8')) as BookFacts[];
+    const settings = toPrivacySettings({ private_books: [books[0].id] });
+    const ctx = buildContext(PRESETS.no_dates, settings, books, '2026-10-01');
+    const runner = new StatsRunner({ worker: true });
+    try {
+      for (const c of [null, ctx]) {
+        const job = { webDir: WEB_DIR, dataDir: data, ctx: c, version: 'v', generated: null };
+        const worker = await runner.run(job);
+        expect(runner.usingWorker).toBe(true);
+        const main = computeStats(page, await readInputs(data, page.files, c));
+        const rows = Object.fromEntries(
+          Object.entries(worker.rows).map(([k, v]) => [k, JSON.parse(v) as unknown]),
+        );
+        expect(rows).toEqual(main.rows);
+        expect([worker.client_only, worker.lossy, worker.failed]).toEqual([
+          main.client_only,
+          main.lossy,
+          main.failed,
+        ]);
+        expect(worker.calcs.map((x) => x.id).sort()).toEqual(ids().sort());
+      }
+    } finally {
+      await runner.close();
     }
   });
 });

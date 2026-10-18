@@ -39,7 +39,9 @@ add calcs or fields; check the index rather than assuming.
 
 `/api/stats/all` and `/api/stats/page` send an `ETag` and answer `If-None-Match` with `304`,
 and are gzipped for clients that accept it. Every response carries `X-Stats-Version`, which
-changes whenever the numbers could (new data, new privacy settings, new page code).
+changes whenever the numbers could (new data, new privacy settings, new page code). The
+numbers are worked out once per version for each kind of viewer, in a background thread
+(`STATS_WORKER=off` keeps it on the main thread), and kept until the version changes.
 
 ### Calcs the server leaves out
 
