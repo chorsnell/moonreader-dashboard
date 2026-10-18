@@ -9,6 +9,7 @@ import { appConfig } from './config/app.config';
 import { ClubsModule } from './clubs/clubs.module';
 import { DavModule } from './dav/dav.module';
 import { FederationModule } from './federation/federation.module';
+import { FeedsModule } from './feeds/feeds.module';
 import { FriendsModule } from './friends/friends.module';
 import { MediaModule } from './media/media.module';
 import { OutboundModule } from './outbound/outbound.module';
@@ -38,6 +39,7 @@ import { WebModule } from './web/web.module';
     FederationModule,
     ClubsModule,
     OutboundModule,
+    FeedsModule,
     // last: its catch-all route for the page's files must come after every other route
     WebModule,
   ],
