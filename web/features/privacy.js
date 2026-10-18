@@ -18,7 +18,7 @@
     diary: [...DAY_PRECISE, '#kpi-daily', '#kpi-hours-ytd', '#kpi-speed', '#kpi-avg-wpm', '#kpi-fastest', '#kpi-slowest'],
     streaks: ['#kpi-streak', '#card-records'],
     current: ['#card-current', '#card-stalled', '#card-forecast'],
-    highlights: ['#tab-highlights', '#highlights', '#card-bk-highlights', '#card-bk-hl-density', '#card-bk-hl-cloud', '#card-quote', '#card-clock'],
+    highlights: ['#tab-highlights', '#highlights', '#card-bk-highlights', '#card-bk-hl-density', '#card-bk-hl-cloud', '#card-quote', '#card-hl-review', '#card-clock'],
     money: [],
     ratings: [],
   };

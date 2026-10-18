@@ -246,3 +246,19 @@ export, so private books are included.
 | `PUT /api/admin/highlights/readwise` | `{token}`: checked against Readwise's `/api/v2/auth/`, then kept in `settings.json`. `400` if Readwise turns it down |
 | `DELETE /api/admin/highlights/readwise` | Forgets the token |
 | `POST /api/admin/highlights/readwise/push` | `{all?: boolean}`: sends highlights not sent before (all of them with `all`) to Readwise's `/api/v2/highlights/` in batches of 100; returns `{sent, skipped, total}`. `429` when Readwise asks to slow down (what was sent is kept) |
+
+## Daily highlight review
+
+BOO-83. State in `library/highlight-review.json`; keys are 20 hex characters (a hash of the
+book id and the highlight's text), so they survive rebuilds.
+
+| Method and path | Who | Does |
+| --- | --- | --- |
+| `GET /api/review/today` | Anyone who may read | `{date, items: [{key, book_id, title, author, genre, text, note, date}], can_review}`. The admin also gets each item's `card` (`{interval, due, never?, reviews, last}`), `settings`, and counts (`highlights`, `reviewed`, `never`, `due`). Visitors get the day's pick filtered like `highlights.json`: empty when highlights are hidden from them, without private books |
+| `POST /api/admin/review/<key>` | Admin | `{action: "keep" \| "less" \| "never" \| "reset"}`: `{card, next: {due, when} \| null}` |
+| `GET /api/admin/review/settings` | Admin | `{per_day, notify, hour, notifier}` (`notifier`: a channel is set up and "Daily highlights" is on) |
+| `PUT /api/admin/review/settings` | Admin | Any of `{per_day: 1–20, notify: bool, hour: 0–23}` |
+| `GET /api/admin/review/anki.txt` | Admin | Tab-separated text for Anki's File → Import: passage, note and book, tags |
+
+The morning send is a `NotifierService` event of kind `highlight_review`, sent once a day from
+`hour` when `notify` is on; `data` has `{date, items}`.
