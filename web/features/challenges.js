@@ -125,7 +125,7 @@
   }
 
   rh.card({
-    tab: 'overview', id: 'challenges', title: 'Challenges', calc: 'challenge_progress', after: 'card-recent',
+    tab: 'overview', id: 'challenges', title: 'Challenges', calc: 'challenge_progress', before: 'card-years',
     note: 'Goals beyond the yearly count, from the books you finished.',
     draw(box, rows, parts) {
       // streaks need exact days; the owner may keep them from visitors
