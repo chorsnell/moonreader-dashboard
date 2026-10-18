@@ -1,12 +1,5 @@
-import {
-  ClubError,
-  clubFor,
-  progressOf,
-  sameBook,
-  toClubInput,
-  toComment,
-  type Club,
-} from './clubs';
+import { sameBook } from '../common/book-match';
+import { ClubError, clubFor, progressOf, toClubInput, toComment, type Club } from './clubs';
 
 const club: Club = {
   id: 'c1',

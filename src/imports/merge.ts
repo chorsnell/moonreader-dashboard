@@ -6,45 +6,11 @@ import type {
   ReadEntry,
 } from '../backup-import/reading-history.types';
 import { parseIsbn } from '../metadata/isbn';
+import { bookKey as matchKey, SERIES_SUFFIX } from '../common/book-match';
 import type { ImportedBook, ImportedHighlight, ImportFile, ImportSource } from './imports.types';
 
 /** An imported read this close to one Moon+ already has is the same read. */
 export const SAME_READ_DAYS = 30;
-
-/** "The Colour of Magic (Discworld, #1)" -> series Discworld, number 1. */
-const SERIES_SUFFIX = /\s*\(([^()#]+?),?\s*#\s*([\d.]+)[^()]*\)\s*$/;
-
-/** A title as a match key: no series suffix, subtitle, leading article or punctuation. */
-export function titleKey(title: string): string {
-  return title
-    .replace(SERIES_SUFFIX, '')
-    .replace(/\s*\([^()]*\)\s*$/, '')
-    .split(/[:;]/)[0]
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/^(the|a|an)\s+/, '')
-    .replace(/[^a-z0-9]+/g, '');
-}
-
-/** An author as a match key: the surname, so "J.R.R. Tolkien" and "Tolkien, J. R. R." agree. */
-export function authorKey(author: string): string {
-  const a = author.split(/\s+(?:and|&)\s+|;/)[0].trim();
-  const surname = a.includes(',')
-    ? a.split(',')[0]
-    : (a
-        .replace(/,?\s+(jr|sr|ii|iii)\.?$/i, '')
-        .split(/\s+/)
-        .at(-1) ?? '');
-  return surname
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z]+/g, '');
-}
-
-const matchKey = (title: string, author: string) => `${titleKey(title)}|${authorKey(author)}`;
 
 const slug = (title: string) =>
   title

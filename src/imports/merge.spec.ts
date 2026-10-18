@@ -1,6 +1,7 @@
 import type { BookHistory } from '../backup-import/reading-history.types';
 import type { ImportedBook, ImportFile } from './imports.types';
-import { authorKey, mergeImports, titleKey } from './merge';
+import { authorKey, titleKey } from '../common/book-match';
+import { mergeImports } from './merge';
 
 function moonBook(over: Partial<BookHistory>): BookHistory {
   return {
