@@ -62,6 +62,17 @@ device_audience}`; the token itself is never returned), `PUT /api/admin/outbound
 'public' | 'reader' | 'friends'}`), `POST /api/admin/outbound/token` (a new token, returned
 this once) and `DELETE /api/admin/outbound/token`.
 
+### E-ink
+
+`GET /eink.png` is the 800 × 480 one-bit PNG of the now summary, `GET /eink/cover.png` the
+current cover dithered to 240 × 360 (or `404`), and `GET /api/trmnl` flat JSON for a TRMNL
+private plugin set to polling (`title`, `author`, `progress`, `cover_url`, `image_url`,
+`stats`, `streak`, `streak_at_risk`, `week_minutes`, `today_minutes`, `year`, `quote`,
+`quote_source`). Access is as for `/api/now` (the device token or the usual sign-in). The
+PNGs send an `ETag`, answer `304`, and are `Cache-Control: private, max-age=60`. The image
+URLs in `/api/trmnl` carry the device token on as `?token=` when it was sent, and a `v=` that
+changes with the picture.
+
 ### Badges
 
 `GET /badge/reading.svg`, `/badge/year.svg` (`?style=card`) and `/badge/heatmap.svg`

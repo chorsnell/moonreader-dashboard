@@ -126,6 +126,50 @@ describe('GET /api/now', () => {
   });
 });
 
+describe('the e-ink view', () => {
+  afterAll(async () => {
+    await asAdmin('delete', '/api/admin/outbound/token').expect(200);
+    await setAccess({ access: 'public' });
+    await setPrivacy({});
+  });
+
+  const png = (res: request.Response) => {
+    expect(res.headers['content-type']).toBe('image/png');
+    const body = res.body as Buffer;
+    return { width: body.readUInt32BE(16), height: body.readUInt32BE(20), depth: body[24] };
+  };
+
+  it('is an 800 x 480 one-bit PNG, and JSON for TRMNL', async () => {
+    const res = await get('/eink.png', admin).buffer(true).expect(200);
+    expect(png(res)).toEqual({ width: 800, height: 480, depth: 1 });
+    await get('/eink.png', admin).set('If-None-Match', String(res.headers.etag)).expect(304);
+    const t = (await get('/api/trmnl', admin).set('Host', 'books.example.com').expect(200)).body;
+    expect(t).toMatchObject({ title: 'Beta', author: 'Bob Writer', progress: 50, width: 800 });
+    expect(t.image_url).toMatch(/^http:\/\/books\.example\.com\/eink\.png\?v=/);
+    expect(t.cover_url).toBeNull(); // Beta has no cover
+    expect(t.stats.map((s: { label: string }) => s.label)).toContain('STREAK');
+    await get('/eink/cover.png', admin).expect(404);
+  });
+
+  it('keeps to the asker, and takes the device token behind a read password', async () => {
+    await setPrivacy({ public: PRESETS.taste });
+    const pub = (await get('/api/trmnl').expect(200)).body;
+    expect(pub).toMatchObject({ title: null, reading_shared: false, streak: null });
+    await setAccess({ access: 'password', password: 'letmein' });
+    await get('/eink.png').expect(401);
+    await get('/api/trmnl').expect(401);
+    const token = String(
+      (await asAdmin('post', '/api/admin/outbound/token').expect(200)).body.token,
+    );
+    const res = await get(`/eink.png?token=${token}`).buffer(true).expect(200);
+    expect(png(res).width).toBe(800);
+    const t = (await get('/api/trmnl').set('Authorization', `Bearer ${token}`).expect(200)).body;
+    expect(t.title).toBe('Beta');
+    // the picture's URL carries the token on, for devices that can't send headers
+    expect(t.image_url).toContain(`token=${token}`);
+  });
+});
+
 describe('GET /badge/*.svg', () => {
   afterAll(async () => {
     await setAccess({ access: 'public' });

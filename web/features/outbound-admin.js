@@ -46,13 +46,13 @@
         shown.replaceChildren(h('code', {}, token), copyBtn(() => token));
         shown.hidden = false;
         tokenMsg.textContent = 'Copy it now: it is shown only this once.';
-        await load(); drawYaml();
+        await load(); drawYaml(); drawEink();
       } catch (err) { tokenMsg.textContent = err.message; }
       make.disabled = false;
     } }, 'Make a token');
     const revoke = h('button', { class: 'up-link', type: 'button', hidden: true, onclick: async () => {
       if (!confirm('Revoke the device token? Devices using it stop working.')) return;
-      try { await call('DELETE', `${URL_}/token`); token = ''; shown.hidden = true; tokenMsg.textContent = 'Revoked.'; await load(); drawYaml(); }
+      try { await call('DELETE', `${URL_}/token`); token = ''; shown.hidden = true; tokenMsg.textContent = 'Revoked.'; await load(); drawYaml(); drawEink(); }
       catch (err) { tokenMsg.textContent = err.message; }
     } }, 'Revoke');
     const audience = h('select', { id: 'ob-audience', onchange: async () => {
@@ -65,6 +65,18 @@
     const nowUrl = `${base}api/now`;
     function drawYaml() {
       yaml.textContent = haYaml(nowUrl, token || 'YOUR_DEVICE_TOKEN');
+    }
+
+    // ---------- e-ink ----------
+    const preview = h('img', { class: 'ob-eink', alt: 'The e-ink view as it is now', width: '800', height: '480' });
+    const einkUrls = h('div', {});
+    function drawEink() {
+      const q = token ? `?token=${encodeURIComponent(token)}` : '';
+      const line = (label, url) => h('div', {}, h('label', {}, label), h('div', { class: 'up-dav' }, h('code', {}, url), copyBtn(() => url)));
+      einkUrls.replaceChildren(
+        line('Picture (800 × 480, black and white PNG)', `${base}eink.png${q}`),
+        line('TRMNL polling URL (send the token as an Authorization header)', `${base}api/trmnl`));
+      preview.src = `eink.png?t=${Date.now()}`;
     }
 
     async function call(method, url) {
@@ -92,8 +104,11 @@
         tokenInfo, h('label', { for: 'ob-audience' }, 'What a device with the token sees'), audience,
         h('div', { class: 'ad-actions' }, make, revoke), shown, tokenMsg),
       block('Home Assistant', 'A REST sensor that reads api/now every 5 minutes, with template sensors for the rest. Put it in configuration.yaml (the token is best kept in secrets.yaml). The README has an automation that nudges you at 9pm if you haven’t read.',
-        h('div', { class: 'ad-actions' }, copyBtn(() => yaml.textContent)), yaml));
+        h('div', { class: 'ad-actions' }, copyBtn(() => yaml.textContent)), yaml),
+      block('E-ink display', 'An always-on picture for a shelf: the book you’re reading with its cover, your streak, this week, the year and a quote. Point any e-ink frame that shows an image URL at the picture, or add a TRMNL private plugin that polls the JSON (the README has the steps and markup). Below: what it shows now, as you see it.',
+        einkUrls, preview));
     drawYaml();
+    drawEink();
     load();
   } });
 
