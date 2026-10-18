@@ -232,3 +232,17 @@ The built-in events and their `data` are:
 - `streak_at_risk`: `{streak, last_read}`.
 - `year_goal`: `{year, goal, finished}`. The goal is the one under **Widgets & devices** (`PUT /api/admin/outbound/goal`).
 - `friend_finished`: `{friend, book_id, title}`.
+
+## Admin: highlight exports
+
+Admin only (`X-Upload-Token` or the admin session); anyone else gets `403`. The admin's own
+export, so private books are included.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/highlights` | `{books, highlights, readwise: {token_set, pushed, last}}`; never the token |
+| `GET /api/admin/highlights/export/markdown.zip` | A zip of `Highlights/<Title> - <Author>.md`, one per book: YAML front matter and the highlights in book order |
+| `GET /api/admin/highlights/export/readwise.csv` | Readwise's CSV import columns: `Highlight,Title,Author,URL,Note,Location,Date` |
+| `PUT /api/admin/highlights/readwise` | `{token}`: checked against Readwise's `/api/v2/auth/`, then kept in `settings.json`. `400` if Readwise turns it down |
+| `DELETE /api/admin/highlights/readwise` | Forgets the token |
+| `POST /api/admin/highlights/readwise/push` | `{all?: boolean}`: sends highlights not sent before (all of them with `all`) to Readwise's `/api/v2/highlights/` in batches of 100; returns `{sent, skipped, total}`. `429` when Readwise asks to slow down (what was sent is kept) |

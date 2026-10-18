@@ -51,6 +51,8 @@ export interface AppConfig {
   mixpanelApiHost: string;
   /** Whether to work out the stats in a worker thread (off: on the main thread). */
   statsWorker: boolean;
+  /** Readwise's address, for pushing highlights (the token is set by the admin on the page). */
+  readwiseUrl: string;
   /** Who should own the files in the library when the container starts as root. */
   puid: number;
   pgid: number;
@@ -116,6 +118,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     mixpanelToken: (env.MIXPANEL_TOKEN ?? '').trim(),
     mixpanelApiHost: url(env, 'MIXPANEL_API_HOST', 'https://api-js.mixpanel.com'),
     statsWorker: onOff(env, 'STATS_WORKER'),
+    readwiseUrl: url(env, 'READWISE_URL', 'https://readwise.io'),
     puid: integer(env, 'PUID', 1000),
     pgid: integer(env, 'PGID', 1000),
   };

@@ -11,6 +11,7 @@ import { DavModule } from './dav/dav.module';
 import { FederationModule } from './federation/federation.module';
 import { FeedsModule } from './feeds/feeds.module';
 import { FriendsModule } from './friends/friends.module';
+import { HighlightsModule } from './highlights/highlights.module';
 import { MediaModule } from './media/media.module';
 import { NotifyModule } from './notify/notify.module';
 import { OutboundModule } from './outbound/outbound.module';
@@ -42,6 +43,7 @@ import { WebModule } from './web/web.module';
     NotifyModule,
     OutboundModule,
     FeedsModule,
+    HighlightsModule,
     // last: its catch-all route for the page's files must come after every other route
     WebModule,
   ],
