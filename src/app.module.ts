@@ -14,6 +14,7 @@ import { NotifyModule } from './notify/notify.module';
 import { OutboundModule } from './outbound/outbound.module';
 import { PricesModule } from './prices/prices.module';
 import { RebuildModule } from './rebuild/rebuild.module';
+import { ReviewModule } from './review/review.module';
 import { StatsModule } from './stats/stats.module';
 import { StatusModule } from './status/status.module';
 import { UploadModule } from './upload/upload.module';
@@ -37,6 +38,7 @@ import { WebModule } from './web/web.module';
     FederationModule,
     ClubsModule,
     NotifyModule,
+    ReviewModule,
     OutboundModule,
     // last: its catch-all route for the page's files must come after every other route
     WebModule,

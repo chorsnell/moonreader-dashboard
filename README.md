@@ -15,7 +15,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 
 **Reading tabs**
 
-- **Overview:** this year against last, streaks, what's on the go, recently finished, a year-end forecast, lifetime words, a quote of the day, personal records, books per year, hours per month, and reading against watching.
+- **Overview:** this year against last, streaks, what's on the go, recently finished, a year-end forecast, lifetime words, a quote of the day, today's highlights to read again, personal records, books per year, hours per month, and reading against watching.
 - **Bookshelf:** every book you've read as a spine on a shelf per year (width is length, height is hours, colour is genre), and your years in colour.
 - **Genres & authors:** genre and subgenre mix and how it shifts, book shapes, ratings by genre, most-read authors and series progress.
 - **Origins:** how old your books are when you read them, where your authors come from (a map) and the gender balance over time.
@@ -115,6 +115,7 @@ library/
   clubs.json       book clubs you host
   federation.json  follow tokens (owner-readable only, never served)
   notify-state.json what notifications were already sent
+  highlight-review.json  the daily highlight review: answers and settings
   update.log       what happened on each rebuild, upload and sync
   activity.jsonl   the same as JSON lines, for Sync & logs
 ```
@@ -222,6 +223,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Catalogue** | Titles, authors, series, genres and ISBNs; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
 | **Covers** | Books without a cover: look them up again or upload your own |
+| **Daily review** | How many highlights a day, the morning notification, and an Anki export |
 | **Notifications** | ntfy, Gotify, Discord or webhook channels with a **Send test** button; which events to send; when to warn about a streak |
 | **Book manager** | Your *arr book manager's URL and API key |
 | **Widgets & devices** | The year's reading goal, the device token for Home Assistant and other devices, and their setup |
@@ -282,8 +284,19 @@ These events can each be switched on or off:
 - **Streak at risk**: from a chosen hour (21:00 by default), if nothing has been synced today and your streak is at least N days (3 by default). Checked every 10 minutes, and sent once a day.
 - **Year goal reached**: the reading goal set under **Widgets & devices**.
 - **A friend finished a book you have**: in your library, read or not.
+- **Daily highlights**: today's highlights from the daily review, each morning, once you switch it on in **Admin → Daily review**.
 
 Events are found by comparing each rebuild with what was already sent (`library/notify-state.json`), so a restart or a second rebuild of the same backup never sends anything twice. The very first check only takes note of where things stand, and finishes older than two weeks (an old import) aren't news. Books marked private are never named. Links in the messages need `PUBLIC_URL`.
+
+## Daily highlight review
+
+A few highlights at least a month old come back each day in **Today's highlights** on the Overview (5 by default, one per book where possible). As the admin you answer each:
+
+- **Keep**: back in a week, then twice as long each time.
+- **Less often**: back in a month, then four times as long.
+- **Never**: retired.
+
+Answers are kept on the server (`library/highlight-review.json`, keyed by book and text so they survive rebuilds), and the day's pick stays the same all day. Visitors who may see highlights get today's list without the buttons; when highlights are hidden from them, or a book is private, they get nothing of it. **Admin → Daily review** sets how many a day, turns on a morning notification through your channels (see [Notifications](#notifications)) from a chosen hour, and downloads every highlight as a text file [Anki](https://apps.ankiweb.net) imports (File → Import).
 
 ## Widgets and devices
 
@@ -484,6 +497,7 @@ src/friends/         share files and friends' data
 src/federation/      following friends' dashboards, and approving the ones that follow yours
 src/clubs/           book clubs and their spoiler-safe comments
 src/notify/          notifications: finding events, and NotifierService to send them
+src/review/          the daily highlight review and its morning send
 src/arr/             requests to the admin's own *arr book manager
 src/rebuild/         watches for new backups, edits and syncs, and rebuilds
 src/upload/, src/admin/, src/dav/, src/status/   uploads, the admin API, WebDAV, /healthz and /api/config

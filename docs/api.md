@@ -166,3 +166,20 @@ The built-in events and their `data` are:
 - `streak_at_risk`: `{streak, last_read}`.
 - `year_goal`: `{year, goal, finished}`. The goal is the one under **Widgets & devices** (`PUT /api/admin/outbound/goal`).
 - `friend_finished`: `{friend, book_id, title}`.
+
+## Daily highlight review
+
+BOO-83. State in `library/highlight-review.json`; keys are 20 hex characters (a hash of the
+book id and the highlight's text), so they survive rebuilds.
+
+| Method and path | Who | Does |
+| --- | --- | --- |
+| `GET /api/review/today` | Anyone who may read | `{date, items: [{key, book_id, title, author, genre, text, note, date}], can_review}`. The admin also gets each item's `card` (`{interval, due, never?, reviews, last}`), `settings`, and counts (`highlights`, `reviewed`, `never`, `due`). Visitors get the day's pick filtered like `highlights.json`: empty when highlights are hidden from them, without private books |
+| `POST /api/admin/review/<key>` | Admin | `{action: "keep" \| "less" \| "never" \| "reset"}`: `{card, next: {due, when} \| null}` |
+| `GET /api/admin/review/settings` | Admin | `{per_day, notify, hour, notifier}` (`notifier`: a channel is set up and "Daily highlights" is on) |
+| `PUT /api/admin/review/settings` | Admin | Any of `{per_day: 1–20, notify: bool, hour: 0–23}` |
+| `GET /api/admin/review/anki.txt` | Admin | Tab-separated text for Anki's File → Import: passage, note and book, tags |
+
+The morning send is a `NotifierService` event of kind `highlight_review`, sent once a day from
+`hour` when `notify` is on; `data` has `{date, items}`.
+
