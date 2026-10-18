@@ -203,6 +203,8 @@ export const BOOKS: DemoBook[] = [
     null,
     70000,
   ],
+  // last, so adding it left the rest of the random history as it was
+  ['Vanity Fair', 'William Makepeace Thackeray', 'Classics', 'Victorian', null, null, 310000],
 ];
 
 /** ISBNs of well-known paperback editions, as if typed into catalogue.json; the rest have none. */
@@ -263,6 +265,8 @@ export const REREADS = [
 ];
 /** The book on the go, left part way through. */
 export const CURRENT = 'The Count of Monte Cristo';
+/** Also on the go, but stalling: slowing down, with longer and longer breaks. */
+export const STALLING = 'Vanity Fair';
 // a few quirks real logs have, so the Data checks tab has something to show
 /** Opened once, this many days before starting. */
 export const STRAY: Record<string, number> = { 'Jane Eyre': 52, 'The Moonstone': 41, Dracula: 64 };

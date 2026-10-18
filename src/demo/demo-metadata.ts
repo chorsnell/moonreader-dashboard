@@ -70,6 +70,7 @@ export const PUBLISHED: Record<string, [year: number, pages: number]> = {
   'On the Origin of Species': [1859, 502],
   'Narrative of the Life of Frederick Douglass': [1845, 159],
   'The Autobiography of Benjamin Franklin': [1791, 216],
+  'Vanity Fair': [1848, 912],
 };
 
 /** Each author's country (ISO 3166 alpha-2, today's country for historical states) and gender. */
@@ -113,6 +114,7 @@ export const AUTHORS: Record<string, [country: string, gender: Gender]> = {
   'Charles Darwin': ['GB', 'male'],
   'Frederick Douglass': ['US', 'male'],
   'Benjamin Franklin': ['US', 'male'],
+  'William Makepeace Thackeray': ['GB', 'male'],
 };
 
 /** The book id the import gives a title. */
