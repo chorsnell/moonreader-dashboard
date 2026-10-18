@@ -15,7 +15,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 
 **Reading tabs**
 
-- **Overview:** this year against last, streaks, what's on the go (with when you'll likely finish each book, and a gentle flag on one that looks like a DNF), recently finished, reading challenges, a year-end forecast, lifetime words, a quote of the day, today's highlights to read again, personal records, books per year, hours per month, and reading against watching.
+- **Overview:** this year against last, streaks, what's on the go (with when you'll likely finish each book, and a gentle flag on one that looks like a DNF), recently finished, reading challenges, a year-end forecast, lifetime words, a quote of the day, today's highlights to read again, "on this day" (what you were reading on today's date in earlier years, with a highlight from that day; hidden from visitors who don't get exact dates or the diary), personal records, books per year, hours per month, and reading against watching.
 - **Bookshelf:** every book you've read as a spine on a shelf per year (width is length, height is hours, colour is genre), and your years in colour.
 - **Genres & authors:** genre and subgenre mix and how it shifts, book shapes, ratings by genre, most-read authors and series progress.
 - **Origins:** how old your books are when you read them, where your authors come from (a map) and the gender balance over time.
