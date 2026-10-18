@@ -43,6 +43,27 @@ changes whenever the numbers could (new data, new privacy settings, new page cod
 numbers are worked out once per version for each kind of viewer, in a background thread
 (`STATS_WORKER=off` keeps it on the main thread), and kept until the version changes.
 
+### Now: for Home Assistant and other devices
+
+`GET /api/now` is a small summary for things that poll (Home Assistant's REST sensor, a
+display): `{today, as_of, generated, reading, today_minutes, week_minutes, streak, year,
+quote}`. The README's [Widgets and devices](../README.md#widgets-and-devices) section
+describes each field. It's worked out by `src/outbound/` from the same per-viewer data as
+the stats, so whatever the asker's audience hides is `null` (`reading` without "what
+you're reading now", the minutes without day-by-day reading, `streak` without streaks or
+exact days). `GET /api/now/cover` is the current book's cover, or `404`.
+
+Besides the usual sign-in, these two accept the **device token** made in **Admin → Widgets &
+devices** (`Authorization: Bearer …`, `X-Device-Token: …` or `?token=…`). It gets the
+audience the admin chose for it (by default the admin's own view) and opens nothing else.
+Both are `Cache-Control: private, no-store`.
+
+The admin's settings: `GET /api/admin/outbound` (`{goal, device_token, device_token_created,
+device_audience}`; the token itself is never returned), `PUT /api/admin/outbound/goal`
+(`{goal: 1–1000 | null}`), `PUT /api/admin/outbound/audience` (`{audience: 'admin' |
+'public' | 'reader' | 'friends'}`), `POST /api/admin/outbound/token` (a new token, returned
+this once) and `DELETE /api/admin/outbound/token`.
+
 ### Calcs the server leaves out
 
 - `client_only`: calcs that read something besides their inputs (the viewer's filters or
