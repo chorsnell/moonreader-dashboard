@@ -32,7 +32,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 **Pages.** Click any book, author, series, genre, subgenre or year, anywhere, for its own page with its own link (`#book/<id>`, `#author/<name>`, `#series/<name>`, `#genre/<name>`, `#subgenre/<name>`, `#year/<year>`):
 
 - **Book:** every read, a day-by-day chart, the shape of each read, the rest of its series, your highlights and notes in book order (with where you highlighted and a word cloud), what it cost you, your rating, a race against friends who read it, and every day you opened it.
-- **Author, series, genre and year:** stats, charts, books, money and time for each. A year page has a **Wrapped**: your year in review as swipeable stories.
+- **Author, series, genre and year:** stats, charts, books, money and time for each. A year page has a **Wrapped**: your year in review as swipeable stories, with a "year on screen" slide when you watched TV or films (or listened to audiobooks) that year.
 - **Show and film** (`#show/<id>`, `#film/<id>`): seasons, binge fingerprint, episodes and sittings.
 
 **Admin** (`#admin`, for the admin only): upload and rebuild, imports, sync logs, other media, who can see what, friends, the catalogue, prices, covers and the book manager. See [The admin page](#the-admin-page).

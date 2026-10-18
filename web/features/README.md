@@ -39,8 +39,41 @@ A feature script is an IIFE that uses `dash` (data and calcs) and `rh` (drawing 
   // a page with no tab, opened by its link (#mypage or #mypage/<anything>); draw(section)
   // runs on every redraw while it's shown, so only rebuild what changed
   rh.page('mypage', (section) => {});
+
+  // a slide in Wrapped (see below)
+  rh.wrappedSlide({ id: 'mine', after: 'genres', show: (R) => true, build(slide, R, ui) {} });
 })();
 ```
+
+## Wrapped slides
+
+Wrapped (`wrapped.js`, opened from a year page) is a run of slides built from that year's
+`wrapped` row. A feature adds its own with `rh.wrappedSlide`, from any script, before or
+after `wrapped.js`:
+
+```js
+rh.wrappedSlide({
+  id: 'screen',            // the slide's class is wr-screen
+  after: 'genres',         // a built-in slide: intro, books, time, words, months, binge, reads,
+                           // authors, genres or records; left out (or not shown that year):
+                           // just before the closing share slide, which always comes last
+  show: (R) => true,       // false skips it for that year (R is the year's wrapped row)
+  build(slide, R, ui) {    // fill the slide's inner box
+    slide.append(ui.kicker('Your year on screen'), ui.big(120, 'hours watched'),
+      ui.line('wr-line', 'Some words.'), ui.line('wr-sub', 'Smaller words.'));
+  },
+});
+```
+
+`ui` holds the building blocks the built-in slides use, so an added one looks the same:
+`kicker(text)`, `big(n, unit, format?)` (a big number that counts up when the slide
+appears), `line(className, ...parts)` (`wr-line` or `wr-sub`), `bookLink(row)`, `plural`,
+`fmt`, `short` (12k, 1.2M), `hrs(minutes)` and `MONTHS`. Give anything that should rise in
+with the slide the class `wr-r`, and put links inside a `wr-links` element so a tap on them
+doesn't turn the page. Slides sit on a coloured background with white text, so use
+`rgba(255,255,255,…)` rather than the page's colours. A slide whose `show` or `build` throws
+is left out (and logged), and Wrapped carries on. Anything the slide needs should come from
+a calc (read with `dash.data(id)`), so it's worked out once and respects privacy.
 
 ## Calcs run on the server too
 

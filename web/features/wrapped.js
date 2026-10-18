@@ -237,6 +237,17 @@
       s.append(ul);
     });
 
+    // slides other features registered with rh.wrappedSlide, after the one they name (or
+    // before the closing share slide); one that fails to build is left out
+    const ui = { kicker, big, line, bookLink, plural, fmt, short, hrs, MONTHS };
+    (rh.wrappedSlides ? rh.wrappedSlides() : []).forEach((x) => {
+      try { if (!x.id || !x.build || (x.show && !x.show(R))) return; } catch (e) { console.error('wrapped slide', x.id, e); return; }
+      const at = x.after ? out.findIndex((o) => o.id === x.after) : -1;
+      const slide = { id: x.id, build: (s) => x.build(s, R, ui) };
+      if (at >= 0) out.splice(at + 1 + out.slice(at + 1).filter((o) => o.extra && o.after === x.after).length, 0, { ...slide, extra: true, after: x.after });
+      else out.push({ ...slide, extra: true });
+    });
+
     add('share', (s) => {
       s.append(kicker(R.partial ? `${Y}, so far` : `That was ${Y}`));
       const img = el('img', 'wr-card-img wr-r');
@@ -337,11 +348,15 @@
     close.setAttribute('aria-label', 'Close');
     const body = el('div', 'wr-body'), rail = el('nav', 'wr-rail');
     rail.setAttribute('aria-label', 'Slides');
-    const nodes = list.map((sl, i) => {
-      const s = el('section', 'wr-slide wr-' + sl.id), inner = el('div', 'wr-in');
+    // build every slide first: an added one that fails is dropped before they're numbered
+    const built = list.map((sl) => {
+      const inner = el('div', 'wr-in');
+      try { sl.build(inner); return { sl, inner }; } catch (e) { if (!sl.extra) throw e; console.error('wrapped slide', sl.id, e); return null; }
+    }).filter(Boolean);
+    const nodes = built.map(({ sl, inner }, i) => {
+      const s = el('section', 'wr-slide wr-' + sl.id);
       s.style.setProperty('--wr-a', `var(--series-${COLOURS[i % 8]})`);
       s.style.setProperty('--wr-b', `var(--series-${COLOURS[(i + 3) % 8]})`);
-      sl.build(inner);
       inner.querySelectorAll('.wr-r').forEach((n, k) => n.style.setProperty('--d', k));
       s.append(inner);
       segs.append(el('i'));

@@ -232,6 +232,72 @@
   rh.extend('show', fromBook('show'));
   rh.extend('film', fromBook('film'));
 
+  // ---------- Wrapped: your year on screen ----------
+  dash.calc('x_year_screen', {
+    inputs: ['x_all_daily', 'media_items', 'media_runs'], title: 'Watching and listening by year',
+    description: 'For each year with any TV, film or audiobook time: hours read, watched and listened to, seasons and films finished, audiobooks listened to, and the most-watched show.',
+    fn: (days, items, runs) => {
+      const byId = new Map(arr(items).map((m) => [m.id, m]));
+      const out = new Map();
+      const year = (y) => out.get(y) || out.set(y, { year: +y, read: 0, watched: 0, listened: 0, shows: new Map(), heard: new Set(), seasons: 0, films: 0 }).get(y);
+      days.forEach((d) => {
+        const y = year(d.date.slice(0, 4)), k = kindOf(d.media), h = d.minutes / 60;
+        if (k === 'reading') y.read += h;
+        else if (k === 'listening') { y.listened += h; y.heard.add(d.id); }
+        else {
+          y.watched += h;
+          const m = byId.get(d.id);
+          if (d.media === 'tv' && m && m.series_id) y.shows.set(m.series_id, { show_id: m.series_id, show: m.series, hours: ((y.shows.get(m.series_id) || {}).hours || 0) + h });
+        }
+      });
+      arr(runs).filter((r) => isScreen(r) && r.finished && r.end).forEach((r) => {
+        const y = out.get(r.end.slice(0, 4));
+        if (y) { if (r.media === 'tv') y.seasons++; else y.films++; }
+      });
+      const r1 = (h) => Math.round(h * 10) / 10;
+      return [...out.values()].filter((y) => y.watched > 0 || y.listened > 0).sort((a, b) => a.year - b.year).map((y) => {
+        const top = [...y.shows.values()].sort((a, b) => b.hours - a.hours)[0] || null;
+        return {
+          year: y.year, read: r1(y.read), watched: r1(y.watched), listened: r1(y.listened),
+          seasons: y.seasons, films: y.films, shows: y.shows.size, audiobooks: y.heard.size,
+          top_show: top ? { show_id: top.show_id, show: top.show, hours: r1(top.hours) } : null,
+        };
+      });
+    },
+  });
+
+  rh.wrappedSlide({
+    id: 'screen', after: 'genres',
+    show: (R) => !!(ok('x_year_screen') || []).find((y) => y.year === R.year),
+    build(s, R, ui) {
+      const y = (ok('x_year_screen') || []).find((x) => x.year === R.year);
+      const so = R.partial ? ' so far' : '';
+      const total = y.read + y.watched + y.listened;
+      if (y.watched >= 1) {
+        s.append(ui.kicker(`Your year on screen${so}`), ui.big(Math.round(y.watched), Math.round(y.watched) === 1 ? 'hour watched' : 'hours watched'));
+        const bits = [];
+        if (y.seasons) bits.push(ui.plural(y.seasons, 'season'));
+        if (y.films) bits.push(ui.plural(y.films, 'film'));
+        s.append(ui.line('wr-line', bits.length ? `${bits.join(' and ')} finished.` : `Across ${ui.plural(y.shows, 'show')}.`));
+        if (y.top_show) s.append(ui.line('wr-sub wr-links', 'Most watched: ', link(el('span', 'lk', y.top_show.show), 'show', y.top_show.show_id), `, ${ui.plural(Math.round(y.top_show.hours), 'hour')}.`));
+      } else {
+        s.append(ui.kicker(`Your year in your ears${so}`), ui.big(Math.round(y.listened), Math.round(y.listened) === 1 ? 'hour listened' : 'hours listened'));
+        s.append(ui.line('wr-line', `${ui.plural(y.audiobooks, 'audiobook')}.`));
+      }
+      // reading against watching and listening, as one bar
+      const bar = el('div', 'wr-gbar wr-r'), key = el('p', 'wr-sub wr-r x-wr-key');
+      [['reading', y.read], ['watching', y.watched], ['listening', y.listened]].filter(([, h]) => h > 0).forEach(([k, h]) => {
+        const i = el('i'); i.style.flex = h; i.style.background = MEDIUM[k][0]; i.title = `${MEDIUM[k][1]}: ${hrs(h)} h`; bar.append(i);
+        const part = el('span'), sw = el('i', 'sw'); sw.style.background = MEDIUM[k][0];
+        part.append(sw, `${MEDIUM[k][1]} ${Math.round((h / total) * 100)}%`); key.append(part);
+      });
+      s.append(bar, key);
+      if (y.watched >= 1 && y.listened >= 1) s.append(ui.line('wr-sub', `Plus ${ui.plural(Math.round(y.listened), 'hour')} of ${ui.plural(y.audiobooks, 'audiobook')}.`));
+      else if (y.read > y.watched) s.append(ui.line('wr-sub', `You still read more than you watched: ${hrs(y.read)} hours of books.`));
+      else if (y.watched > 0) s.append(ui.line('wr-sub', `${hrs(y.watched)} hours on screen against ${hrs(y.read)} with a book.`));
+    },
+  });
+
   // ---------- the year page: reading and watching that year ----------
   rh.extend('year', (id, root) => {
     const items = (ok('media_items') || []).filter(isScreen), days = ok('x_all_daily') || [];

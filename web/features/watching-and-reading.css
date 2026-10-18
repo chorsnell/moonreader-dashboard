@@ -11,3 +11,5 @@
 @media (max-width:600px){
   .rh-list li.x-adapt .meta{white-space:normal;text-align:right;max-width:8rem}
 }
+.x-wr-key{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:15px}
+.x-wr-key .sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
