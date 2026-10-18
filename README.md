@@ -21,7 +21,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 - **Origins:** how old your books are when you read them, where your authors come from (a map) and the gender balance over time.
 - **Speed:** words per minute over time and for every book, page turners and slow reads, the finishing sprint, speed by genre, author, rating and year, and whether re-reads go faster.
 - **Timeline & habits:** a day-by-day heatmap, tree rings, a "what you read when" timeline, juggling, weekday and seasonal rhythm, a 24-hour reading clock, biggest reads and books left unfinished, and holidays and life events (marked by hand or from a calendar) shaded on the heatmap, the timeline and the diary, with how much you read on them against normal days.
-- **Patterns:** what you read next, binge loops, palate cleansers, book hangovers, series pull, gateway books, the next book in each series, and a heatmap explorer.
+- **Patterns:** what you read next, binge loops, palate cleansers, book hangovers, series pull, gateway books, the next book in each series, a heatmap explorer, and reading and the weather (whether rain, cold, heat or short days change how much you read or watch).
 - **Diary:** a day-by-day log for any period: which books, minutes, words and progress, with starts and finishes.
 - **Library:** every book and every re-read, searchable and sortable, and where you give up.
 - **Highlights:** every highlight and note across all your books in one place: full-text search (all words must match; "quoted phrases"; case and accents don't matter), filters by book, author, genre, year and notes, the most-highlighted books, highlights per year, and passages you highlighted more than once. It follows the highlights privacy setting and leaves out private books.
@@ -215,6 +215,12 @@ Mark date ranges (a holiday, a trip, a new job, a baby, moving house) in the adm
 
 Events are shaded on the heatmap, the "What you read when" timeline and the diary, and **Holidays and life events** on Timeline & habits compares the minutes a day and share of days you read on each kind against normal days. They're personal, so visitors never see them unless you tick **Holidays and life events** for them under **Access & privacy** (no preset does), and the calendar's address is never sent to the page.
 
+## Reading and the weather
+
+Set a home location in the admin page's **Weather** section (a town, looked up with Open-Meteo's geocoding, or `latitude, longitude`). The server then fetches the daily weather there from [Open-Meteo](https://open-meteo.com)'s historical archive (free, no account or key): the highest and lowest temperature, rain and hours of daylight from your first logged day to yesterday. It's cached in `library/weather.json`, so later fetches only ask for new days. It's topped up after every rebuild and once a day. Offline, the cached days are kept and the error is shown in admin. `WEATHER_LOOKUP=off` stops all of it.
+
+**Reading and the weather** on Patterns compares reading and TV and film minutes a day on dry, showery and wet days, cold to warm days, and short to long days against your average. It shows what goes together (seasons and weekends mix in), not what causes what. The location is never sent to the page, and visitors who don't get exact days or the diary get no weather, since daily weather would hint at where you live.
+
 ## Your book manager (*arr)
 
 If you run a Readarr-compatible book manager (Readarr's successors such as Bookshelf), connect it in the **Book manager** section with its URL and API key. You then see, as the admin only, where each book stands there (available, downloading, wanted), a **Get next in series** button and **Get the rest of this author** on author pages. The dashboard only sends requests to your own instance; it never searches for or downloads anything itself, and the API key never leaves the server. Requests are logged in **Sync & logs**. More in [docs/integrations.md](docs/integrations.md).
@@ -245,6 +251,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Catalogue** | Titles, authors, series, genres, ISBNs, first-published years and authors' countries; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
 | **Life events** | Holidays, trips and life events by hand, and a calendar (iCal) address |
+| **Weather** | The home location for "Reading and the weather" |
 | **Covers** | Books without a cover: look them up again or upload your own |
 | **Challenges** | Reading challenges on the Overview: authors from N countries, a book from every decade, series finished, % women authors, a streak or N genres, this year or all time (a default set until you change it) |
 | **Feeds** | Atom and iCal feeds at secret addresses: make, give a new address, revoke |
@@ -504,6 +511,9 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `OPENLIBRARY_URL` | `https://openlibrary.org` | Open Library's address (for a mirror or tests) |
 | `OPENLIBRARY_COVERS_URL` | `https://covers.openlibrary.org` | Open Library's cover server |
 | `WIKIDATA_URL` | `https://www.wikidata.org` | Wikidata's address |
+| `WEATHER_LOOKUP` | `on` | `off` stops fetching the weather for "Reading and the weather" from Open-Meteo |
+| `WEATHER_ARCHIVE_URL` | `https://archive-api.open-meteo.com` | Open-Meteo's historical weather API |
+| `WEATHER_GEOCODING_URL` | `https://geocoding-api.open-meteo.com` | Open-Meteo's place-name search |
 | `TMDB_API_KEY` | *(empty)* | A TMDB key (v3 key or v4 read token) for TV and film genres and posters |
 | `TMDB_URL` / `TMDB_IMAGE_URL` | TMDB's API and image server | TMDB's addresses |
 | `TAUTULLI_URL` / `TAUTULLI_API_KEY` | *(empty)* | Tautulli's address and API key, for Plex watch history |
@@ -529,6 +539,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/feeds/<secret>.atom` and `/feeds/<secret>.ics`: the feeds made under **Admin → Feeds**; see [docs/api.md](docs/api.md#feeds).
 - `/api/admin/highlights/…` (admin only): highlight exports; see [docs/api.md](docs/api.md#admin-highlight-exports).
 - `/api/admin/life-events` (admin only): holidays and life events; see [docs/api.md](docs/api.md#life-events-admin).
+- `/api/admin/weather` (admin only): the home location for the weather; see [docs/api.md](docs/api.md#weather-admin).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 
 ## How the numbers are worked out

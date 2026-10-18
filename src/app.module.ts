@@ -22,6 +22,7 @@ import { ReviewModule } from './review/review.module';
 import { StatsModule } from './stats/stats.module';
 import { StatusModule } from './status/status.module';
 import { UploadModule } from './upload/upload.module';
+import { WeatherModule } from './weather/weather.module';
 import { WebModule } from './web/web.module';
 
 @Module({
@@ -39,6 +40,7 @@ import { WebModule } from './web/web.module';
     MediaModule,
     PricesModule,
     LifeEventsModule,
+    WeatherModule,
     DavModule,
     FriendsModule,
     FederationModule,
