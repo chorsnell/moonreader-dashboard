@@ -30,6 +30,8 @@ interface Plan {
   overlap: string[];
   /** Books you haven't read. */
   extra: ExtraBook[];
+  /** Star ratings for some of the books they finish; the rest get 3 to 5 from the title. */
+  ratings?: Record<string, number>;
   /** Titles they gave up on, and where. */
   abandon: Record<string, number>;
   leaderboards: LeaderboardStat[];
@@ -42,6 +44,13 @@ interface Plan {
    * spread (small: you agree), others a rating around 3.5.
    */
   rating_spread: number;
+}
+
+/** A made-up rating from 3 to 5 stars, the same every build. */
+function stars(title: string): number {
+  let h = 0;
+  for (const c of title) h = (h * 31 + c.charCodeAt(0)) % 997;
+  return 3 + (h % 3);
 }
 
 export const FRIEND_PLANS: Plan[] = [
@@ -91,6 +100,7 @@ export const FRIEND_PLANS: Plan[] = [
       ],
     ],
     abandon: { 'Moby-Dick': 18, 'The Riddle of the Sands': 46 },
+    ratings: { 'The Murder on the Links': 5, 'The Man Who Was Thursday': 4 },
     leaderboards: ['books', 'hours', 'speed', 'streak', 'words'],
   },
   {
@@ -131,6 +141,7 @@ export const FRIEND_PLANS: Plan[] = [
       ['The Souls of Black Folk', 'W. E. B. Du Bois', 'Non-fiction', 'History', 72000],
     ],
     abandon: { 'War and Peace': 31, 'Wuthering Heights': 22 },
+    ratings: { 'Silas Marner': 5, 'Mansfield Park': 4, 'The Brothers Karamazov': 3 },
     leaderboards: ['books', 'hours', 'days'],
     url: 'https://reading.ben.example',
     offline_days: 3,
@@ -332,6 +343,8 @@ export function simulateFriend(
       times_read: 1,
       first_read: start,
       last_read: end,
+      // star ratings, as a Goodreads import would bring (BOO-79 weighs them)
+      ...(finished ? { rating: plan.ratings?.[b.title] ?? stars(b.title) } : {}),
     });
     reads.push({
       read_id: `${id}#1`,
