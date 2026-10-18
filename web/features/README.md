@@ -109,7 +109,7 @@ extra work as long as its rows follow the usual shape:
 - rows naming a book with `book_id` (or `id` in `books.json`) are left out or anonymised for
   private books and genres;
 - dates in fields named `date`, `start`, `end`, `first_read`, `last_read`, `generated`,
-  `synced`, `finish` or `finished_on` are rounded to the week or month, and `time` fields
+  `synced`, `finish`, `finished_on` or `added` are rounded to the week or month, and `time` fields
   are emptied;
 - `highlights*.json` is served empty when highlights are hidden, `prices*.json` (or
   `money*`, `spending*`, `purchases*`) when money is.
@@ -117,7 +117,9 @@ extra work as long as its rows follow the usual shape:
 Name date fields that way, or extend the lists in `privacy.ts`. On the page,
 `web/features/privacy.js` hides cards whose calc needs a file the visitor gets empty (found
 through `dash.needs(calc)`), cards it lists by id, and any card given `privacy: '<category>'`
-(categories: `exact_dates`, `diary`, `current`, `streaks`, `money`, `highlights`). Draw
+(categories: `exact_dates`, `diary`, `current`, `streaks`, `money`, `highlights`). A card whose
+calc only gains from such a file (the to-read pile adds bought books from `prices`) says so
+with `copesWithout: 'prices'` and stays. Draw
 functions should cope with empty rows. `dash.dates` is `'week'` or `'month'` when dates
 are rounded, and `rh.fDay` then shows the week or month.
 

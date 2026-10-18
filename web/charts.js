@@ -1241,6 +1241,8 @@
     const box = el('div', 'chart' + (o.chartClass ? ' ' + o.chartClass : ''));
     box.id = 'ch-' + o.id;
     if (o.calc) box.dataset.source = o.calc;
+    // data files the card does without when a visitor gets them empty (web/features/privacy.js)
+    if (o.copesWithout) box.dataset.copes = [].concat(o.copesWithout).join(' ');
     c.append(box);
     return { card: c, head, h, note, box };
   }

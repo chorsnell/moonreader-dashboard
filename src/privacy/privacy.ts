@@ -172,6 +172,13 @@ export interface FilterContext {
   current: Set<string>;
   /** Reading on or after this day counts as current. */
   recentFrom: string;
+  /**
+   * Private genres and subgenres (lower case), for rows naming a book that isn't in books.json
+   * (a to-read book): such a row is private when its own genre is.
+   */
+  privateGenres?: Set<string>;
+  /** Anonymise (true) or leave out (false) private books. */
+  anonymise?: boolean;
 }
 
 /** Books opened in this many days before the data was built count as being read now. */
@@ -208,7 +215,7 @@ export function buildContext(
       .filter((b) => b.status === 'in_progress' && (b.last_read ?? '') >= recentFrom)
       .map((b) => b.id),
   );
-  return { policy, private: priv, current, recentFrom };
+  return { policy, private: priv, current, recentFrom, privateGenres: genres, anonymise };
 }
 
 /** A YYYY-MM-DD date (with or without a time) as the first day of its week (Monday) or month. */
@@ -232,6 +239,8 @@ const DATE_KEYS = new Set([
   'synced',
   'finish',
   'finished_on',
+  // when a book went on the to-read pile (BOO-76)
+  'added',
 ]);
 const TIME_KEYS = new Set(['time']);
 /** Opinions from Goodreads or StoryGraph, left out when ratings are hidden. */
@@ -300,6 +309,10 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
       }
     }
     if (bookId !== null) {
+      if (!ctx.private.has(bookId) && ctx.privateGenres?.size && inPrivateGenre(o, ctx)) {
+        // a book only this file knows (the to-read pile), in a private genre
+        ctx.private.set(bookId, ctx.anonymise ? `private-${ctx.private.size + 1}` : '');
+      }
       const alias = ctx.private.get(bookId);
       // a private book left out, and a highlight's text gives the book away
       if (alias === '' || (alias && highlights)) return DROP;
@@ -322,6 +335,11 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   }
   return filtered;
 }
+
+const inPrivateGenre = (o: Record<string, unknown>, ctx: FilterContext) =>
+  [o.genre, o.subgenre].some(
+    (g) => typeof g === 'string' && ctx.privateGenres!.has(g.toLowerCase()),
+  );
 
 /** What an anonymised row keeps: how it was read, not what it is. */
 const ANON_KEEP = new Set([
@@ -349,6 +367,9 @@ const ANON_KEEP = new Set([
   'date',
   'days_read',
   'finished',
+  // the to-read pile: how long it has waited, and where (pages stay out: they name a book)
+  'added',
+  'sources',
   // what it cost (prices.json), so the totals still add up
   'price',
   'list_price',

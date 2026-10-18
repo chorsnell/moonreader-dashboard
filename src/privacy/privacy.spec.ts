@@ -263,6 +263,57 @@ describe('filterDataFile', () => {
     });
   });
 
+  it('keeps the to-read pile in step: private books and genres, rounded dates', () => {
+    const pile = [
+      {
+        book_id: 'goodreads:1',
+        title: 'Persuasion',
+        genre: 'Classics',
+        subgenre: 'Romance',
+        added: '2026-03-26',
+      },
+      {
+        book_id: 'goodreads:2',
+        title: 'Hyperion',
+        genre: 'Science Fiction',
+        subgenre: 'Space',
+        added: '2026-03-26',
+      },
+      {
+        book_id: 'goodreads:3',
+        title: 'Secret',
+        genre: 'Science Fiction',
+        subgenre: 'Space',
+        added: null,
+      },
+    ];
+    const ctx = ctxFor(
+      { ...PRESETS.everything, dates: 'month' },
+      { private_books: ['goodreads:3'], private_genres: ['romance'] },
+    );
+    expect(filterDataFile('to_read.json', pile, ctx)).toEqual([
+      {
+        book_id: 'goodreads:2',
+        title: 'Hyperion',
+        genre: 'Science Fiction',
+        subgenre: 'Space',
+        added: '2026-03-01',
+      },
+    ]);
+    const anon = ctxFor(PRESETS.everything, {
+      private_genres: ['romance'],
+      private_mode: 'anonymise',
+    });
+    const out = filterDataFile('to_read.json', pile, anon) as typeof pile;
+    expect(out[0]).toMatchObject({
+      title: 'A private book',
+      genre: 'Private',
+      added: '2026-03-26',
+    });
+    expect(out[0].book_id).toMatch(/^private-/);
+    expect(JSON.stringify(out)).not.toMatch(/Persuasion|Romance|goodreads:1/);
+  });
+
   it('filters files it has never heard of by the same rules', () => {
     const ctx = ctxFor({ ...PRESETS.everything, dates: 'month' }, { private_books: ['diary'] });
     const rows = [

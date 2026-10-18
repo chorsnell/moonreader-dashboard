@@ -10,7 +10,8 @@ describe('demoGoodreadsCsv', () => {
     expect(source).toBe('goodreads');
     expect(books.filter((b) => b.rating).length).toBeGreaterThan(30);
     expect(books.some((b) => b.title === 'Northanger Abbey' && b.reads.length === 1)).toBe(true);
-    expect(books.filter((b) => b.shelf === 'to-read')).toHaveLength(1);
+    expect(books.filter((b) => b.shelf === 'to-read')).toHaveLength(10);
+    expect(books.filter((b) => b.shelf === 'to-read').every((b) => b.date_added)).toBe(true);
     expect(books.every((b) => !b.rating || (b.rating >= 1 && b.rating <= 5))).toBe(true);
   });
 });

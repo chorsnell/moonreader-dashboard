@@ -36,9 +36,29 @@ export interface MergeResult {
   matched: number;
   /** Books only the imports know about, now in the library. */
   added: number;
-  /** Books on to-read shelves (or excluded in the catalogue), left out. */
+  /** Books on to-read shelves (or excluded in the catalogue), left out of the library. */
   skipped: number;
   highlights: MergedHighlight[];
+  /** The to-read shelves' books, kept for the to-read pile (src/imports/to-read.ts). */
+  toRead: ToReadImport[];
+}
+
+/** A book an import has on a to-read shelf and nothing else knows. */
+export interface ToReadImport {
+  source: ImportSource;
+  /** The source's id for it. */
+  id: string;
+  title: string;
+  author: string;
+  series: string | null;
+  series_no: number | null;
+  genre: string;
+  subgenre: string;
+  isbn13: string | null;
+  pages: number | null;
+  /** When it went on the shelf (YYYY-MM-DD), when the export says. */
+  added: string | null;
+  shelves: string[];
 }
 
 /**
@@ -80,7 +100,7 @@ export function mergeImports(
     }
   }
   const exclude = new Set(catalogue.exclude);
-  const result: MergeResult = { matched: 0, added: 0, skipped: 0, highlights: [] };
+  const result: MergeResult = { matched: 0, added: 0, skipped: 0, highlights: [], toRead: [] };
 
   for (const file of imports) {
     for (const ib of file.books) {
@@ -107,15 +127,31 @@ export function mergeImports(
         continue;
       }
       const status = STATUS[ib.shelf];
-      if (!status && !ib.reads.length && !ib.daily?.length && !ib.highlights?.length) {
-        result.skipped++;
-        continue;
-      }
       const series = ib.series ?? suffix?.[1].trim() ?? null;
       const seriesNo = ib.series ? (ib.series_no ?? null) : suffix ? Number(suffix[2]) : null;
       const shelfGenre =
         (series && seriesGenres.get(series.toLowerCase())) ||
         ib.shelves.map((s) => genres.get(s.toLowerCase().replace(/[-_]+/g, ' '))).find(Boolean);
+      if (!status && !ib.reads.length && !ib.daily?.length && !ib.highlights?.length) {
+        result.skipped++;
+        if (ib.shelf === 'to-read') {
+          result.toRead.push({
+            source: file.source,
+            id: ib.id,
+            title,
+            author,
+            series: entry ? (entry.series ?? null) : series,
+            series_no: entry ? (entry.series_no ?? null) : seriesNo,
+            genre: entry?.genre ?? shelfGenre?.[0] ?? 'Untagged',
+            subgenre: entry?.subgenre ?? shelfGenre?.[1] ?? 'Untagged',
+            isbn13: isbn.isbn13,
+            pages: entry?.pages ?? ib.pages,
+            added: ib.date_added,
+            shelves: ib.shelves,
+          });
+        }
+        continue;
+      }
       let id = slug(title);
       for (let n = 2; ids.has(id); n++) id = `${slug(title)}-${n}`;
       ids.add(id);
@@ -165,6 +201,8 @@ function enrich(
   highlights: MergedHighlight[],
 ): void {
   b.imports = { ...b.imports, [source]: ib.id };
+  // when it first went on a shelf anywhere
+  if (ib.date_added && (!b.added || ib.date_added < b.added)) b.added = ib.date_added;
   b.rating ??= ib.rating;
   if (ib.shelves.length) b.shelves = [...new Set([...(b.shelves ?? []), ...ib.shelves])];
   b.isbn13 ??= isbn.isbn13;

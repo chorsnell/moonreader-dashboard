@@ -34,8 +34,8 @@
     document.querySelectorAll(sel).forEach((n) => n.classList.add(OFF));
     if (empty.size) {
       document.querySelectorAll('.rh-card [data-source]:not([data-field])').forEach((n) => {
-        const needs = dash.needs(n.dataset.source);
-        if ([...needs].some((f) => empty.has(f))) n.closest('.rh-card')?.classList.add(OFF);
+        const needs = dash.needs(n.dataset.source), copes = (n.dataset.copes || '').split(' ');
+        if ([...needs].some((f) => empty.has(f) && !copes.includes(f))) n.closest('.rh-card')?.classList.add(OFF);
       });
     }
     // an open tab that's now hidden: go to the overview

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ZipFile } from 'yazl';
-import { BOOKS, fileName } from './demo-books';
+import { addedLead, BOOKS, fileName, UNOPENED } from './demo-books';
 import type { DemoNote } from './demo-highlights';
 import type { DemoDay } from './simulate';
 
@@ -15,6 +15,7 @@ export async function writeDemoBackup(
   log: Map<string, DemoDay[]>,
   firstDay: number,
   highlights: Map<string, DemoNote[]> = new Map(),
+  lastDay?: number,
 ): Promise<void> {
   const tmp = await mkdtemp(join(tmpdir(), 'demo-backup-'));
   try {
@@ -33,8 +34,10 @@ export async function writeDemoBackup(
         note text, original text, underline numeric, strikethrough numeric, bak text);
     `);
     const addBook = db.prepare(
-      'insert into books (book, filename, lowerFilename, author) values (?, ?, ?, ?)',
+      'insert into books (book, filename, lowerFilename, author, addTime) values (?, ?, ?, ?, ?)',
     );
+    // addTime: when the file was added to Moon+, in ms (as text, as Moon+ keeps it)
+    const at = (day: number) => String(day * 86_400_000 + 9 * 3_600_000);
     const addStats = db.prepare(
       'insert into statistics (filename, usedTime, readWords, dates) values (?, ?, ?, ?)',
     );
@@ -45,7 +48,13 @@ export async function writeDemoBackup(
     for (const [file, entries] of log) {
       const full = `/sdcard/Books/${file}`;
       const [title, author] = authors.get(file)!;
-      addBook.run(title, full, full.toLowerCase(), author);
+      addBook.run(
+        title,
+        full,
+        full.toLowerCase(),
+        author,
+        at(firstDay + Math.max(0, entries[0].day - addedLead(title))),
+      );
       const ms = (m: number) => Math.floor(m * 60000);
       const dates = entries
         .map((e) => `${firstDay + e.day}|${ms(e.minutes)}@${e.words}\n#${e.progress}%\n`)
@@ -59,6 +68,13 @@ export async function writeDemoBackup(
       positions.push(
         `<string name="${full.toLowerCase()}">1@0#0:${entries.at(-1)!.progress}%</string>`,
       );
+    }
+    // never opened: in the library, with no reading log or position
+    if (lastDay !== undefined) {
+      for (const [title, author, , , , , , ago] of UNOPENED) {
+        const full = `/sdcard/Books/${fileName(title, author)}`;
+        addBook.run(title, full, full.toLowerCase(), author, at(lastDay - ago));
+      }
     }
     const addNote = db.prepare(
       `insert into notes (book, filename, lowerFilename, lastChapter, lastSplitIndex,
