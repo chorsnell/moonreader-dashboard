@@ -30,7 +30,7 @@ interface Plan {
   overlap: string[];
   /** Books you haven't read. */
   extra: ExtraBook[];
-  /** Star ratings for some of the books they finish; the rest get 3 to 5 from the title. */
+  /** Star ratings for some of the books they finish; the rest get one near yours (`rating_spread`). */
   ratings?: Record<string, number>;
   /** Titles they gave up on, and where. */
   abandon: Record<string, number>;
@@ -44,13 +44,6 @@ interface Plan {
    * spread (small: you agree), others a rating around 3.5.
    */
   rating_spread: number;
-}
-
-/** A made-up rating from 3 to 5 stars, the same every build. */
-function stars(title: string): number {
-  let h = 0;
-  for (const c of title) h = (h * 31 + c.charCodeAt(0)) % 997;
-  return 3 + (h % 3);
 }
 
 export const FRIEND_PLANS: Plan[] = [
@@ -316,6 +309,7 @@ export function simulateFriend(
     const r = stars.normal(yours || 3.5, yours ? plan.rating_spread : 0.9);
     return stars.random() < 0.85 ? Math.max(1, Math.min(5, Math.round(r))) : null;
   };
+  const pinned = (title: string, rating: number | null) => plan.ratings?.[title] ?? rating;
   for (const { book: b, days } of log) {
     if (!days.length) continue;
     const id = slug(b.title);
@@ -336,15 +330,16 @@ export function simulateFriend(
       isbn10: null,
       work_id: null,
       status: finished ? 'finished' : 'in_progress',
-      ...(finished ? { rating: starsFor(b.title) } : {}),
+      // star ratings, as a Goodreads import would bring: the plan's own for a few books
+      // (BOO-79's picks weigh them), else one near yours (BOO-93's agreement). starsFor runs
+      // for every finished book so the stream, and so every other rating, stays the same.
+      ...(finished ? { rating: pinned(b.title, starsFor(b.title)) } : {}),
       progress: last.progress,
       hours: round1(minutes / 60),
       words: days.reduce((a, d) => a + d.words, 0),
       times_read: 1,
       first_read: start,
       last_read: end,
-      // star ratings, as a Goodreads import would bring (BOO-79 weighs them)
-      ...(finished ? { rating: plan.ratings?.[b.title] ?? stars(b.title) } : {}),
     });
     reads.push({
       read_id: `${id}#1`,

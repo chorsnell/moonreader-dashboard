@@ -24,10 +24,10 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 - **Patterns:** what you read next, binge loops, palate cleansers, book hangovers, series pull, gateway books, the next book in each series, a heatmap explorer, and reading and the weather (whether rain, cold, heat or short days change how much you read or watch).
 - **Diary:** a day-by-day log for any period: which books, minutes, words and progress, with starts and finishes.
 - **Library:** every book and every re-read, searchable and sortable, and where you give up.
-- **Highlights:** every highlight and note across all your books in one place: full-text search (all words must match; "quoted phrases"; case and accents don't matter), filters by book, author, genre, year and notes, the most-highlighted books, highlights per year, and passages you highlighted more than once. It follows the highlights privacy setting and leaves out private books.
-- **To read:** your to-read pile, gathered from Goodreads and StoryGraph to-read shelves, books in Moon+ you haven't started, and books you bought but never opened: how big it is, how long books have waited, how long it would take at your pace, whether you add books faster than you finish them, friends' favourites as suggestions, and **what to read next**: the pile ranked by your own habits, each pick saying why.
 - **TV & film:** hours watched, what's on screen now, dropped seasons, season completion, binge fingerprints, when you watch, genre drift, films, the cost per hour of each subscription, whether TV crowds out reading, and book-to-screen adaptations. It appears once there's something watched.
+- **To read:** your to-read pile, gathered from Goodreads and StoryGraph to-read shelves, books in Moon+ you haven't started, and books you bought but never opened: how big it is, how long books have waited, how long it would take at your pace, whether you add books faster than you finish them, friends' favourites as suggestions, and **what to read next**: the pile ranked by your own habits, each pick saying why.
 - **Money:** spending by month and year, a budget, how you got your books, value for money, an hour of streaming against an hour of books, the cost to finish a series, whether a subscription paid off, money left on the shelf, and what your reading time is worth at a rate you choose.
+- **Highlights:** every highlight and note across all your books in one place: full-text search (all words must match; "quoted phrases"; case and accents don't matter), filters by book, author, genre, year and notes, the most-highlighted books, highlights per year, and passages you highlighted more than once. It follows the highlights privacy setting and leaves out private books.
 - **Friends:** friends' reading next to yours: a taste match, overlaid heatmaps, opt-in leaderboards, their favourites you haven't read, and book clubs. On a book's page, a buddy-read race against every friend who read it.
 - **Data checks:** things in the log that look odd (stray days, long pauses, implausible speeds, progress jumps, untagged books or books without an ISBN).
 
@@ -244,6 +244,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Data** | Upload a backup, rebuild now, the backups kept, the WebDAV address |
 | **Imports** | Goodreads, StoryGraph, Kobo and Kindle files; export to Goodreads |
 | **Highlights** | Export highlights to Obsidian or Logseq (Markdown) and Readwise (CSV or straight to your account) |
+| **Daily review** | How many highlights a day, the morning notification, and an Anki export |
 | **Sync & logs** | Every sync, rebuild, upload, lookup and request, filterable and downloadable, with a warning when syncing seems to have stopped or a login failed |
 | **Other media** | Netflix uploads, Tautulli, Audiobookshelf, TMDB and streaming subscriptions |
 | **Access & privacy** | Who can see the dashboard and what each kind of visitor sees; private books and genres; preview as a visitor |
@@ -254,11 +255,10 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Weather** | The home location for "Reading and the weather" |
 | **Covers** | Books without a cover: look them up again or upload your own |
 | **Challenges** | Reading challenges on the Overview: authors from N countries, a book from every decade, series finished, % women authors, a streak or N genres, this year or all time (a default set until you change it) |
+| **Widgets & devices** | The year's reading goal, the device token for Home Assistant and other devices, their setup, and a preview of the e-ink view |
 | **Feeds** | Atom and iCal feeds at secret addresses: make, give a new address, revoke |
-| **Daily review** | How many highlights a day, the morning notification, and an Anki export |
 | **Notifications** | ntfy, Gotify, Discord or webhook channels with a **Send test** button; which events to send; when to warn about a streak |
 | **Book manager** | Your *arr book manager's URL and API key |
-| **Widgets & devices** | The year's reading goal, the device token for Home Assistant and other devices, their setup, and a preview of the e-ink view |
 
 ## Who can see it
 

@@ -14,7 +14,7 @@
   ];
   const label = (list, v) => (list.find((x) => x[0] === v) || [, v])[1];
 
-  rh.adminSection({ id: 'feeds', title: 'Feeds', order: 55, draw(box, a) {
+  rh.adminSection({ id: 'feeds', title: 'Feeds', order: 56, draw(box, a) {
     const { h, block, msg } = a;
     const out = msg();
     // the address just made, shown until the section is drawn again

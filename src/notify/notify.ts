@@ -5,7 +5,7 @@
  * rebuild of the same backup never sends anything twice.
  */
 import { randomBytes } from 'node:crypto';
-import { bookKeys } from '../clubs/clubs';
+import { sameBookKeys as bookKeys } from '../common/book-match';
 import { streakOf } from '../outbound/now';
 
 // ---------- events ----------

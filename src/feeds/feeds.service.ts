@@ -2,7 +2,7 @@ import { chmod, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { AccessSettingsService } from '../access/access-settings.service';
-import { sameBook } from '../clubs/clubs';
+import { sameBook } from '../common/book-match';
 import { ClubsService } from '../clubs/clubs.service';
 import { localDate, localDateTime } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';

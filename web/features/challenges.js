@@ -151,7 +151,7 @@
     ['genres', 'Genres', 'genres'],
   ];
   rh.adminSection({
-    id: 'challenges', title: 'Challenges', order: 55,
+    id: 'challenges', title: 'Challenges', order: 52,
     draw(box, a) {
       const { h } = a;
       const msg = a.msg();
