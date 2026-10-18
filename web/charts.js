@@ -1134,54 +1134,79 @@
     return q ? `${GR}/search?q=${encodeURIComponent(q)}` : null;
   }
 
-  // minutes per day as bars and progress as a line, across one read
+  // one read, day by day, as two small multiples on a shared date axis: minutes read each day
+  // (bars) above, how far you'd got (a line) below; a panel with nothing to show is left out
   function drawBookDays(b, read, days) {
     const box = $('#ch-bk-days'), note = $('#bk-days-note');
     if (!state(box, 'diary')) return;
     const rows = read ? days.filter((d) => d.date >= read.start && d.date <= read.end) : [];
     if (!rows.length) { note.textContent = ''; box.style.minHeight = '80px'; box.replaceChildren(el('div', 'dy-empty', 'No days recorded for this read.')); return; }
     const n = span(read.start, read.end), tm = d3.sum(rows, (d) => d.minutes || 0), s = speedFrom(rows);
+    const hasMin = rows.some((d) => d.minutes > 0), hasProg = rows.some((d) => d.progress != null);
+    const parts = [hasMin && 'above, the minutes you read each day', hasProg && `${hasMin ? 'below' : 'the line'}, how far you'd got`].filter(Boolean);
     note.textContent = `${rangeLabel(read)}: read on ${fmt(rows.length)} of ${plural(n, 'day')}` + (tm ? `, ${mins(tm)} in all` : '') +
-      (s ? `, ${fmt(Math.round(s.wpm))} wpm` : '') + '. Bars are minutes read, the line is how far you got. Click a day to open it in the diary.';
-    const h = 260, m = { t: 22, r: 42, b: 24, l: 34 };
+      (s ? `, ${fmt(Math.round(s.wpm))} wpm` : '') + '. ' + (parts.length ? parts.join('; ').replace(/^./, (c) => c.toUpperCase()) + '. ' : '') + 'Click a day to open it in the diary.';
+    // panel heights; the date axis sits under the last one
+    const label = 16, between = 18, ax = 24, m = { l: 40, r: 12 };
+    const panels = [];
+    if (hasMin) panels.push({ id: 'min', title: 'Minutes read', h: hasProg ? 130 : 180 });
+    if (hasProg) panels.push({ id: 'prog', title: 'Progress', h: hasMin ? 80 : 120 });
+    if (!panels.length) panels.push({ id: 'none', title: '', h: 60 });
+    let top = 0;
+    for (const p of panels) { p.y0 = top + label; p.y1 = p.y0 + p.h; top = p.y1 + between; }
+    const h = panels[panels.length - 1].y1 + ax;
     box.style.minHeight = h + 'px';
     const { svg, w, tip } = svgIn(box, h);
-    const lo = pDate(read.start), x = d3.scaleUtc([lo, d3.utcDay.offset(pDate(read.end), 1)], [m.l, w - m.r]);
-    const hasMin = rows.some((d) => d.minutes > 0);
-    const y = d3.scaleLinear([0, d3.max(rows, (d) => d.minutes || 0) || 1], [h - m.b, m.t]).nice();
-    const yp = d3.scaleLinear([0, 100], [h - m.b, m.t]);
-    if (hasMin) {
-      axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickSize(-(w - m.l - m.r)));
-      svg.append('text').attr('class', 'axl').attr('x', 0).attr('y', m.t - 10).text('minutes');
+    const lo = pDate(read.start), hi = d3.utcDay.offset(pDate(read.end), 1), x = d3.scaleUtc([lo, hi], [m.l, w - m.r]);
+    const dw = x(d3.utcDay.offset(lo, 1)) - x(lo), gap = dw > 6 ? Math.max(MARK.gap, Math.min(4, dw * 0.2)) : 0;
+    const bw = Math.max(1, Math.min(MARK.bar, dw - gap)), bx = (d) => x(pDate(d.date)) + (dw - bw) / 2;
+    const panelHead = (p) => svg.append('text').attr('class', 'axl').attr('x', 0).attr('y', p.y0 - 6).text(p.title);
+    for (const p of panels) {
+      if (p.id === 'min') {
+        panelHead(p);
+        const y = d3.scaleLinear([0, d3.max(rows, (d) => d.minutes || 0) || 1], [p.y1, p.y0 + 10]).nice();
+        const g = svg.append('g').attr('transform', `translate(${m.l},0)`);
+        axis(g, d3.axisLeft(y).ticks(Math.max(2, Math.round(p.h / 40))).tickSize(-(w - m.l - m.r)));
+        g.select('.domain').remove();
+        svg.append('g').selectAll('path').data(rows.filter((d) => d.minutes > 0)).join('path').attr('fill', gColor(b.genre))
+          .call(grow, 'd', (d) => barPath(bx(d), y(0), bw, 0), (d) => barPath(bx(d), y(d.minutes), bw, y(0) - y(d.minutes)));
+      } else if (p.id === 'prog') {
+        panelHead(p);
+        const yp = d3.scaleLinear([0, 100], [p.y1, p.y0 + 10]);
+        const g = svg.append('g').attr('transform', `translate(${m.l},0)`);
+        axis(g, d3.axisLeft(yp).tickValues([0, 50, 100]).tickFormat((v) => v + '%').tickSize(-(w - m.l - m.r)));
+        g.select('.domain').remove();
+        // progress at the end of each day, from where the read began
+        const first = rows.find((d) => d.progress != null);
+        const pts = [{ t: pDate(first.date), p: first.prev_progress ?? first.progress },
+          ...rows.filter((d) => d.progress != null).map((d) => ({ t: d3.utcDay.offset(pDate(d.date), 1), p: d.progress }))];
+        svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', gColor(b.genre)).attr('stroke-width', MARK.line).attr('stroke-linejoin', 'round')
+          .attr('d', d3.line((d) => x(d.t), (d) => yp(d.p))).call(drawIn);
+        if (pts.length <= 40 && dw >= 6) svg.append('g').selectAll('circle').data(pts.slice(1)).join('circle').attr('class', 'ring')
+          .attr('cx', (d) => x(d.t)).attr('cy', (d) => yp(d.p)).attr('fill', gColor(b.genre)).call(grow, 'r', 0, MARK.dot - 1);
+      }
     }
-    axis(svg.append('g').attr('transform', `translate(${w - m.r},0)`), d3.axisRight(yp).ticks(5).tickFormat((v) => v + '%').tickSize(hasMin ? 0 : -(w - m.l - m.r)).tickPadding(6));
-    svg.selectAll('.domain').remove();
-    svg.append('text').attr('class', 'axl').attr('x', w).attr('y', m.t - 10).attr('text-anchor', 'end').text('progress');
-    axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).ticks(Math.max(2, Math.min(n, Math.floor(w / 90)))).tickFormat(d3.utcFormat(n <= 120 ? '%-d %b' : '%b %y')).tickSizeOuter(0));
-    const dw = x(d3.utcDay.offset(lo, 1)) - x(lo), gap = dw > 6 ? Math.min(4, dw * 0.2) : 0;
-    svg.append('g').selectAll('path').data(rows.filter((d) => d.minutes > 0)).join('path')
-      .call(grow, 'd', (d) => barPath(x(pDate(d.date)) + gap / 2, y(0), Math.max(1, dw - gap), 0), (d) => barPath(x(pDate(d.date)) + gap / 2, y(d.minutes), Math.max(1, dw - gap), y(0) - y(d.minutes))).attr('fill', gColor(b.genre)).attr('fill-opacity', 0.5);
-    // progress at the end of each day, from where the read began
-    const pts = rows.filter((d) => d.progress != null).map((d) => ({ t: d3.utcDay.offset(pDate(d.date), 1), p: d.progress }));
-    if (pts.length) {
-      const first = rows.find((d) => d.progress != null);
-      pts.unshift({ t: pDate(first.date), p: first.prev_progress ?? first.progress });
-      svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', 'var(--color-fg)').attr('stroke-width', MARK.line).attr('stroke-linejoin', 'round')
-        .attr('d', d3.line((d) => x(d.t), (d) => yp(d.p))).call(drawIn);
-      if (pts.length <= 120) svg.append('g').selectAll('circle').data(pts.slice(1)).join('circle').attr('cx', (d) => x(d.t)).attr('cy', (d) => yp(d.p)).attr('r', 2.5).attr('fill', 'var(--color-fg)');
-    }
+    const last = panels[panels.length - 1];
+    const xa = svg.append('g').attr('transform', `translate(0,${last.y1})`);
+    // days for a short read, else months (ticks of a few days would repeat the month's name)
+    const fit = Math.max(2, Math.floor(w / 80));
+    const months = d3.utcMonth.count(lo, hi), every = Math.max(1, Math.ceil(months / fit));
+    axis(xa, (n <= 60 ? d3.axisBottom(x).ticks(Math.min(n, fit)).tickFormat(d3.utcFormat('%-d %b'))
+      : d3.axisBottom(x).ticks(d3.utcMonth.every(every)).tickFormat(d3.utcFormat(months > 10 ? '%b %y' : '%b'))).tickSizeOuter(0));
+    // one column per day across both panels: hover for the day, click to open it
     const byDate = new Map(rows.map((d) => [d.date, d]));
-    const at = (e) => iso(d3.utcDay.floor(x.invert(d3.pointer(e, svg.node())[0])));
-    svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', w - m.l - m.r).attr('height', h - m.t - m.b).attr('fill', 'transparent')
-      .on('mousemove', (e) => {
-        const day = at(e), d = byDate.get(day);
-        e.target.style.cursor = d ? 'pointer' : 'default';
+    const allDays = n <= 1000 ? d3.utcDay.range(lo, hi).map(iso) : rows.map((d) => d.date);
+    svg.append('g').selectAll('rect').data(allDays).join('rect').attr('class', 'hit')
+      .attr('x', (day) => x(pDate(day))).attr('width', Math.max(1, dw)).attr('y', panels[0].y0).attr('height', last.y1 - panels[0].y0)
+      .style('cursor', (day) => (byDate.has(day) ? 'pointer' : 'default'))
+      .on('mousemove', (e, day) => {
+        const d = byDate.get(day);
         showTip(tip, box, e, (tp) => tipLines(tp, d3.utcFormat('%a %-d %b %Y')(pDate(day)), d
           ? [[null, 'Time', d.minutes ? mins(d.minutes) : '—'], [null, 'Words', d.words ? fmt(d.words) : '—'], [null, 'Speed', okDay(d) ? Math.round(d.words / d.minutes) + ' wpm' : '—'], [null, 'Progress', progStep(d)]]
           : [[null, '', 'Not opened']]));
       })
       .on('mouseleave', () => hideTip(tip))
-      .on('click', (e) => { const day = at(e); if (byDate.has(day)) { hideTip(tip); openDiary(day); } });
+      .on('click', (e, day) => { if (byDate.has(day)) { hideTip(tip); openDiary(day); } });
   }
 
   // ---------- feature scripts (web/features/*.js) ----------
