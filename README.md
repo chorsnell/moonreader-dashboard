@@ -15,7 +15,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 
 **Reading tabs**
 
-- **Overview:** this year against last, streaks, what's on the go (with when you'll likely finish each book, and a gentle flag on one that looks like a DNF), recently finished, a year-end forecast, lifetime words, a quote of the day, personal records, books per year, hours per month, and reading against watching.
+- **Overview:** this year against last, streaks, what's on the go (with when you'll likely finish each book, and a gentle flag on one that looks like a DNF), recently finished, reading challenges, a year-end forecast, lifetime words, a quote of the day, personal records, books per year, hours per month, and reading against watching.
 - **Bookshelf:** every book you've read as a spine on a shelf per year (width is length, height is hours, colour is genre), and your years in colour.
 - **Genres & authors:** genre and subgenre mix and how it shifts, book shapes, ratings by genre, most-read authors and series progress.
 - **Origins:** how old your books are when you read them, where your authors come from (a map) and the gender balance over time.
@@ -223,6 +223,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Catalogue** | Titles, authors, series, genres, ISBNs, first-published years and authors' countries; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
 | **Covers** | Books without a cover: look them up again or upload your own |
+| **Challenges** | Reading challenges on the Overview: authors from N countries, a book from every decade, series finished, % women authors, a streak or N genres, this year or all time (a default set until you change it) |
 | **Book manager** | Your *arr book manager's URL and API key |
 
 ## Who can see it
