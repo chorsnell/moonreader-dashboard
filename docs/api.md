@@ -167,3 +167,68 @@ Admin endpoints (`@AdminOnly`):
 | `DELETE /api/admin/feeds/<id>` | Revokes it |
 
 The URL is built from `PUBLIC_URL`, else the request's host (as for link previews).
+
+## Notifications
+
+Admin endpoints (`@AdminOnly`) behind **Admin → Notifications** (BOO-72). Channel URLs and tokens are never returned; a channel comes back as `{id, type, name, host, has_token}`.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/notify` | `{channels, events: {<kind>: on}, kinds: [{kind, label, note}], streak_hour, streak_min}` |
+| `PUT /api/admin/notify` | Any of `{events: {<kind>: bool}, streak_hour: 0–23, streak_min}` |
+| `POST /api/admin/notify/channels` | `{type: "ntfy" \| "gotify" \| "discord" \| "webhook", url, token?, name?}` |
+| `DELETE /api/admin/notify/channels/<id>` | Removes one |
+| `POST /api/admin/notify/channels/<id>/test` | Sends a test message to that channel: `{ok}` or `{ok: false, error}` |
+| `POST /api/admin/notify/check` | Looks for events now, as after a rebuild: `{sent: [{kind, title}]}` |
+
+### Sending your own: `NotifierService`
+
+Any server feature can tell the owner something (a morning highlight review, say) through the same channels. Import `NotifyModule` and inject `NotifierService` (`src/notify/notifier.service.ts`):
+
+```ts
+@Module({ imports: [NotifyModule], providers: [HighlightReviewService] })
+export class HighlightReviewModule {}
+
+@Injectable()
+export class HighlightReviewService implements OnModuleInit {
+  constructor(private readonly notifier: NotifierService) {}
+
+  onModuleInit() {
+    // a toggle for it in Admin → Notifications (on unless the admin turns it off)
+    this.notifier.registerKind('highlight_review', 'Morning highlight review', 'A few of your highlights, every morning.');
+  }
+
+  async morning() {
+    await this.notifier.send({
+      kind: 'highlight_review',            // [a-z][a-z0-9_]*; switched off kinds aren't sent
+      title: 'Three highlights from a year ago',
+      message: '“It was a dark and stormy night.” Alpha, Ann Author\n…',
+      url: 'https://reading.example.com/#highlights', // optional: what tapping it opens
+      tags: ['books'],                     // optional: ntfy shows them as emoji
+      priority: 'default',                 // optional: low, default or high
+      data: { count: 3 },                  // optional: extra JSON for webhooks
+    });
+  }
+}
+```
+
+- `send(event)` never throws. It resolves with `{enabled, sent, failed: [{channel, error}]}`, where `enabled` is false when the admin switched that kind off.
+- Each send is recorded under **Sync & logs → Notifications**.
+- `wants(kind)` says whether anything would be sent, to skip expensive work.
+- `sendTo(channelId, event)` sends to one channel whatever the toggles say; it's what the **Send test** button uses.
+- **Privacy**: messages go to the owner's own channels, but a Discord channel may be shared, so don't name private books (`PrivacyService.context(...)`'s `private` set). The built-in events never do.
+
+### What each channel receives
+
+- **ntfy**: `POST <server>/` with JSON `{topic, title, message, tags, priority (2/3/4), click}` and `Authorization: Bearer <token>` when set.
+- **Gotify**: `POST <server>/message` with `X-Gotify-Key` and `{title, message, priority (2/5/8), extras.client::notification.click.url}`.
+- **Discord**: `POST <webhook>` with `{username, embeds: [{title, description, url, timestamp}]}`.
+- **Webhook**: `POST <url>` with `{event, title, message, url, tags, priority, data, time}` (time is local, `YYYY-MM-DDTHH:MM:SS`) and `Authorization: Bearer <token>` when set.
+
+The built-in events and their `data` are:
+
+- `book_finished`: `{book_id, read_id, title, author, end}`, or `{count}` for a digest.
+- `new_record`: `{record, value, previous}`.
+- `streak_at_risk`: `{streak, last_read}`.
+- `year_goal`: `{year, goal, finished}`. The goal is the one under **Widgets & devices** (`PUT /api/admin/outbound/goal`).
+- `friend_finished`: `{friend, book_id, title}`.
