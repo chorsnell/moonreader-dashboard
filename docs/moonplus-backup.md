@@ -22,8 +22,13 @@ ones the import reads (see `src/backup-import/backup-archive.ts`):
 ### `books` and `tmpbooks`
 
 One row per book file: `book` (title), `filename` (full Android path), `lowerFilename`,
-`author`, and fields the dashboard doesn't use (`description`, `category`, `coverFile`,
-`addTime`, `favorite`, `rate`, …).
+`author`, `addTime` (when the book was added, read as milliseconds or seconds since 1970;
+anything else is ignored), and fields the dashboard doesn't use (`description`, `category`,
+`coverFile`, `favorite`, `rate`, …). A file here with no reading log and no position was
+never opened, and goes on the to-read pile (`data/to_read.json`).
+
+> The `addTime` format is assumed, not confirmed against a real backup. If yours holds
+> something other than a timestamp, books simply have no "added" date.
 
 ### `statistics`
 

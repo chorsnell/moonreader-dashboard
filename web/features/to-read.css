@@ -1,0 +1,10 @@
+/* the to-read pile (to-read.js) */
+.tr-take{margin:var(--cds-gap-md) 0 0;font-size:var(--cds-font-size-body);line-height:1.5;color:var(--color-fg-muted)}
+.tr-take b{color:var(--color-fg);font-weight:600}
+.chart.tr-chart{min-height:220px}
+.tr-list li[data-link]{cursor:pointer}
+.tr-list .meta{white-space:nowrap;font-variant-numeric:tabular-nums}
+.tr-more{margin-top:var(--cds-gap-sm)}
+#ch-toread-kpis,#ch-toread-list,#ch-toread-friends{min-height:0}
+@media (max-width:640px){.tr-list .meta{white-space:normal;text-align:right}}
+#toread.rh-page:not([hidden]){display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,26rem),1fr));align-items:start;gap:var(--cds-gap-lg)}

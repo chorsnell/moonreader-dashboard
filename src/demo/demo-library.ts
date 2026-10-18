@@ -12,7 +12,7 @@ import { parseReadingExport } from '../imports/goodreads';
 import { MediaBuildService } from '../media/media-build.service';
 import { servedPrices } from '../prices/prices';
 import { writeDemoBackup } from './demo-backup';
-import { BOOKS, fileName, ISBN } from './demo-books';
+import { BOOKS, fileName, ISBN, UNOPENED } from './demo-books';
 import { writeDemoFriends } from './demo-friends-site';
 import { demoGoodreadsCsv } from './demo-goodreads';
 import { demoKobo } from './demo-kobo';
@@ -65,11 +65,22 @@ export async function buildDemoLibrary(
   ]) {
     catalogue.books[`kobo:${id}`] = { title, author, genre: 'Classics', subgenre: 'Coming of Age' };
   }
+  // the files never opened are catalogued too, as the admin would have done
+  for (const [title, author, genre, subgenre, series, seriesNo] of UNOPENED) {
+    catalogue.books[fileName(title, author).toLowerCase()] = {
+      title,
+      author,
+      series,
+      series_no: seriesNo,
+      genre,
+      subgenre,
+    };
+  }
   await writeFile(join(lib, 'catalogue.json'), JSON.stringify(catalogue), 'utf8');
   // what the metadata lookup would find, so the demo needs no network for it
   await writeFile(join(lib, 'metadata.json'), JSON.stringify(demoMetadata()), 'utf8');
   const backup = join(lib, 'demo-library.mrpro');
-  await writeDemoBackup(backup, log, firstDay, highlights);
+  await writeDemoBackup(backup, log, firstDay, highlights, lastDay);
   // a Kobo's database, as if uploaded on the admin page: two books read on the Kobo
   const kobo = { ...demoKobo(firstDay, lastDay, seed), imported: `${today}T09:00:00` };
   await writeFile(join(lib, 'kobo.json'), JSON.stringify(kobo), 'utf8');

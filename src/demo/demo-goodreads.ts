@@ -19,6 +19,20 @@ const PAPER: [string, string, string, number, number][] = [
   ['The Scarlet Pimpernel', 'Baroness Orczy', 'adventure', 4, 0.9],
 ];
 
+/** On the to-read shelf: [title, author, shelves, days before the history ends it was added]. */
+const TO_READ: [string, string, string, number][] = [
+  ['Mansfield Park', 'Jane Austen', 'classics', 90],
+  ['Silas Marner', 'George Eliot', 'classics', 820],
+  ['The Murder on the Links (Hercule Poirot, #2)', 'Agatha Christie', 'mystery', 300],
+  ['The Gods of Pegana', 'Lord Dunsany', 'fantasy', 1100],
+  ['Bleak House', 'Charles Dickens', 'classics, chunksters', 560],
+  ['Kim', 'Rudyard Kipling', 'adventure', 200],
+  ['The Last of the Mohicans', 'James Fenimore Cooper', 'adventure', 45],
+  ['The Mysteries of Udolpho', 'Ann Radcliffe', 'horror, chunksters', 380],
+  ['The Man Who Was Thursday', 'G. K. Chesterton', 'mystery', 12],
+  ['The Voyage Out', 'Virginia Woolf', '', 150],
+];
+
 /** Genres the made-up reader tends to rate higher. */
 const FAVOURITE = new Set(['Mystery', 'Classics']);
 
@@ -26,7 +40,7 @@ const DAY_MS = 86_400_000;
 
 /**
  * A made-up Goodreads library export for the demo: ratings for most finished books (the
- * ones devoured rated higher), a few books read on paper, one on the go and one to read.
+ * ones devoured rated higher), a few books read on paper, one on the go and a to-read shelf.
  */
 export function demoGoodreadsCsv(
   log: Map<string, DemoDay[]>,
@@ -101,19 +115,22 @@ export function demoGoodreadsCsv(
     'currently-reading',
     0,
   ]);
-  rows.push([
-    id,
-    'Mansfield Park',
-    'Jane Austen',
-    '=""',
-    '=""',
-    0,
-    '',
-    date(lastDay - 90),
-    'to-read',
-    'to-read',
-    0,
-  ]);
+  // the want-to-read shelf, added to over the years (BOO-76); Kim is in Moon+ unopened too
+  for (const [title, author, shelves, ago] of TO_READ) {
+    rows.push([
+      id,
+      title,
+      author,
+      '=""',
+      '=""',
+      0,
+      '',
+      date(Math.max(firstDay, lastDay - ago)),
+      ['to-read', shelves].filter(Boolean).join(', '),
+      'to-read',
+      0,
+    ]);
+  }
   return toCsv(
     [
       'Book Id',

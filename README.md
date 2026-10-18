@@ -24,6 +24,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 - **Patterns:** what you read next, binge loops, palate cleansers, book hangovers, series pull, gateway books, the next book in each series, and a heatmap explorer.
 - **Diary:** a day-by-day log for any period: which books, minutes, words and progress, with starts and finishes.
 - **Library:** every book and every re-read, searchable and sortable, and where you give up.
+- **To read:** your to-read pile, gathered from Goodreads and StoryGraph to-read shelves, books in Moon+ you haven't started, and books you bought but never opened: how big it is, how long books have waited, how long it would take at your pace, whether you add books faster than you finish them, and friends' favourites as suggestions.
 - **TV & film:** hours watched, what's on screen now, dropped seasons, season completion, binge fingerprints, when you watch, genre drift, films, the cost per hour of each subscription, whether TV crowds out reading, and book-to-screen adaptations. It appears once there's something watched.
 - **Money:** spending by month and year, a budget, how you got your books, value for money, the cost to finish a series, whether a subscription paid off, money left on the shelf, and what your reading time is worth at a rate you choose.
 - **Friends:** friends' reading next to yours: a taste match, overlaid heatmaps, opt-in leaderboards, their favourites you haven't read, and book clubs. On a book's page, a buddy-read race against every friend who read it.
@@ -139,7 +140,7 @@ What a backup holds is in [docs/moonplus-backup.md](docs/moonplus-backup.md).
 Upload a Goodreads library export (My Books → Import and export → Export library) or a StoryGraph export in the **Imports** section.
 
 - Books are matched to your Moon+ books by ISBN, then by title and author, and gain your **rating**, **shelves** and any read Moon+ doesn't know about (an earlier read on paper, say).
-- Books only the export knows count as finished on the day it gives. With no minutes or words, they count towards books, genres, authors and series, but not time, speed, streaks or heatmaps. To-read shelves are left out.
+- Books only the export knows count as finished on the day it gives. With no minutes or words, they count towards books, genres, authors and series, but not time, speed, streaks or heatmaps. To-read shelves don't count as books you've read: they go on the **To read** pile instead, with the day you added them.
 - Ratings add views: speed against rating, ratings by genre, and whether you rate books you devoured higher.
 - **Export to Goodreads** downloads your finished books as a CSV that Goodreads' import reads.
 - Every book page links to the book on Goodreads: straight to it when a Goodreads export knows it, otherwise by ISBN or a title search. Private books get no link.
@@ -321,6 +322,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - **Highlights:** the backup records a chapter and position, not the book's length, so how far in (%) is estimated from your progress on the day.
 - **Data checks:** a first or last day 30+ days from the rest of a read is stray; a 60+ day gap mid-read is a pause; a read is thinly spread when it spans 60+ days but was opened on under 15% of them (`CHECK` in `web/calcs.js`).
 - **Changing the rules:** the thresholds are at the top of `src/backup-import/reading-history.ts` (and `src/media/media-history.ts` for TV and film), and every chart's calculation is in `web/calcs.js` or the feature script that draws it.
+- **To-read pile:** a book is on it when it's on a to-read shelf, in Moon+'s library but never opened or not started, or priced but never opened; the same book from two places counts once (ISBN, then title and author). Its age runs from the day it was added (the export's Date Added, Moon+'s `addTime`, or the purchase date). A book's length is its words read so far, else its page count × 275, else your typical finished book. "To read it all" uses your words a minute and minutes a day over the last 365 days. "Added" counts books going on the pile plus books you started without them being on it, against first reads finished.
 - **Where they're worked out:** the server runs those same calculations after every rebuild, once per kind of viewer, so the page loads ready-made numbers instead of crunching the whole history on your phone.
 
 ## Development

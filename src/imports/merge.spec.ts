@@ -145,6 +145,11 @@ describe('mergeImports', () => {
       empty,
     );
     expect(r).toMatchObject({ matched: 1, added: 1, skipped: 1 });
+    // the to-read book is kept for the pile, not added to the library
+    expect(r.toRead).toEqual([
+      expect.objectContaining({ source: 'goodreads', id: '35', title: 'Mort', genre: 'Untagged' }),
+    ]);
+    expect(books.some((b) => b.title === 'Mort')).toBe(false);
     const added = books.find((b) => b.source === 'goodreads')!;
     expect(added).toMatchObject({
       id: 'the-colour-of-magic',
