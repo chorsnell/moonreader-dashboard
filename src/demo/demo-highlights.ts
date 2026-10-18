@@ -1,4 +1,4 @@
-import { fileName } from './demo-books';
+import { fileName, REREADS } from './demo-books';
 import { Random } from './random';
 import type { DemoDay } from './simulate';
 
@@ -396,5 +396,34 @@ export function simulateHighlights(
     }
     if (notes.length) out.set(fileName(title, author), notes);
   }
+  rehighlight(log, out, seed);
   return out;
+}
+
+/**
+ * On a re-read, some of the passages highlighted the first time are highlighted again (for
+ * the Highlights tab's "passages you came back to"). Its own random numbers, so the
+ * first-read highlights stay the same for a seed.
+ */
+function rehighlight(log: Map<string, DemoDay[]>, out: Map<string, DemoNote[]>, seed: number) {
+  const rng = new Random(seed + 202);
+  for (const title of REREADS) {
+    const quotes = QUOTES[title];
+    if (!quotes) continue;
+    const file = fileName(title, quotes[0]);
+    const entries = log.get(file);
+    const notes = out.get(file);
+    if (!entries || !notes) continue;
+    // the second read starts where progress goes back down
+    const i = entries.findIndex((d, k) => k > 0 && d.progress < entries[k - 1].progress);
+    if (i < 0) continue;
+    const again = entries.slice(i);
+    for (const n of notes.filter((x) => x.original && rng.random() < 0.6)) {
+      const at = (quotes[1].find(([, text]) => text === n.original) ?? [0])[0];
+      const e = again.find((d) => d.progress >= at);
+      if (!e) continue;
+      const weekend = (e.day + 3) % 7 >= 5;
+      notes.push({ ...n, day: e.day, minute: minuteOfDay(rng, weekend), note: '' });
+    }
+  }
 }
