@@ -62,7 +62,7 @@ describe('your share file', () => {
     expect(b.books.map((x) => x.title).sort()).toEqual(['Alpha', 'Beta']);
     expect(b.daily.length).toBeGreaterThan(0);
     expect(b.highlights).toBeUndefined(); // friends don't get highlights by default
-    expect(b.privacy).toEqual({ hidden: ['money', 'highlights'], dates: 'day' });
+    expect(b.privacy).toEqual({ hidden: ['money', 'highlights', 'life_events'], dates: 'day' });
   });
 
   it('follows the friends policy and leaves private books out', async () => {

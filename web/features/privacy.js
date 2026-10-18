@@ -9,7 +9,7 @@
 // - or it says so itself: rh.card({ privacy: 'streaks' }) or data-privacy="streaks".
 (() => {
   // data files served empty when a category is hidden
-  const EMPTY = { diary: ['daily'], highlights: ['highlights'], money: ['prices'] };
+  const EMPTY = { diary: ['daily'], highlights: ['highlights'], money: ['prices'], life_events: ['life_events'] };
   // cards that need exact days, or show a category, by id
   const DAY_PRECISE = ['#tab-diary', '#card-diary', '#card-heat', '#card-week', '#card-bk-days', '#kpi-streak',
     '#card-heat-explorer', '#card-sprint', '#card-hangover', '#card-records', '#card-juggling', '#card-seasons-grid', '#card-clock'];
@@ -18,9 +18,10 @@
     diary: [...DAY_PRECISE, '#kpi-daily', '#kpi-hours-ytd', '#kpi-speed', '#kpi-avg-wpm', '#kpi-fastest', '#kpi-slowest'],
     streaks: ['#kpi-streak', '#card-records'],
     current: ['#card-current', '#card-stalled', '#card-forecast'],
-    highlights: ['#card-bk-highlights', '#card-bk-hl-density', '#card-bk-hl-cloud', '#card-quote', '#card-clock'],
+    highlights: ['#tab-highlights', '#highlights', '#card-bk-highlights', '#card-bk-hl-density', '#card-bk-hl-cloud', '#card-quote', '#card-hl-review', '#card-clock'],
     money: [],
     ratings: [],
+    life_events: [],
   };
   const OFF = 'rh-privacy-off';
   const NOTE = 'Some details are kept private by the owner.';
@@ -34,8 +35,8 @@
     document.querySelectorAll(sel).forEach((n) => n.classList.add(OFF));
     if (empty.size) {
       document.querySelectorAll('.rh-card [data-source]:not([data-field])').forEach((n) => {
-        const needs = dash.needs(n.dataset.source);
-        if ([...needs].some((f) => empty.has(f))) n.closest('.rh-card')?.classList.add(OFF);
+        const needs = dash.needs(n.dataset.source), copes = (n.dataset.copes || '').split(' ');
+        if ([...needs].some((f) => empty.has(f) && !copes.includes(f))) n.closest('.rh-card')?.classList.add(OFF);
       });
     }
     // an open tab that's now hidden: go to the overview

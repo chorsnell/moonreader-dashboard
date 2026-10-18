@@ -301,6 +301,22 @@
     if (s > e) [s, e] = [e, s];
     return { preset, start: s, end: e, days: d3.utcDay.count(pDate(s), pDate(e)) + 1 };
   }
+  // date ranges a feature marks on the heatmap, the reading timeline and the diary (life
+  // events): rh.markDays(() => [{ start, end, title, color }]), days as YYYY-MM-DD, end inclusive
+  const dayMarkers = [];
+  function marksIn(s, e) {
+    return dayMarkers.flatMap((fn) => { try { return fn() || []; } catch (err) { console.error(err); return []; } })
+      .filter((m) => m.end >= s && m.start <= e);
+  }
+  // marks as faint bands behind a time chart's marks, from y0 to y1
+  function markBands(svg, x, y0, y1, R) {
+    const ms = marksIn(R.start, R.end); if (!ms.length) return;
+    const lo = pDate(R.start), hi = d3.utcDay.offset(pDate(R.end), 1);
+    svg.insert('g', ':first-child').attr('class', 'day-marks').attr('aria-hidden', 'true').selectAll('rect').data(ms).join('rect')
+      .attr('x', (m) => x(d3.max([lo, pDate(m.start)]))).attr('y', y0).attr('height', y1 - y0)
+      .attr('width', (m) => Math.max(2, x(d3.min([hi, d3.utcDay.offset(pDate(m.end), 1)])) - x(d3.max([lo, pDate(m.start)]))))
+      .attr('fill', (m) => m.color || C[0]).attr('fill-opacity', 0.13);
+  }
   const rangeLabel = (R) => `${fDay(pDate(R.start))} – ${fDay(pDate(R.end))}`;
   function syncRanges() {
     document.querySelectorAll('.rng').forEach((box) => {
@@ -387,11 +403,20 @@
         .attr('fill', (r) => (r.minutes > 0 || r.books ? C[0] : 'var(--cds-chart-grid)'))
         .attr('fill-opacity', (r) => (r.minutes > 0 ? op(r.minutes) : r.books ? 0.18 : 1))
         .on('mousemove', (e, r) => showTip(tip, el, e, (t) => {
-          tipLines(t, d3.utcFormat('%a %-d %b %Y')(r.d), [[null, 'Minutes', r.minutes ? fmt(r.minutes) : '—']]);
+          tipLines(t, d3.utcFormat('%a %-d %b %Y')(r.d), [[null, 'Minutes', r.minutes ? fmt(r.minutes) : '—'], ...marksIn(r.date, r.date).map((m) => [m.color, '', m.title])]);
           if (r.books) r.books.split('; ').forEach((bk) => t.append('div').text(bk));
         }))
         .on('mouseleave', () => hideTip(tip))
         .on('click', (e, r) => { hideTip(tip); openDiary(r.date); });
+      // days a feature marks (a holiday…): an outline in the mark's colour
+      const ms = marksIn(b.days[0].date, b.days[b.days.length - 1].date);
+      if (ms.length) {
+        const marked = b.days.map((r) => ({ r, m: ms.find((m) => r.date >= m.start && r.date <= m.end) })).filter((x) => x.m);
+        g.append('g').attr('class', 'day-marks').attr('pointer-events', 'none').selectAll('rect').data(marked).join('rect')
+          .attr('x', ({ r }) => lab + weekOf(b, r.d) * cell - 0.75).attr('y', ({ r }) => top + ((r.d.getUTCDay() + 6) % 7) * cell - 0.75)
+          .attr('width', cs + 1.5).attr('height', cs + 1.5).attr('rx', Math.min(3, cs / 4) + 0.75)
+          .attr('fill', 'none').attr('stroke', ({ m }) => m.color || C[1]).attr('stroke-width', 1.5);
+      }
     });
     const read = days.filter((r) => r.minutes > 0 || r.books).length, mins = d3.sum(days, (r) => r.minutes);
     $('#heat-note').textContent = `${rangeLabel(R)}: read on ${fmt(read)} of ${fmt(days.length)} days, ${fmt(Math.round(mins / 60))} hours. Hover a square for the books; click it to open that day in the diary.`;
@@ -416,6 +441,7 @@
     const x0 = (d) => x(pDate(d.start < R.start ? R.start : d.start)), x1 = (d) => x(d3.utcDay.offset(pDate(d.end > R.end ? R.end : d.end), 1));
     axis(svg.append('g').attr('transform', `translate(0,${m.t - 4})`), d3.axisTop(x).ticks(Math.max(2, Math.floor(w / 90))).tickFormat(d3.utcFormat(R.days <= 120 ? '%-d %b' : '%b %y')).tickSize(-(h - m.t)));
     svg.select('.domain').remove();
+    markBands(svg, x, m.t - 4, h - m.b, R);
     const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (d, i) => `translate(0,${m.t + i * rh})`);
     // the whole span faintly, then the days the book was actually opened on top
     g.append('rect').attr('x', x0).attr('y', 2).attr('height', rh - 4).attr('rx', 3)
@@ -651,6 +677,7 @@
       const row = el('div', 'dy-day'); row.id = 'day-' + date;
       const total = d3.sum(entries, (r) => r.minutes || 0), dc = el('div', 'dy-date');
       dc.append(el('b', null, d3.utcFormat('%a %-d')(d)), el('span', null, total ? mins(total) : '—'));
+      marksIn(date, date).forEach((mk) => { const t = el('span', 'dy-mark', mk.title); t.style.setProperty('--mk', mk.color || C[0]); dc.append(t); });
       const books = el('div');
       entries.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
         const bk = link(el('div', 'dy-book'), 'book', r.book_id), t = el('div', 't');
@@ -708,6 +735,7 @@
     axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(4).tickFormat((v) => (v >= 60 && v % 60 === 0 ? v / 60 + 'h' : v)).tickSize(-(w - m.l - m.r)));
     svg.select('.domain').remove();
     axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).ticks(Math.max(2, Math.floor(w / 90))).tickFormat(d3.utcFormat(R.days <= 120 ? '%-d %b' : '%b %y')).tickSizeOuter(0));
+    markBands(svg, x, m.t, h - m.b, R);
     // stack each day's books, longest at the bottom; days with books but no minutes (before 2019) get a small muted tick
     const segs = [];
     days.forEach(([date, es]) => {
@@ -727,7 +755,7 @@
       .on('mousemove', (e) => {
         const day = iso(d3.utcDay.floor(x.invert(d3.pointer(e)[0]))), es = byDate.get(day) || [];
         showTip(tip, el, e, (t) => {
-          tipLines(t, d3.utcFormat('%a %-d %b %Y')(pDate(day)), es.length ? [[null, 'Total', dayMin(es) ? mins(dayMin(es)) : '—']] : [[null, '', 'No reading']]);
+          tipLines(t, d3.utcFormat('%a %-d %b %Y')(pDate(day)), [...(es.length ? [[null, 'Total', dayMin(es) ? mins(dayMin(es)) : '—']] : [[null, '', 'No reading']]), ...marksIn(day, day).map((mk) => [mk.color, '', mk.title])]);
           es.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
             const d = t.append('div'); d.append('span').attr('class', 'sw').style('background', gColor(r.genre));
             d.append('span').text(r.title + (r.minutes ? ': ' : '')); if (r.minutes) d.append('b').text(mins(r.minutes));
@@ -772,10 +800,19 @@
     return box;
   }
 
+  // extra facts feature scripts add about a book on the go (rh.goFact): fn(row, where) gives
+  // [{ k, v, cls, title }], where is 'one' (the single book on the Overview), 'list' (one of
+  // several there) or 'book' (the book page header); row has the book's id
+  const goFactFns = [];
+  function goFacts(r, where) {
+    return goFactFns.flatMap((fn) => { try { return fn(r, where) || []; } catch (e) { console.error(e); return []; } });
+  }
+  const factEls = (fs) => fs.flatMap((f) => { const dt = el('dt', f.cls || null, f.k), dd = el('dd', f.cls || null); dd.append(f.v); if (f.title) dd.title = f.title; return [dt, dd]; });
+
   // "On the go": a list, or one book shown large when it's the only one
   function onGo() {
     const ul = $('#current'), rows = state(ul, 'current'); if (!rows) return;
-    if (rows.length !== 1) return list('#current', 'current', (r) => ({ meta: 'last ' + d3.utcFormat('%-d %b')(pDate(r.last_read)), prog: r.progress }));
+    if (rows.length !== 1) return list('#current', 'current', (r) => ({ meta: 'last ' + d3.utcFormat('%-d %b')(pDate(r.last_read)), prog: r.progress, extra: goFacts(r, 'list') }));
     const r = rows[0], li = link(el('li', 'go-one'), 'book', r.id), info = el('div', 'go-info'), p = r.progress || 0;
     info.append(el('div', 'go-title', r.title));
     info.append(byline('div', 'go-sub', r));
@@ -792,6 +829,7 @@
     if (r.hours && p >= 5 && p < 100) fact('Left at this pace', `about ${fmt(Math.max(1, Math.round(r.hours * (100 - p) / p)))} h`);
     const wpm = D('book_speed').status === 'ok' ? (D('book_speed').data.find((s) => s.book_id === r.id) || {}).wpm : null;
     fact('Speed', wpm ? `${wpm} wpm` : null);
+    facts.append(...factEls(goFacts(r, 'one')));
     info.append(facts);
     li.append(cover(r.id, r.title, r.genre, 'lg'), info);
     ul.replaceChildren(li);
@@ -807,11 +845,17 @@
   function bookList(ul, rows, item = () => ({}), { fields = ['author', 'series'], cur } = {}) {
     if (!rows.length) { ul.replaceChildren(el('li', 'meta', 'Nothing here right now.')); return; }
     ul.replaceChildren(...rows.map((r) => {
-      const { title, meta, prog, note } = item(r), id = idOf('book', r), li = el('li', id === cur ? 'cur' : null), a = el('div', 'ttl');
+      const { title, meta, prog, note, extra } = item(r), id = idOf('book', r), li = el('li', id === cur ? 'cur' : null), a = el('div', 'ttl');
       li.append(cover(id, r.title, r.genre));
       if (id !== cur) link(li, 'book', id);
       a.append(document.createTextNode(title ?? r.title), byline('small', null, r, fields, note));
       if (prog != null) { const p = el('div', 'pbar'), i = el('i'); i.style.width = Math.min(100, prog) + '%'; i.style.background = C[0]; p.append(i); a.append(p); }
+      // facts a feature added (rh.goFact): one line of "label value · label value"
+      if (extra && extra.length) {
+        const x = el('small', 'go-extra');
+        extra.forEach((f, i) => { const s = el('span', f.cls || null); const v = el('span', 'v'); v.append(f.v); s.append(f.k ? f.k + ' ' : '', v); if (f.title) s.title = f.title; if (i) x.append(' · '); x.append(s); });
+        a.append(x);
+      }
       li.append(a, el('div', 'meta', meta ?? '')); return li;
     }));
   }
@@ -1045,6 +1089,7 @@
     fact('Last opened', b.last_read ? fDay(pDate(b.last_read)) : null);
     const p = b.progress || 0;
     if (b.status !== 'finished' && latest && latest.hours && p >= 5 && p < 99) fact('Left at this pace', `about ${fmt(Math.max(1, Math.round(latest.hours * (100 - p) / p)))} h`);
+    if (b.status !== 'finished') facts.append(...factEls(goFacts(b, 'book')));
     fact('Published', b.published_year != null ? (b.published_year < 0 ? `${-b.published_year} BC` : String(b.published_year)) : null);
     fact('Pages', b.pages ? fmt(b.pages) : null);
     fact('ISBN', b.isbn13 ? b.isbn13 + (b.isbn10 ? ` · ${b.isbn10}` : '') : null);
@@ -1134,54 +1179,79 @@
     return q ? `${GR}/search?q=${encodeURIComponent(q)}` : null;
   }
 
-  // minutes per day as bars and progress as a line, across one read
+  // one read, day by day, as two small multiples on a shared date axis: minutes read each day
+  // (bars) above, how far you'd got (a line) below; a panel with nothing to show is left out
   function drawBookDays(b, read, days) {
     const box = $('#ch-bk-days'), note = $('#bk-days-note');
     if (!state(box, 'diary')) return;
     const rows = read ? days.filter((d) => d.date >= read.start && d.date <= read.end) : [];
     if (!rows.length) { note.textContent = ''; box.style.minHeight = '80px'; box.replaceChildren(el('div', 'dy-empty', 'No days recorded for this read.')); return; }
     const n = span(read.start, read.end), tm = d3.sum(rows, (d) => d.minutes || 0), s = speedFrom(rows);
+    const hasMin = rows.some((d) => d.minutes > 0), hasProg = rows.some((d) => d.progress != null);
+    const parts = [hasMin && 'above, the minutes you read each day', hasProg && `${hasMin ? 'below' : 'the line'}, how far you'd got`].filter(Boolean);
     note.textContent = `${rangeLabel(read)}: read on ${fmt(rows.length)} of ${plural(n, 'day')}` + (tm ? `, ${mins(tm)} in all` : '') +
-      (s ? `, ${fmt(Math.round(s.wpm))} wpm` : '') + '. Bars are minutes read, the line is how far you got. Click a day to open it in the diary.';
-    const h = 260, m = { t: 22, r: 42, b: 24, l: 34 };
+      (s ? `, ${fmt(Math.round(s.wpm))} wpm` : '') + '. ' + (parts.length ? parts.join('; ').replace(/^./, (c) => c.toUpperCase()) + '. ' : '') + 'Click a day to open it in the diary.';
+    // panel heights; the date axis sits under the last one
+    const label = 16, between = 18, ax = 24, m = { l: 40, r: 12 };
+    const panels = [];
+    if (hasMin) panels.push({ id: 'min', title: 'Minutes read', h: hasProg ? 130 : 180 });
+    if (hasProg) panels.push({ id: 'prog', title: 'Progress', h: hasMin ? 80 : 120 });
+    if (!panels.length) panels.push({ id: 'none', title: '', h: 60 });
+    let top = 0;
+    for (const p of panels) { p.y0 = top + label; p.y1 = p.y0 + p.h; top = p.y1 + between; }
+    const h = panels[panels.length - 1].y1 + ax;
     box.style.minHeight = h + 'px';
     const { svg, w, tip } = svgIn(box, h);
-    const lo = pDate(read.start), x = d3.scaleUtc([lo, d3.utcDay.offset(pDate(read.end), 1)], [m.l, w - m.r]);
-    const hasMin = rows.some((d) => d.minutes > 0);
-    const y = d3.scaleLinear([0, d3.max(rows, (d) => d.minutes || 0) || 1], [h - m.b, m.t]).nice();
-    const yp = d3.scaleLinear([0, 100], [h - m.b, m.t]);
-    if (hasMin) {
-      axis(svg.append('g').attr('transform', `translate(${m.l},0)`), d3.axisLeft(y).ticks(5).tickSize(-(w - m.l - m.r)));
-      svg.append('text').attr('class', 'axl').attr('x', 0).attr('y', m.t - 10).text('minutes');
+    const lo = pDate(read.start), hi = d3.utcDay.offset(pDate(read.end), 1), x = d3.scaleUtc([lo, hi], [m.l, w - m.r]);
+    const dw = x(d3.utcDay.offset(lo, 1)) - x(lo), gap = dw > 6 ? Math.max(MARK.gap, Math.min(4, dw * 0.2)) : 0;
+    const bw = Math.max(1, Math.min(MARK.bar, dw - gap)), bx = (d) => x(pDate(d.date)) + (dw - bw) / 2;
+    const panelHead = (p) => svg.append('text').attr('class', 'axl').attr('x', 0).attr('y', p.y0 - 6).text(p.title);
+    for (const p of panels) {
+      if (p.id === 'min') {
+        panelHead(p);
+        const y = d3.scaleLinear([0, d3.max(rows, (d) => d.minutes || 0) || 1], [p.y1, p.y0 + 10]).nice();
+        const g = svg.append('g').attr('transform', `translate(${m.l},0)`);
+        axis(g, d3.axisLeft(y).ticks(Math.max(2, Math.round(p.h / 40))).tickSize(-(w - m.l - m.r)));
+        g.select('.domain').remove();
+        svg.append('g').selectAll('path').data(rows.filter((d) => d.minutes > 0)).join('path').attr('fill', gColor(b.genre))
+          .call(grow, 'd', (d) => barPath(bx(d), y(0), bw, 0), (d) => barPath(bx(d), y(d.minutes), bw, y(0) - y(d.minutes)));
+      } else if (p.id === 'prog') {
+        panelHead(p);
+        const yp = d3.scaleLinear([0, 100], [p.y1, p.y0 + 10]);
+        const g = svg.append('g').attr('transform', `translate(${m.l},0)`);
+        axis(g, d3.axisLeft(yp).tickValues([0, 50, 100]).tickFormat((v) => v + '%').tickSize(-(w - m.l - m.r)));
+        g.select('.domain').remove();
+        // progress at the end of each day, from where the read began
+        const first = rows.find((d) => d.progress != null);
+        const pts = [{ t: pDate(first.date), p: first.prev_progress ?? first.progress },
+          ...rows.filter((d) => d.progress != null).map((d) => ({ t: d3.utcDay.offset(pDate(d.date), 1), p: d.progress }))];
+        svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', gColor(b.genre)).attr('stroke-width', MARK.line).attr('stroke-linejoin', 'round')
+          .attr('d', d3.line((d) => x(d.t), (d) => yp(d.p))).call(drawIn);
+        if (pts.length <= 40 && dw >= 6) svg.append('g').selectAll('circle').data(pts.slice(1)).join('circle').attr('class', 'ring')
+          .attr('cx', (d) => x(d.t)).attr('cy', (d) => yp(d.p)).attr('fill', gColor(b.genre)).call(grow, 'r', 0, MARK.dot - 1);
+      }
     }
-    axis(svg.append('g').attr('transform', `translate(${w - m.r},0)`), d3.axisRight(yp).ticks(5).tickFormat((v) => v + '%').tickSize(hasMin ? 0 : -(w - m.l - m.r)).tickPadding(6));
-    svg.selectAll('.domain').remove();
-    svg.append('text').attr('class', 'axl').attr('x', w).attr('y', m.t - 10).attr('text-anchor', 'end').text('progress');
-    axis(svg.append('g').attr('transform', `translate(0,${h - m.b})`), d3.axisBottom(x).ticks(Math.max(2, Math.min(n, Math.floor(w / 90)))).tickFormat(d3.utcFormat(n <= 120 ? '%-d %b' : '%b %y')).tickSizeOuter(0));
-    const dw = x(d3.utcDay.offset(lo, 1)) - x(lo), gap = dw > 6 ? Math.min(4, dw * 0.2) : 0;
-    svg.append('g').selectAll('path').data(rows.filter((d) => d.minutes > 0)).join('path')
-      .call(grow, 'd', (d) => barPath(x(pDate(d.date)) + gap / 2, y(0), Math.max(1, dw - gap), 0), (d) => barPath(x(pDate(d.date)) + gap / 2, y(d.minutes), Math.max(1, dw - gap), y(0) - y(d.minutes))).attr('fill', gColor(b.genre)).attr('fill-opacity', 0.5);
-    // progress at the end of each day, from where the read began
-    const pts = rows.filter((d) => d.progress != null).map((d) => ({ t: d3.utcDay.offset(pDate(d.date), 1), p: d.progress }));
-    if (pts.length) {
-      const first = rows.find((d) => d.progress != null);
-      pts.unshift({ t: pDate(first.date), p: first.prev_progress ?? first.progress });
-      svg.append('path').datum(pts).attr('fill', 'none').attr('stroke', 'var(--color-fg)').attr('stroke-width', MARK.line).attr('stroke-linejoin', 'round')
-        .attr('d', d3.line((d) => x(d.t), (d) => yp(d.p))).call(drawIn);
-      if (pts.length <= 120) svg.append('g').selectAll('circle').data(pts.slice(1)).join('circle').attr('cx', (d) => x(d.t)).attr('cy', (d) => yp(d.p)).attr('r', 2.5).attr('fill', 'var(--color-fg)');
-    }
+    const last = panels[panels.length - 1];
+    const xa = svg.append('g').attr('transform', `translate(0,${last.y1})`);
+    // days for a short read, else months (ticks of a few days would repeat the month's name)
+    const fit = Math.max(2, Math.floor(w / 80));
+    const months = d3.utcMonth.count(lo, hi), every = Math.max(1, Math.ceil(months / fit));
+    axis(xa, (n <= 60 ? d3.axisBottom(x).ticks(Math.min(n, fit)).tickFormat(d3.utcFormat('%-d %b'))
+      : d3.axisBottom(x).ticks(d3.utcMonth.every(every)).tickFormat(d3.utcFormat(months > 10 ? '%b %y' : '%b'))).tickSizeOuter(0));
+    // one column per day across both panels: hover for the day, click to open it
     const byDate = new Map(rows.map((d) => [d.date, d]));
-    const at = (e) => iso(d3.utcDay.floor(x.invert(d3.pointer(e, svg.node())[0])));
-    svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', w - m.l - m.r).attr('height', h - m.t - m.b).attr('fill', 'transparent')
-      .on('mousemove', (e) => {
-        const day = at(e), d = byDate.get(day);
-        e.target.style.cursor = d ? 'pointer' : 'default';
+    const allDays = n <= 1000 ? d3.utcDay.range(lo, hi).map(iso) : rows.map((d) => d.date);
+    svg.append('g').selectAll('rect').data(allDays).join('rect').attr('class', 'hit')
+      .attr('x', (day) => x(pDate(day))).attr('width', Math.max(1, dw)).attr('y', panels[0].y0).attr('height', last.y1 - panels[0].y0)
+      .style('cursor', (day) => (byDate.has(day) ? 'pointer' : 'default'))
+      .on('mousemove', (e, day) => {
+        const d = byDate.get(day);
         showTip(tip, box, e, (tp) => tipLines(tp, d3.utcFormat('%a %-d %b %Y')(pDate(day)), d
           ? [[null, 'Time', d.minutes ? mins(d.minutes) : '—'], [null, 'Words', d.words ? fmt(d.words) : '—'], [null, 'Speed', okDay(d) ? Math.round(d.words / d.minutes) + ' wpm' : '—'], [null, 'Progress', progStep(d)]]
           : [[null, '', 'Not opened']]));
       })
       .on('mouseleave', () => hideTip(tip))
-      .on('click', (e) => { const day = at(e); if (byDate.has(day)) { hideTip(tip); openDiary(day); } });
+      .on('click', (e, day) => { if (byDate.has(day)) { hideTip(tip); openDiary(day); } });
   }
 
   // ---------- feature scripts (web/features/*.js) ----------
@@ -1199,6 +1269,8 @@
     const box = el('div', 'chart' + (o.chartClass ? ' ' + o.chartClass : ''));
     box.id = 'ch-' + o.id;
     if (o.calc) box.dataset.source = o.calc;
+    // data files the card does without when a visitor gets them empty (web/features/privacy.js)
+    if (o.copesWithout) box.dataset.copes = [].concat(o.copesWithout).join(' ');
     c.append(box);
     return { card: c, head, h, note, box };
   }
@@ -1317,6 +1389,8 @@
   }
   // sections of the admin page (web/features/admin.js draws them); see web/features/README.md
   const adminSections = [];
+  // slides other features add to Wrapped (web/features/wrapped.js draws them)
+  const wrappedSlides = [];
   document.addEventListener('animationend', (e) => e.target.classList?.remove('in-l', 'in-r', 'in-up'));
 
   // ---------- swipe between tabs (touch) ----------
@@ -1430,12 +1504,16 @@
     card: addCard,
     bookCard: (o) => { const parts = cardShell(o); bookCards.push({ ...o, parts, placed: false }); return parts; },
     extend: (kind, fn) => { (extensions[kind] = extensions[kind] || []).push(fn); },
+    goFact: (fn) => { goFactFns.push(fn); },
     tab: addTab,
     page: addPage,
     adminSection: (o) => { adminSections.push(o); window.dispatchEvent(new CustomEvent('rh:admin-section', { detail: o })); },
     adminSections: () => adminSections.slice().sort((a, b) => (a.order ?? 50) - (b.order ?? 50)),
+    wrappedSlide: (o) => { wrappedSlides.push(o); },
+    wrappedSlides: () => wrappedSlides.slice(),
     show: (name) => show(name),
     current: () => tab,
     redraw: () => redraw(),
+    markDays: (fn) => { dayMarkers.push(fn); },
   };
 })();

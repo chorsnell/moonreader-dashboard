@@ -33,14 +33,55 @@ A feature script is an IIFE that uses `dash` (data and calcs) and `rh` (drawing 
   // add to an entity page (author, series, genre, subgenre, year) after it draws
   rh.extend('year', (id, root) => {});
 
+  // facts about a book on the go: on the Overview's "On the go" card ('one' when it's the only
+  // book, 'list' for each of several) and in an unfinished book's page header ('book');
+  // row has the book's id; return [] to add nothing
+  rh.goFact((row, where) => [{ k: 'Likely finish', v: '9 Nov', title: 'a tooltip', cls: 'mine' }]);
+
   // a new tab; returns its <section>, then add cards with tab: 'mytab'
   rh.tab('mytab', 'My tab', { after: 'timeline' });
+
+  // shade date ranges on the heatmap, the reading timeline and the diary (life-events.js)
+  rh.markDays(() => [{ start: '2025-08-01', end: '2025-08-14', title: 'Holiday', color: rh.C[1] }]);
 
   // a page with no tab, opened by its link (#mypage or #mypage/<anything>); draw(section)
   // runs on every redraw while it's shown, so only rebuild what changed
   rh.page('mypage', (section) => {});
+
+  // a slide in Wrapped (see below)
+  rh.wrappedSlide({ id: 'mine', after: 'genres', show: (R) => true, build(slide, R, ui) {} });
 })();
 ```
+
+## Wrapped slides
+
+Wrapped (`wrapped.js`, opened from a year page) is a run of slides built from that year's
+`wrapped` row. A feature adds its own with `rh.wrappedSlide`, from any script, before or
+after `wrapped.js`:
+
+```js
+rh.wrappedSlide({
+  id: 'screen',            // the slide's class is wr-screen
+  after: 'genres',         // a built-in slide: intro, books, time, words, months, binge, reads,
+                           // authors, genres or records; left out (or not shown that year):
+                           // just before the closing share slide, which always comes last
+  show: (R) => true,       // false skips it for that year (R is the year's wrapped row)
+  build(slide, R, ui) {    // fill the slide's inner box
+    slide.append(ui.kicker('Your year on screen'), ui.big(120, 'hours watched'),
+      ui.line('wr-line', 'Some words.'), ui.line('wr-sub', 'Smaller words.'));
+  },
+});
+```
+
+`ui` holds the building blocks the built-in slides use, so an added one looks the same:
+`kicker(text)`, `big(n, unit, format?)` (a big number that counts up when the slide
+appears), `line(className, ...parts)` (`wr-line` or `wr-sub`), `bookLink(row)`, `plural`,
+`fmt`, `short` (12k, 1.2M), `hrs(minutes)` and `MONTHS`. Give anything that should rise in
+with the slide the class `wr-r`, and put links inside a `wr-links` element so a tap on them
+doesn't turn the page. Slides sit on a coloured background with white text, so use
+`rgba(255,255,255,…)` rather than the page's colours. A slide whose `show` or `build` throws
+is left out (and logged), and Wrapped carries on. Anything the slide needs should come from
+a calc (read with `dash.data(id)`), so it's worked out once and respects privacy.
 
 ## Calcs run on the server too
 
@@ -71,7 +112,7 @@ extra work as long as its rows follow the usual shape:
 - rows naming a book with `book_id` (or `id` in `books.json`) are left out or anonymised for
   private books and genres;
 - dates in fields named `date`, `start`, `end`, `first_read`, `last_read`, `generated`,
-  `synced`, `finish` or `finished_on` are rounded to the week or month, and `time` fields
+  `synced`, `finish`, `finished_on` or `added` are rounded to the week or month, and `time` fields
   are emptied;
 - `highlights*.json` is served empty when highlights are hidden, `prices*.json` (or
   `money*`, `spending*`, `purchases*`) when money is.
@@ -79,7 +120,9 @@ extra work as long as its rows follow the usual shape:
 Name date fields that way, or extend the lists in `privacy.ts`. On the page,
 `web/features/privacy.js` hides cards whose calc needs a file the visitor gets empty (found
 through `dash.needs(calc)`), cards it lists by id, and any card given `privacy: '<category>'`
-(categories: `exact_dates`, `diary`, `current`, `streaks`, `money`, `highlights`). Draw
+(categories: `exact_dates`, `diary`, `current`, `streaks`, `money`, `highlights`, `ratings`,
+`life_events`). A card whose calc only gains from such a file (the to-read pile adds bought
+books from `prices`) says so with `copesWithout: 'prices'` and stays. Draw
 functions should cope with empty rows. `dash.dates` is `'week'` or `'month'` when dates
 are rounded, and `rh.fDay` then shows the week or month.
 
@@ -115,7 +158,7 @@ rh.adminSection({
 `api` gives the section:
 - `h(tag, attrs, ...children)`: builds an element (`class`, `on<event>` handlers, `value`, and `true`/`false` attributes).
 - `block(title, note, ...children)`: a titled block, the building piece of every section; `msg()`: a status line.
-- `get(url)`, `post(url, body)`, `put(url, body, contentType?)`: JSON requests to the server that throw an `Error` with the server's `error` message on failure.
+- `get(url)`, `post(url, body)`, `put(url, body, contentType?)`, `del(url)`: JSON requests to the server that throw an `Error` with the server's `error` message on failure.
 - `config()`: what `/api/config` said; `status()`: `/api/admin/status` (current data, backups, last error).
 - `waitForBuild(statusBefore, say)`: after a change that rebuilds, waits for the new data, reports progress through `say(text)` and reloads the dashboard.
 - `when(date)`, `ago(date)`, `size(bytes)`: formatting; `refresh()`: draws the open section again.

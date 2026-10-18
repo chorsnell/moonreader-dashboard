@@ -11,5 +11,6 @@ import { ClubsService } from './clubs.service';
   imports: [AccessModule, LibraryModule, FriendsModule, FederationModule],
   controllers: [ClubsController],
   providers: [ClubsService],
+  exports: [ClubsService],
 })
 export class ClubsModule {}

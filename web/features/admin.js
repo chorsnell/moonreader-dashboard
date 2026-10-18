@@ -85,6 +85,7 @@
     get: (url) => call('GET', url),
     post: (url, b) => call('POST', url, b ?? {}),
     put: (url, b, type) => call('PUT', url, b, type),
+    del: (url) => call('DELETE', url),
     // a titled block inside a section
     block: (title, note, ...kids) => h('div', { class: 'ad-block' }, title && h('h3', {}, title), note && h('p', { class: 'up-note' }, note), ...kids),
     msg: () => h('p', { class: 'up-msg', role: 'status' }),
@@ -259,6 +260,7 @@
       ['highlights', 'Highlights and notes'],
       ['money', 'Prices and spending'],
       ['ratings', 'My ratings and shelves (from Goodreads or StoryGraph)'],
+      ['life_events', 'Holidays and life events (never shown by a preset; tick it to share them)'],
     ];
     const wrap = h('div', {}, h('p', { class: 'note' }, 'Loading…'));
     const block = a.block('What visitors can see', "You always see everything. Anything hidden here is taken out of the data on the server, so visitors can't get at it; cards that need it are left out of their page.", wrap);
@@ -370,6 +372,16 @@
     box.append(h('p', { class: 'up-note' }, 'Books Moon+ knows by file name only show as "Untagged". Give them a title, author, series and genre here; it is saved to catalogue.json and the stats rebuild. Under "Not finished", mark books you finished that Moon+ didn’t see reach the end (a broken file, or before it recorded progress).'),
       h('div', { class: 'ad-toolbar' }, which, search), count, list, more, lists);
 
+    // every country the browser can name, for the author's country field
+    const regions = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' }) : null;
+    const countryName = (code) => { try { return (code && regions && regions.of(code)) || code || ''; } catch { return code || ''; } };
+    function countryNames() {
+      if (!regions) return [];
+      const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', out = [];
+      for (const x of A) for (const y of A) { const n = countryName(x + y); if (n && n !== x + y && !['ZZ', 'EU', 'EZ', 'UN', 'QO', 'XA', 'XB'].includes(x + y)) out.push(n); }
+      return out;
+    }
+    const yearText = (y) => (y == null ? '' : y < 0 ? `${-y} BC` : String(y));
     function datalist(id, values) {
       return h('datalist', { id }, [...new Set(values.filter(Boolean))].sort().map((v) => h('option', { value: v })));
     }
@@ -380,7 +392,8 @@
       lists.replaceChildren(
         datalist('ad-authors', books.map((b) => b.author)), datalist('ad-series', books.map((b) => b.series)),
         datalist('ad-genres', books.map((b) => b.genre).filter((g) => g !== 'Untagged')),
-        datalist('ad-subgenres', books.map((b) => b.subgenre).filter((g) => g !== 'Untagged')));
+        datalist('ad-subgenres', books.map((b) => b.subgenre).filter((g) => g !== 'Untagged')),
+        datalist('ad-countries', countryNames()));
       render();
     }
     function render() {
@@ -442,6 +455,11 @@
         field('genre', 'Genre', keepGenre(b.genre), { list: 'ad-genres' }),
         field('subgenre', 'Subgenre', keepGenre(b.subgenre), { list: 'ad-subgenres' }),
         field('isbn', 'ISBN', b.isbn13, { inputmode: 'numeric', placeholder: 'ISBN-13 or ISBN-10' }),
+        // blank leaves it to the metadata lookup, whose answer shows as the placeholder
+        field('published_year', 'First published', yearText(b.published_year), { pattern: '\\s*-?\\d{1,4}(\\s*(BC|BCE|bc|bce))?\\s*',
+          title: 'A year, such as 1813, or 400 BC', placeholder: b.published_year == null && b.shown_published_year != null ? `Found: ${yearText(b.shown_published_year)}` : 'e.g. 1813 or 400 BC' }),
+        field('author_country', 'Author’s country', countryName(b.author_country), { list: 'ad-countries', autocomplete: 'off',
+          placeholder: b.author_country == null && b.shown_author_country ? `Found: ${countryName(b.shown_author_country)}` : 'e.g. United Kingdom' }),
         h('div', { class: 'ad-field' }, h('label', { for: finished.id }, 'Finished'), finished),
         h('p', { class: 'up-note ad-wide ad-files' }, `File${b.files.length === 1 ? '' : 's'}: ${b.files.join(', ')}`),
         h('div', { class: 'ad-actions ad-wide' }, save, notBook), msg);

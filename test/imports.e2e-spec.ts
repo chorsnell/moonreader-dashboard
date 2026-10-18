@@ -121,6 +121,17 @@ describe('imports', () => {
       goodreads_id: '12',
     });
     expect(books.some((b) => b.title === 'Wishlist')).toBe(false);
+    // the to-read shelf goes on the pile instead (BOO-76)
+    expect(await d.json('data', 'to_read.json')).toEqual([
+      expect.objectContaining({
+        book_id: 'goodreads:13',
+        title: 'Wishlist',
+        author: 'Wanda Wish',
+        added: '2023-04-01',
+        sources: ['goodreads'],
+        pages: 300,
+      }),
+    ]);
     const reads = await d.json<ReadRow[]>('data', 'reads.json');
     expect(reads.filter((r) => r.book_id === 'paper-book')).toEqual([
       expect.objectContaining({ start: '2023-05-06', end: '2023-05-06', source: 'goodreads' }),

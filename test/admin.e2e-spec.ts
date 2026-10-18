@@ -26,6 +26,10 @@ interface CatalogueBook extends BookRow {
   files: string[];
   untagged: boolean;
   has_cover: boolean;
+  published_year: number | null;
+  author_country: string | null;
+  shown_published_year: number | null;
+  shown_author_country: string | null;
 }
 
 let tmp: string;
@@ -251,6 +255,64 @@ describe('the Catalogue section', () => {
       .expect(200);
     expect(await entry()).not.toHaveProperty('finished');
     expect(await waitFor(async () => (await status()) !== 'finished')).toBe(true);
+  });
+
+  it('sets, keeps and clears the first-published year and author country', async () => {
+    dash = await withData();
+    const d = dash;
+    const files = ['Beta - Bob Writer.epub'];
+    const entry = async () =>
+      (await d.json<{ books: Record<string, Record<string, unknown>> }>('catalogue.json')).books[
+        'beta - bob writer.epub'
+      ];
+    for (const bad of [
+      { published_year: 'soon' },
+      { published_year: 99999 },
+      { author_country: 'Narnia' },
+    ]) {
+      await admin(dash)
+        .put('/api/admin/catalogue', { files, title: 'beta', ...bad })
+        .expect(400);
+    }
+
+    await admin(dash)
+      .put('/api/admin/catalogue', {
+        files,
+        title: 'beta',
+        published_year: '400 BC',
+        author_country: 'Ireland',
+      })
+      .expect(200);
+    expect(await entry()).toMatchObject({ published_year: -400, author_country: 'IE' });
+    const row = async () => (await books(d)).find((b) => b.id === 'beta');
+    expect(
+      await waitFor(async () => {
+        const r = (await row()) as Record<string, unknown> | undefined;
+        return r?.published_year === -400 && r?.author_country === 'IE';
+      }),
+    ).toBe(true);
+    const listed = async () =>
+      ((await admin(d).get('/api/admin/catalogue')).body as { books: CatalogueBook[] }).books.find(
+        (b) => b.id === 'beta',
+      )!;
+    expect(await waitFor(async () => (await listed()).shown_author_country === 'IE')).toBe(true);
+    expect(await listed()).toMatchObject({ published_year: -400, author_country: 'IE' });
+
+    // a save that leaves them out keeps them; blank clears them
+    await admin(dash)
+      .put('/api/admin/catalogue', { files, title: 'beta', genre: 'Fantasy' })
+      .expect(200);
+    expect(await entry()).toMatchObject({ published_year: -400, author_country: 'IE' });
+    await admin(dash)
+      .put('/api/admin/catalogue', {
+        files,
+        title: 'beta',
+        published_year: '',
+        author_country: null,
+      })
+      .expect(200);
+    expect(await entry()).not.toHaveProperty('published_year');
+    expect(await entry()).not.toHaveProperty('author_country');
   });
 
   it('hides a file that is not a book', async () => {

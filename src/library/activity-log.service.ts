@@ -17,6 +17,8 @@ export const ACTIVITY_TYPES = [
   'prune',
   'settings',
   'friends',
+  'notify',
+  'export',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 export type Outcome = 'ok' | 'failed';

@@ -129,6 +129,8 @@ export interface BookHistory {
   shelves?: string[];
   /** Each import's id for the book, e.g. { goodreads: '1885' }. */
   imports?: Partial<Record<ImportSource, string>>;
+  /** When it was added to a library (Moon+'s addTime, an import's Date Added), YYYY-MM-DD. */
+  added?: string | null;
 }
 
 export interface HistoryInput {
@@ -137,6 +139,8 @@ export interface HistoryInput {
   bookMeta: Map<string, [string, string]>;
   /** Lower-case file path -> ISBN, if Moon+'s books table has one (it usually doesn't). */
   isbns?: Map<string, string>;
+  /** Lower-case file path -> the day it was added to Moon+ (YYYY-MM-DD), from addTime. */
+  added?: Map<string, string>;
   statistics: StatisticsRow[];
   /** Lower-case file path -> last position (%), from positions10.xml. */
   positions: Map<string, number>;
@@ -151,4 +155,13 @@ export interface HistoryResult {
   syncedApplied: number;
   /** .po files whose contents weren't understood. */
   unreadableSyncs: string[];
+  /** Books in Moon+'s library never opened: no reading log and no position. */
+  unopened: UnopenedBook[];
+}
+
+/** A book file Moon+ has but that was never opened. */
+export interface UnopenedBook extends BookInfo {
+  /** The file name, as catalogue.json keys it (lower case). */
+  file: string;
+  added: string | null;
 }

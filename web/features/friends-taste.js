@@ -1,5 +1,5 @@
 // Taste match (BOO-31): how alike your reading is to a friend's. A compatibility score from
-// genres, authors and books in common; a Venn of shared authors; and the books you both
+// genres, authors, books in common and (BOO-93) how alike you rate the books you share; a Venn of shared authors; and the books you both
 // read, with how long each of you took and how fast you went.
 (() => {
   const DAY = 864e5;
@@ -51,10 +51,17 @@
     return out;
   }
 
+  // rating agreement counts once you've both rated this many of the same books
+  const RATED_MIN = 3;
+  // weights without ratings, and with them (the other three keep their proportions)
+  const WEIGHTS = { genre: 0.5, author: 0.3, books: 0.2 };
+  const WEIGHTS_RATED = { genre: 0.4, author: 0.24, books: 0.16, ratings: 0.2 };
+  const stars = (v) => (typeof v === 'number' && v > 0 && v <= 5 ? v : null);
+
   dash.calc('taste_match', {
     inputs: ['books', 'reads', 'daily', 'friend_books', 'friend_reads', 'friend_daily'],
     title: 'Taste match',
-    description: 'How alike two readers are: a 0–100 score (half genres, three tenths authors, a fifth books in common), shared and separate authors, and the books both read with each one’s days, hours and speed.',
+    description: 'How alike two readers are: a 0–100 score (half genres, three tenths authors, a fifth books in common; with 3+ books you both rated, a fifth goes to how alike your star ratings are), shared and separate authors, and the books both read with each one’s days, hours and speed.',
     fn: (books, reads, daily, fBooks, fReads, fDaily) => {
       const { shared, authorKey } = dash.sameBook;
       // genres: cosine similarity of the shares of reads
@@ -74,13 +81,21 @@
       const common = smaller ? pairs.length / smaller : 0;
       // a book in common is a strong signal: a fifth of a library in common counts as all of it
       const bookPart = Math.min(1, common * 5);
-      const score = Math.round(100 * (0.5 * genre + 0.3 * Math.min(1, author * 2) + 0.2 * bookPart));
+      // ratings: 1 minus the average gap in stars over the books you both rated (4 stars apart is 0)
+      const rated = pairs.map(({ mine: x, theirs: y }) => [stars(x.rating), stars(y.rating)]).filter(([x, y]) => x != null && y != null);
+      const gap = rated.length ? rated.reduce((s2, [x, y]) => s2 + Math.abs(x - y), 0) / rated.length : null;
+      const ratings = rated.length >= RATED_MIN ? Math.max(0, 1 - gap / 4) : null;
+      const authorPart = Math.min(1, author * 2);
+      const W = ratings == null ? WEIGHTS : WEIGHTS_RATED;
+      const score = Math.round(100 * (W.genre * genre + W.author * authorPart + W.books * bookPart + (ratings == null ? 0 : W.ratings * ratings)));
 
       const ms = readStats(reads, daily), ts = readStats(fReads, fDaily);
       const sortN = (m, keys) => keys.map((k) => m.get(k)).sort((x, y) => y.n - x.n || x.author.localeCompare(y.author));
       return [{
         score,
-        parts: { genre: Math.round(genre * 100), author: Math.round(Math.min(1, author * 2) * 100), books: Math.round(bookPart * 100) },
+        parts: { genre: Math.round(genre * 100), author: Math.round(authorPart * 100), books: Math.round(bookPart * 100), ratings: ratings == null ? null : Math.round(ratings * 100) },
+        // books you both rated, and the average gap between your stars
+        rated: rated.length, rated_min: RATED_MIN, star_gap: gap == null ? null : Math.round(gap * 100) / 100,
         genres: genres.map((g) => ({ genre: g, mine: a[g] || 0, theirs: b[g] || 0 })).sort((x, y) => y.mine + y.theirs - x.mine - x.theirs),
         authors: {
           both: both.map((k) => ({ author: am.get(k).author, mine: am.get(k).n, theirs: at.get(k).n })).sort((x, y) => y.mine + y.theirs - x.mine - x.theirs),
@@ -114,7 +129,7 @@
 
   rh.card({
     tab: 'friends', id: 'friends-taste', title: 'Taste match', after: 'card-friends-list', calc: 'books',
-    note: 'How alike your reading is: half from genres, the rest from authors and books you’ve both read.',
+    note: 'How alike your reading is: half from genres, the rest from authors and books you’ve both read. Once you’ve both rated 3 of the same books, a fifth comes from how alike your star ratings are.',
     draw(box, _rows, parts) {
       box.replaceChildren();
       const f = rh.friends && rh.friends.selected();
@@ -128,12 +143,17 @@
       const big = el('div', 'tm-score');
       big.append(el('b', null, String(m.score)), el('span', null, VERDICT.find(([t]) => m.score >= t)[1]));
       const bars = el('div', 'tm-parts');
-      [['Genres', m.parts.genre], ['Authors', m.parts.author], ['Books in common', m.parts.books]].forEach(([l, v]) => {
+      const partRows = [['Genres', m.parts.genre], ['Authors', m.parts.author], ['Books in common', m.parts.books]];
+      if (m.parts.ratings != null) partRows.push(['Star ratings', m.parts.ratings]);
+      partRows.forEach(([l, v]) => {
         const row = el('div', 'tm-part'), bar = el('div', 'pbar'), fill = el('i');
         fill.style.width = v + '%'; fill.style.background = 'var(--series-1)'; bar.append(fill);
         row.append(el('span', null, l), bar, el('b', null, v + '%'));
         bars.append(row);
       });
+      // how the ratings part came about, or why it isn't counted yet
+      if (m.parts.ratings != null) bars.append(el('p', 'tm-rated', `From ${plural(m.rated, 'book')} you both rated: ${m.star_gap === 0 ? 'the same stars every time' : `${fmt(m.star_gap)} star${m.star_gap === 1 ? '' : 's'} apart on average`}.`));
+      else if (m.rated > 0) bars.append(el('p', 'tm-rated', `Star ratings count once you’ve both rated ${m.rated_min} of the same books (${fmt(m.rated)} so far).`));
       head.append(big, bars);
       box.append(head);
 

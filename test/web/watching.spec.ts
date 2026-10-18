@@ -74,4 +74,45 @@ describe('reading and watching', () => {
       ['lost-world', 'film-the-lost-world-1925', 'read', 365],
     ]);
   });
+
+  it('sums a year on screen for Wrapped, and leaves out years with nothing watched or heard', () => {
+    const rows = run('x_year_screen', {
+      daily: [
+        { date: '2024-03-01', book_id: 'a', title: 'A', minutes: 600 },
+        { date: '2025-01-05', book_id: 'a', title: 'A', minutes: 120 },
+      ],
+      media_daily: [
+        { date: '2025-02-10', item_id: 'ab', media: 'audiobook', title: 'AB', minutes: 90 },
+        { date: '2025-03-01', item_id: 'f', media: 'film', title: 'F', minutes: 90 },
+        { date: '2025-03-02', item_id: 's1', media: 'tv', title: 'S1', minutes: 120 },
+        { date: '2025-03-03', item_id: 's2', media: 'tv', title: 'S2', minutes: 60 },
+        { date: '2025-03-04', item_id: 't1', media: 'tv', title: 'T1', minutes: 150 },
+      ],
+      media_items: [
+        item('f', 'film', 'F', '2025-03-01'),
+        item('s1', 'tv', 'Show S', '2025-03-02', { series_id: 'show-s', series: 'Show S' }),
+        item('s2', 'tv', 'Show S', '2025-03-03', { series_id: 'show-s', series: 'Show S' }),
+        item('t1', 'tv', 'Show T', '2025-03-04', { series_id: 'show-t', series: 'Show T' }),
+      ],
+      media_runs: [
+        { item_id: 'f', media: 'film', finished: true, end: '2025-03-01' },
+        { item_id: 's1', media: 'tv', finished: true, end: '2025-03-02' },
+        { item_id: 's2', media: 'tv', finished: false, end: '2025-03-03' },
+        { item_id: 'ab', media: 'audiobook', finished: true, end: '2025-02-10' },
+      ],
+    });
+    expect(rows).toEqual([
+      {
+        year: 2025,
+        read: 2,
+        watched: 7,
+        listened: 1.5,
+        seasons: 1,
+        films: 1,
+        shows: 2,
+        audiobooks: 1,
+        top_show: { show_id: 'show-s', show: 'Show S', hours: 3 },
+      },
+    ]);
+  });
 });

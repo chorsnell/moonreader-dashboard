@@ -39,7 +39,50 @@ add calcs or fields; check the index rather than assuming.
 
 `/api/stats/all` and `/api/stats/page` send an `ETag` and answer `If-None-Match` with `304`,
 and are gzipped for clients that accept it. Every response carries `X-Stats-Version`, which
-changes whenever the numbers could (new data, new privacy settings, new page code).
+changes whenever the numbers could (new data, new privacy settings, new page code). The
+numbers are worked out once per version for each kind of viewer, in a background thread
+(`STATS_WORKER=off` keeps it on the main thread), and kept until the version changes.
+
+### Now: for Home Assistant and other devices
+
+`GET /api/now` is a small summary for things that poll (Home Assistant's REST sensor, a
+display): `{today, as_of, generated, reading, today_minutes, week_minutes, streak, year,
+quote}`. The README's [Widgets and devices](../README.md#widgets-and-devices) section
+describes each field. It's worked out by `src/outbound/` from the same per-viewer data as
+the stats, so whatever the asker's audience hides is `null` (`reading` without "what
+you're reading now", the minutes without day-by-day reading, `streak` without streaks or
+exact days). `GET /api/now/cover` is the current book's cover, or `404`.
+
+Besides the usual sign-in, these two accept the **device token** made in **Admin → Widgets &
+devices** (`Authorization: Bearer …`, `X-Device-Token: …` or `?token=…`). It gets the
+audience the admin chose for it (by default the admin's own view) and opens nothing else.
+Both are `Cache-Control: private, no-store`.
+
+The admin's settings: `GET /api/admin/outbound` (`{goal, device_token, device_token_created,
+device_audience}`; the token itself is never returned), `PUT /api/admin/outbound/goal`
+(`{goal: 1–1000 | null}`), `PUT /api/admin/outbound/audience` (`{audience: 'admin' |
+'public' | 'reader' | 'friends'}`), `POST /api/admin/outbound/token` (a new token, returned
+this once) and `DELETE /api/admin/outbound/token`.
+
+### E-ink
+
+`GET /eink.png` is the 800 × 480 one-bit PNG of the now summary, `GET /eink/cover.png` the
+current cover dithered to 240 × 360 (or `404`), and `GET /api/trmnl` flat JSON for a TRMNL
+private plugin set to polling (`title`, `author`, `progress`, `cover_url`, `image_url`,
+`stats`, `streak`, `streak_at_risk`, `week_minutes`, `today_minutes`, `year`, `quote`,
+`quote_source`). Access is as for `/api/now` (the device token or the usual sign-in). The
+PNGs send an `ETag`, answer `304`, and are `Cache-Control: private, max-age=60`. The image
+URLs in `/api/trmnl` carry the device token on as `?token=` when it was sent, and a `v=` that
+changes with the picture.
+
+### Badges
+
+`GET /badge/reading.svg`, `/badge/year.svg` (`?style=card`) and `/badge/heatmap.svg`
+(`?weeks=4–53`) are SVG images of what the **public** may see, whoever asks, with
+`?theme=light|dark` and `?title=`. They're `404` while the dashboard has a read password
+(and the heatmap when the public don't get day-by-day reading). `Cache-Control: public,
+max-age=1800`, an `ETag`, and `304` when unchanged. The README's Badges section has embed
+examples.
 
 ### Calcs the server leaves out
 
@@ -64,6 +107,19 @@ curl -s -c jar -H 'Content-Type: application/json' -d '{"password":"…"}' https
 curl -s -b jar https://reading.example.com/api/stats/year/2025
 ```
 
+## Reading challenges
+
+The challenges on the Overview (`challenge_progress` above gives their progress) are set by
+the admin, and kept in `settings.json` under `challenges`. When that is missing, a default
+set is used. Everyone reads the list as `/data/challenges.json`. It names no books, so it is
+the same for every viewer; progress is worked out from each viewer's own filtered data.
+
+| Method and path | Who | What |
+| --- | --- | --- |
+| `GET /api/admin/challenges` | admin | `{challenges, custom, defaults}`; `custom` is false while the defaults are in use |
+| `PUT /api/admin/challenges` | admin | `{challenges: [{id?, kind, title, target, period, from?, to?}]}`. `kind` is `countries`, `decades` (with `from` and `to`, years), `series`, `women` (target in %), `streak` (days) or `genres`; `period` is `year` (the latest reading's year) or `all`. Up to 20. `400` with an `error` when something can't be used |
+| `POST /api/admin/challenges/reset` | admin | Back to the defaults |
+
 ## How it works
 
 `src/stats/page-sandbox.ts` loads the page's scripts in Node, in the order `index.html` loads
@@ -80,3 +136,159 @@ writes `api/stats/page`, `api/stats/all` and `api/stats/<calc>` as files at buil
 `test/web/server-stats.spec.ts` checks that the server and the page's own `runtime.js` give
 identical rows for every calc on the demo history and the fake backup, for the admin and for
 filtered visitors; `test/stats.e2e-spec.ts` checks the API's privacy.
+
+## Feeds
+
+Atom and iCal feeds (BOO-74), made by the admin under **Admin → Feeds**. They're not part of
+the stats API, but they follow the same rule: nothing in them says more than the data files
+their audience could fetch.
+
+| Path | Returns |
+| --- | --- |
+| `/feeds/<secret>.atom` | `application/atom+xml`: the 50 most recent finished reads, newest first. Each entry has the title and author, a link to `#book/<id>`, and HTML content with the cover, rating, series, genre, hours and days |
+| `/feeds/<secret>.ics` | `text/calendar`: all-day events. These are `day-<date>` (reading days, last 400), `finish-<read id>` (finishes) and `club-<id>-start`, `-week-<n>` (book club schedule) |
+| `/feeds/<secret>/covers/<book id>.(jpg\|png)` | A cover the Atom feed links to, through the same secret |
+
+- **The secret** is 32 random bytes (base64url). A wrong one gets a `404` after a short pause, the same as no feed. Only its sha256 is stored (`library/feeds.json`, mode 0600), compared in constant time, like federation tokens.
+- **The audience** is `public`, `reader` or `friends`. The feed is filtered by that audience's privacy policy from Access & privacy, as `/data/*` is for them, whatever the dashboard's access setting.
+  - Private books are left out (also when anonymised).
+  - Dates are rounded to the week or month.
+  - Reading days need exact days, the diary and streaks.
+  - Book clubs need the audience to see friends' reading (`visible_to`) and current reading; friends never get them.
+- Responses are `Cache-Control: private, max-age=300` with `X-Robots-Tag: noindex`. The calendar asks to be refreshed every 6 hours.
+
+Admin endpoints (`@AdminOnly`):
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/feeds` | `{feeds: [{id, kind, audience, name, created, rotated, last_used}]}`, without secrets |
+| `POST /api/admin/feeds` | `{kind: "atom" \| "ical", audience?, name?}` → `{feed, url}`. The only time the URL is given |
+| `POST /api/admin/feeds/<id>/rotate` | A new secret → `{feed, url}`; the old URL stops working |
+| `DELETE /api/admin/feeds/<id>` | Revokes it |
+
+The URL is built from `PUBLIC_URL`, else the request's host (as for link previews).
+
+## Notifications
+
+Admin endpoints (`@AdminOnly`) behind **Admin → Notifications** (BOO-72). Channel URLs and tokens are never returned; a channel comes back as `{id, type, name, host, has_token}`.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/notify` | `{channels, events: {<kind>: on}, kinds: [{kind, label, note}], streak_hour, streak_min}` |
+| `PUT /api/admin/notify` | Any of `{events: {<kind>: bool}, streak_hour: 0–23, streak_min}` |
+| `POST /api/admin/notify/channels` | `{type: "ntfy" \| "gotify" \| "discord" \| "webhook", url, token?, name?}` |
+| `DELETE /api/admin/notify/channels/<id>` | Removes one |
+| `POST /api/admin/notify/channels/<id>/test` | Sends a test message to that channel: `{ok}` or `{ok: false, error}` |
+| `POST /api/admin/notify/check` | Looks for events now, as after a rebuild: `{sent: [{kind, title}]}` |
+
+### Sending your own: `NotifierService`
+
+Any server feature can tell the owner something (a morning highlight review, say) through the same channels. Import `NotifyModule` and inject `NotifierService` (`src/notify/notifier.service.ts`):
+
+```ts
+@Module({ imports: [NotifyModule], providers: [HighlightReviewService] })
+export class HighlightReviewModule {}
+
+@Injectable()
+export class HighlightReviewService implements OnModuleInit {
+  constructor(private readonly notifier: NotifierService) {}
+
+  onModuleInit() {
+    // a toggle for it in Admin → Notifications (on unless the admin turns it off)
+    this.notifier.registerKind('highlight_review', 'Morning highlight review', 'A few of your highlights, every morning.');
+  }
+
+  async morning() {
+    await this.notifier.send({
+      kind: 'highlight_review',            // [a-z][a-z0-9_]*; switched off kinds aren't sent
+      title: 'Three highlights from a year ago',
+      message: '“It was a dark and stormy night.” Alpha, Ann Author\n…',
+      url: 'https://reading.example.com/#highlights', // optional: what tapping it opens
+      tags: ['books'],                     // optional: ntfy shows them as emoji
+      priority: 'default',                 // optional: low, default or high
+      data: { count: 3 },                  // optional: extra JSON for webhooks
+    });
+  }
+}
+```
+
+- `send(event)` never throws. It resolves with `{enabled, sent, failed: [{channel, error}]}`, where `enabled` is false when the admin switched that kind off.
+- Each send is recorded under **Sync & logs → Notifications**.
+- `wants(kind)` says whether anything would be sent, to skip expensive work.
+- `sendTo(channelId, event)` sends to one channel whatever the toggles say; it's what the **Send test** button uses.
+- **Privacy**: messages go to the owner's own channels, but a Discord channel may be shared, so don't name private books (`PrivacyService.context(...)`'s `private` set). The built-in events never do.
+
+### What each channel receives
+
+- **ntfy**: `POST <server>/` with JSON `{topic, title, message, tags, priority (2/3/4), click}` and `Authorization: Bearer <token>` when set.
+- **Gotify**: `POST <server>/message` with `X-Gotify-Key` and `{title, message, priority (2/5/8), extras.client::notification.click.url}`.
+- **Discord**: `POST <webhook>` with `{username, embeds: [{title, description, url, timestamp}]}`.
+- **Webhook**: `POST <url>` with `{event, title, message, url, tags, priority, data, time}` (time is local, `YYYY-MM-DDTHH:MM:SS`) and `Authorization: Bearer <token>` when set.
+
+The built-in events and their `data` are:
+
+- `book_finished`: `{book_id, read_id, title, author, end}`, or `{count}` for a digest.
+- `new_record`: `{record, value, previous}`.
+- `streak_at_risk`: `{streak, last_read}`.
+- `year_goal`: `{year, goal, finished}`. The goal is the one under **Widgets & devices** (`PUT /api/admin/outbound/goal`).
+- `friend_finished`: `{friend, book_id, title}`.
+
+## Admin: highlight exports
+
+Admin only (`X-Upload-Token` or the admin session); anyone else gets `403`. The admin's own
+export, so private books are included.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/highlights` | `{books, highlights, readwise: {token_set, pushed, last}}`; never the token |
+| `GET /api/admin/highlights/export/markdown.zip` | A zip of `Highlights/<Title> - <Author>.md`, one per book: YAML front matter and the highlights in book order |
+| `GET /api/admin/highlights/export/readwise.csv` | Readwise's CSV import columns: `Highlight,Title,Author,URL,Note,Location,Date` |
+| `PUT /api/admin/highlights/readwise` | `{token}`: checked against Readwise's `/api/v2/auth/`, then kept in `settings.json`. `400` if Readwise turns it down |
+| `DELETE /api/admin/highlights/readwise` | Forgets the token |
+| `POST /api/admin/highlights/readwise/push` | `{all?: boolean}`: sends highlights not sent before (all of them with `all`) to Readwise's `/api/v2/highlights/` in batches of 100; returns `{sent, skipped, total}`. `429` when Readwise asks to slow down (what was sent is kept) |
+
+## Daily highlight review
+
+BOO-83. State in `library/highlight-review.json`; keys are 20 hex characters (a hash of the
+book id and the highlight's text), so they survive rebuilds.
+
+| Method and path | Who | Does |
+| --- | --- | --- |
+| `GET /api/review/today` | Anyone who may read | `{date, items: [{key, book_id, title, author, genre, text, note, date}], can_review}`. The admin also gets each item's `card` (`{interval, due, never?, reviews, last}`), `settings`, and counts (`highlights`, `reviewed`, `never`, `due`). Visitors get the day's pick filtered like `highlights.json`: empty when highlights are hidden from them, without private books |
+| `POST /api/admin/review/<key>` | Admin | `{action: "keep" \| "less" \| "never" \| "reset"}`: `{card, next: {due, when} \| null}` |
+| `GET /api/admin/review/settings` | Admin | `{per_day, notify, hour, notifier}` (`notifier`: a channel is set up and "Daily highlights" is on) |
+| `PUT /api/admin/review/settings` | Admin | Any of `{per_day: 1–20, notify: bool, hour: 0–23}` |
+| `GET /api/admin/review/anki.txt` | Admin | Tab-separated text for Anki's File → Import: passage, note and book, tags |
+
+The morning send is a `NotifierService` event of kind `highlight_review`, sent once a day from
+`hour` when `notify` is on; `data` has `{date, items}`.
+
+## Life events (admin)
+
+Holidays, trips and life events (`library/life_events.json`). Admin only (`UPLOAD_TOKEN` as
+`X-Upload-Token`, or the admin cookie); JSON bodies; errors are `{error}` with `400`, `403`
+or `404`. The page reads the events as `/data/life_events.json` (`[{id, title, kind, start,
+end, source}]`, `kind` one of `holiday`, `trip`, `job`, `baby`, `move`, `other`; `end`
+inclusive), which visitors get empty unless their policy has `life_events: true`.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/life-events` | `{events, kinds, calendar: {set, host, pulled, error, events}}`. The calendar's full address is never returned, only its host |
+| `POST /api/admin/life-events` | Adds an event: `{title, kind, start, end?}` (dates `YYYY-MM-DD`; `end` defaults to `start`) |
+| `PUT /api/admin/life-events/<id>` | Changes one, same body |
+| `DELETE /api/admin/life-events/<id>` | Removes one |
+| `PUT /api/admin/life-events/calendar` | Sets the iCal address (`{url}`: `https://`, `http://` or `webcal://`; `''` removes it and its events) and reads it: `{read, error, …}` as GET |
+| `POST /api/admin/life-events/calendar/refresh` | Reads the calendar again now. A failure keeps the last good events and is reported in `error` |
+
+## Weather (admin)
+
+The home location for "Reading and the weather" (`library/weather.json`). Admin only. The
+page reads the days as `/data/weather.json` (`[{date, t_max, t_min, precip_mm,
+daylight_h}]`: °C, mm, hours), with no location in it. Visitors whose dates are rounded, or
+who don't get the diary, get it empty.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/weather` | `{enabled, location: {name, lat, lon} \| null, pulled, error, days, first, last}` |
+| `PUT /api/admin/weather/location` | `{place}`: a town (Open-Meteo geocoding, first match) or `"lat, lon"`; `''` removes it. A new location clears the cached days and fetches its weather. `400` with `error` if the place isn't found. Returns `{added, error, …}` as GET |
+| `POST /api/admin/weather/refresh` | Fetches the days not cached yet. A failure (offline) keeps the cache and is reported in `error` |

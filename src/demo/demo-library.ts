@@ -11,16 +11,19 @@ import { CoverLookupService } from '../covers/cover-lookup.service';
 import { parseReadingExport } from '../imports/goodreads';
 import { MediaBuildService } from '../media/media-build.service';
 import { servedPrices } from '../prices/prices';
+import { DEFAULT_CHALLENGES } from '../challenges/challenges';
 import { writeDemoBackup } from './demo-backup';
-import { BOOKS, fileName, ISBN } from './demo-books';
+import { BOOKS, fileName, ISBN, UNOPENED } from './demo-books';
 import { writeDemoFriends } from './demo-friends-site';
 import { demoGoodreadsCsv } from './demo-goodreads';
 import { demoKobo } from './demo-kobo';
-import { simulateHighlights } from './demo-highlights';
+import { demoLifeEvents } from './demo-life-events';
+import { anniversaryHighlight, simulateHighlights } from './demo-highlights';
 import { demoMediaCatalogue, simulateAudiobookshelf, simulateNetflix } from './demo-media';
 import { demoMetadata } from './demo-metadata';
 import { demoPrices } from './demo-prices';
 import { DemoModule } from './demo.module';
+import { demoWeather } from './demo-weather';
 import { Random } from './random';
 import { simulate, type DemoDay } from './simulate';
 
@@ -49,6 +52,8 @@ export async function buildDemoLibrary(
   let firstDay = yesterday - days + 1;
   firstDay -= firstDay % 7; // keep simulated weekends on real weekends (day 0 is a Thursday)
   const lastDay = firstDay + days - 1;
+  // a highlight on today's date in an earlier year, for the Overview's "On this day"
+  anniversaryHighlight(log, highlights, firstDay, today);
   const catalogue: Catalogue = {
     exclude: [],
     books: Object.fromEntries(
@@ -65,11 +70,22 @@ export async function buildDemoLibrary(
   ]) {
     catalogue.books[`kobo:${id}`] = { title, author, genre: 'Classics', subgenre: 'Coming of Age' };
   }
+  // the files never opened are catalogued too, as the admin would have done
+  for (const [title, author, genre, subgenre, series, seriesNo] of UNOPENED) {
+    catalogue.books[fileName(title, author).toLowerCase()] = {
+      title,
+      author,
+      series,
+      series_no: seriesNo,
+      genre,
+      subgenre,
+    };
+  }
   await writeFile(join(lib, 'catalogue.json'), JSON.stringify(catalogue), 'utf8');
   // what the metadata lookup would find, so the demo needs no network for it
   await writeFile(join(lib, 'metadata.json'), JSON.stringify(demoMetadata()), 'utf8');
   const backup = join(lib, 'demo-library.mrpro');
-  await writeDemoBackup(backup, log, firstDay, highlights);
+  await writeDemoBackup(backup, log, firstDay, highlights, lastDay);
   // a Kobo's database, as if uploaded on the admin page: two books read on the Kobo
   const kobo = { ...demoKobo(firstDay, lastDay, seed), imported: `${today}T09:00:00` };
   await writeFile(join(lib, 'kobo.json'), JSON.stringify(kobo), 'utf8');
@@ -91,6 +107,18 @@ export async function buildDemoLibrary(
   // what the server writes from library/prices.json
   const prices = servedPrices(demoPrices(log, firstDay, seed));
   await writeFile(join(lib, 'data', 'prices.json'), JSON.stringify(prices));
+  // the default reading challenges, as the server publishes them from settings.json
+  await writeFile(join(lib, 'data', 'challenges.json'), JSON.stringify(DEFAULT_CHALLENGES));
+  // holidays and life events, as the server writes them from library/life_events.json
+  await writeFile(
+    join(lib, 'data', 'life_events.json'),
+    JSON.stringify(demoLifeEvents(log, firstDay, lastDay)),
+  );
+  // made-up weather, as the server writes it from Open-Meteo (data/weather.json)
+  await writeFile(
+    join(lib, 'data', 'weather.json'),
+    JSON.stringify(demoWeather(log, firstDay, lastDay, seed)),
+  );
   // two friends to compare with, as if their share files had been added
   await writeDemoFriends(lib, firstDay, lastDay);
   return { log, firstDay, lastDay, summary };

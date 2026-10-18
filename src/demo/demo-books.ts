@@ -203,6 +203,8 @@ export const BOOKS: DemoBook[] = [
     null,
     70000,
   ],
+  // last, so adding it left the rest of the random history as it was
+  ['Vanity Fair', 'William Makepeace Thackeray', 'Classics', 'Victorian', null, null, 310000],
 ];
 
 /** ISBNs of well-known paperback editions, as if typed into catalogue.json; the rest have none. */
@@ -263,6 +265,8 @@ export const REREADS = [
 ];
 /** The book on the go, left part way through. */
 export const CURRENT = 'The Count of Monte Cristo';
+/** Also on the go, but stalling: slowing down, with longer and longer breaks. */
+export const STALLING = 'Vanity Fair';
 // a few quirks real logs have, so the Data checks tab has something to show
 /** Opened once, this many days before starting. */
 export const STRAY: Record<string, number> = { 'Jane Eyre': 52, 'The Moonstone': 41, Dracula: 64 };
@@ -294,3 +298,51 @@ export const STYLE: Record<string, Style> = {
 };
 
 export const fileName = (title: string, author: string) => `${title} - ${author}.epub`;
+
+/**
+ * Book files in Moon+'s library that were never opened: on the to-read pile (BOO-76). Two
+ * carry on series you've read, so "what next" has a series to pull you along. [title, author,
+ * genre, subgenre, series, series no, words, days before the history ends that it was added]
+ */
+export const UNOPENED: [...DemoBook, addedDaysAgo: number][] = [
+  [
+    'Thuvia, Maid of Mars',
+    'Edgar Rice Burroughs',
+    'Science Fiction',
+    'Planetary Romance',
+    'Barsoom',
+    4,
+    62000,
+    410,
+  ],
+  [
+    'The Return of Sherlock Holmes',
+    'Arthur Conan Doyle',
+    'Mystery',
+    'Detective',
+    'Sherlock Holmes',
+    6,
+    110000,
+    160,
+  ],
+  [
+    'Dorothy and the Wizard in Oz',
+    'L. Frank Baum',
+    'Fantasy',
+    'Portal Fantasy',
+    'Oz',
+    4,
+    42000,
+    75,
+  ],
+  ['Vanity Fair', 'William Makepeace Thackeray', 'Classics', 'Victorian', null, null, 310000, 690],
+  ['Kim', 'Rudyard Kipling', 'Adventure', 'Historical', null, null, 108000, 240],
+  ['The Hunchback of Notre-Dame', 'Victor Hugo', 'Classics', 'Historical', null, null, 186000, 31],
+];
+
+/** How many days before its first read a book was added to Moon+ (0 to 40, the same every build). */
+export function addedLead(title: string): number {
+  let h = 7;
+  for (const c of title) h = (h * 31 + c.charCodeAt(0)) % 1009;
+  return h % 41;
+}

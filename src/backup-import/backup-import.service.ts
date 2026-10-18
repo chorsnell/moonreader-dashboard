@@ -8,6 +8,7 @@ import { localDate, localDateTime, round1 } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
 import { ImportsStore } from '../imports/imports.store';
 import { mergeImports, type MergeResult } from '../imports/merge';
+import { buildToRead, type ToReadRow } from '../imports/to-read';
 import { LibraryService } from '../library/library.service';
 import { bookFacts } from '../metadata/merge';
 import { MetadataStore } from '../metadata/metadata-store.service';
@@ -72,13 +73,14 @@ export class BackupImportService {
       if (backup && !contents.databasePath) {
         throw new Error('This backup has no mrbooks.db database.');
       }
-      const { bookMeta, isbns, statistics, notes } = contents.databasePath
+      const { bookMeta, isbns, added, statistics, notes } = contents.databasePath
         ? readDatabase(contents.databasePath)
-        : { bookMeta: new Map(), isbns: new Map(), statistics: [], notes: [] };
+        : { bookMeta: new Map(), isbns: new Map(), added: new Map(), statistics: [], notes: [] };
       const result = buildReadingHistory({
         catalogue,
         bookMeta,
         isbns,
+        added,
         statistics,
         positions: parsePositions(contents.positionsXml),
         synced: await this.readSyncedPositions(),
@@ -94,6 +96,9 @@ export class BackupImportService {
             sources: importFiles.map((f) => f.source),
           }
         : null;
+
+      // the to-read pile: unopened Moon+ files and to-read shelves (BOO-76)
+      const toRead = buildToRead(result.books, result.unopened, imported?.toRead ?? []);
 
       const { highlights } = buildHighlights(result.books, notes);
       // highlights from Kobo and Kindle, numbered after Moon+'s
@@ -133,6 +138,7 @@ export class BackupImportService {
         result.untagged.length,
         result.syncedApplied,
         importFiles.map((f) => ({ source: f.source, file: f.file, imported: f.imported })),
+        toRead,
       );
       // The watcher rebuilds when an input is newer than meta.json. Date it to when this
       // build started reading its inputs, so a position synced (or a catalogue saved) while
@@ -145,11 +151,14 @@ export class BackupImportService {
           (result.syncedApplied ? `, ${result.syncedApplied} synced position(s) applied` : '') +
           (newCovers ? `, ${newCovers} new cover(s) from the backup` : ''),
       ];
+      if (toRead.length) lines.push(`To-read pile: ${toRead.length} book(s) not started yet`);
       if (imported) {
         lines.push(
           `Imports (${imported.sources.join(', ')}): ${imported.matched} matched, ${imported.added} added` +
             (imported.highlights.length ? `, ${imported.highlights.length} highlights` : '') +
-            (imported.skipped ? `, ${imported.skipped} to-read or excluded left out` : ''),
+            (imported.skipped
+              ? `, ${imported.skipped} to-read or excluded left out of the library`
+              : ''),
         );
       }
       if (result.unreadableSyncs.length) {
@@ -200,6 +209,7 @@ export class BackupImportService {
     untagged: number,
     synced: number,
     imports: { source: string; file: string; imported: string }[] = [],
+    toRead: ToReadRow[] = [],
   ): Promise<Pick<ImportSummary, 'books' | 'reads' | 'readingDays' | 'highlights'>> {
     const booksRows = [];
     const readsRows = [];
@@ -226,6 +236,7 @@ export class BackupImportService {
         ...(b.rating ? { rating: b.rating } : {}),
         ...(b.shelves?.length ? { shelves: b.shelves } : {}),
         ...(b.source ? { source: b.source } : {}),
+        ...(b.added ? { added: b.added } : {}),
         // so the book page can link straight to the book on Goodreads (an export row with no
         // Book Id falls back to its title, which isn't one)
         ...(/^\d+$/.test(b.imports?.goodreads ?? '') ? { goodreads_id: b.imports!.goodreads } : {}),
@@ -275,6 +286,8 @@ export class BackupImportService {
     await this.dump('daily.json', dailyRows);
     // kept apart from the reading data: highlights are the most personal part
     await this.dump('highlights.json', highlights);
+    // books waiting to be read that the library doesn't otherwise have
+    await this.dump('to_read.json', toRead);
     await this.dump(
       'reading_history.json',
       {
@@ -312,6 +325,7 @@ export class BackupImportService {
 function readDatabase(path: string): {
   bookMeta: Map<string, [string, string]>;
   isbns: Map<string, string>;
+  added: Map<string, string>;
   statistics: StatisticsRow[];
   notes: NoteRow[];
 } {
@@ -319,21 +333,28 @@ function readDatabase(path: string): {
   try {
     const bookMeta = new Map<string, [string, string]>();
     const isbns = new Map<string, string>();
+    const added = new Map<string, string>();
     for (const table of ['tmpbooks', 'books']) {
       // Moon+ isn't known to keep ISBNs, but read one if a version has a column for it
-      const isbn = db
+      const names = db
         .prepare(`pragma table_info(${table})`)
         .all()
-        .map((c) => String(c.name))
-        .find((c) => /^(isbn\w*|identifier)$/i.test(c));
+        .map((c) => String(c.name));
+      const columns = names.map((c) => c.toLowerCase());
+      const isbn = names.find((c) => /^(isbn\w*|identifier)$/i.test(c));
+      const hasAdded = columns.includes('addtime');
       const rows = db
-        .prepare(`select book, filename, author${isbn ? `, "${isbn}" as isbn` : ''} from ${table}`)
+        .prepare(
+          `select book, filename, author${isbn ? `, "${isbn}" as isbn` : ''}${hasAdded ? ', addTime' : ''} from ${table}`,
+        )
         .all();
-      for (const { book, filename, author, isbn: id } of rows) {
+      for (const { book, filename, author, isbn: id, addTime } of rows) {
         if (!filename) continue;
         const file = String(filename).toLowerCase();
         bookMeta.set(file, [String(book ?? ''), String(author ?? '')]);
         if (id) isbns.set(file, String(id));
+        const day = addedDay(addTime);
+        if (day && (!added.has(file) || day < added.get(file)!)) added.set(file, day);
       }
     }
     const statistics = db
@@ -345,10 +366,22 @@ function readDatabase(path: string): {
         readWords: r.readWords == null ? null : Number(r.readWords),
         dates: r.dates == null ? null : String(r.dates),
       }));
-    return { bookMeta, isbns, statistics, notes: readNotes(db) };
+    return { bookMeta, isbns, added, statistics, notes: readNotes(db) };
   } finally {
     db.close();
   }
+}
+
+/**
+ * Moon+'s addTime as a day: a time in ms (or seconds) since 1970, written as text. Anything
+ * else, or a time before 2000 or after now, is unknown.
+ */
+export function addedDay(raw: unknown): string | null {
+  const n = Number(String(raw ?? '').trim());
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const ms = n >= 1e11 ? n : n * 1000;
+  if (ms < Date.UTC(2000, 0, 1) || ms > Date.now() + 86_400_000) return null;
+  return localDate(new Date(ms));
 }
 
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };

@@ -4,6 +4,8 @@
  * the copy the page reads (data/prices.json).
  */
 
+import { isbnDigits, looseTitle, sameAuthorLoose } from '../common/book-match';
+
 export const ACQUISITIONS = ['bought', 'free', 'library', 'subscription', 'gift'] as const;
 export type Acquisition = (typeof ACQUISITIONS)[number];
 
@@ -517,34 +519,6 @@ export interface ImportResult {
   columns: Column[];
 }
 
-const STOP = /^(the|a|an)\s+/;
-export const normTitle = (s: string) =>
-  (s.split(/\s*(?::|\(|\s[-–—]\s)/)[0] || s) // without a subtitle or "(Book 1)"
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9 ]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(STOP, '');
-const normAuthor = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z ]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-/** Same author if the whole name or the surname matches ("Wells, H. G." and "H. G. Wells"). */
-function sameAuthor(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  const x = normAuthor(a.includes(',') ? a.split(',').reverse().join(' ') : a);
-  const y = normAuthor(b.includes(',') ? b.split(',').reverse().join(' ') : b);
-  return x === y || x.split(' ').pop() === y.split(' ').pop();
-}
-const normIsbn = (s: string | null | undefined) => (s ?? '').replace(/[^0-9Xx]/g, '').toUpperCase();
-
 /** Works out which book each row of a CSV is, and the entry it would save. Changes nothing. */
 export function previewImport(csv: string, books: BookRef[], file: PricesFile): ImportResult {
   const [header = [], ...data] = parseCsv(csv);
@@ -563,7 +537,7 @@ export function previewImport(csv: string, books: BookRef[], file: PricesFile): 
   const byIsbn = new Map<string, BookRef>();
   for (const b of books) {
     for (const i of [b.isbn13, b.isbn, ...(b.isbns ?? [])])
-      if (normIsbn(i)) byIsbn.set(normIsbn(i), b);
+      if (isbnDigits(i)) byIsbn.set(isbnDigits(i), b);
   }
   // books not in the reading data that already have a price entry (never opened)
   const known = new Set(books.map((b) => b.id));
@@ -595,23 +569,23 @@ export function previewImport(csv: string, books: BookRef[], file: PricesFile): 
         bundle: cell(r, 'bundle'),
         isbn: cell(r, 'isbn'),
       });
-      const isbn = normIsbn(entry.isbn);
-      const t = normTitle(title);
-      const sameTitle = (b: { title: string }) => normTitle(b.title) === t;
+      const isbn = isbnDigits(entry.isbn);
+      const t = looseTitle(title);
+      const sameTitle = (b: { title: string }) => looseTitle(b.title) === t;
       let book: { id: string } | undefined;
       let by: ImportRow['matched_by'] = null;
       if (isbn && byIsbn.has(isbn)) [book, by] = [byIsbn.get(isbn), 'isbn'];
       if (!book) {
         const hits = books.filter(sameTitle);
-        const withAuthor = hits.filter((b) => sameAuthor(b.author ?? '', author));
+        const withAuthor = hits.filter((b) => sameAuthorLoose(b.author ?? '', author));
         if (withAuthor.length === 1) [book, by] = [withAuthor[0], 'title_author'];
         else if (hits.length === 1 && (!author || !hits[0].author)) [book, by] = [hits[0], 'title'];
       }
       if (!book) {
         const prior = unopened.find(
           (u) =>
-            (isbn && normIsbn(u.isbn) === isbn) ||
-            (sameTitle(u) && (!author || sameAuthor(u.author, author))),
+            (isbn && isbnDigits(u.isbn) === isbn) ||
+            (sameTitle(u) && (!author || sameAuthorLoose(u.author, author))),
         );
         if (prior) [book, by] = [prior, 'price_entry'];
       }
@@ -690,7 +664,7 @@ export function applyImport(
     } else if (r.status === 'unmatched' && addUnmatched) {
       const base = bookId(r.entry.title) || 'book';
       let id = base;
-      for (let n = 2; books[id] && normTitle(books[id].title) !== normTitle(r.entry.title); n++) {
+      for (let n = 2; books[id] && looseTitle(books[id].title) !== looseTitle(r.entry.title); n++) {
         id = `${base}-${n}`;
       }
       books[id] = r.entry;

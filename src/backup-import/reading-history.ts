@@ -11,6 +11,7 @@ import type {
   HistoryResult,
   ReadEntry,
   SyncedPositionFile,
+  UnopenedBook,
 } from './reading-history.types';
 
 // The rules. Change them here; every chart's own calculation is in web/calcs.js.
@@ -114,7 +115,7 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
   const books = new Map<string, WorkingBook>();
   const byFile = new Map<string, WorkingBook>();
 
-  const identify = (path: string): BookInfo | null => {
+  const identify = (path: string, note = true): BookInfo | null => {
     const base = basename(path).toLowerCase();
     if (!path || exclude.has(base)) return null;
     const entry = known[base];
@@ -140,7 +141,7 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
       title = titleFromFileName(path);
       if (!/\p{Lu}/u.test(title)) title = titleCase(title);
     }
-    untagged.add(`${base}  ->  ${title}`);
+    if (note) untagged.add(`${base}  ->  ${title}`);
     return {
       title,
       author,
@@ -221,10 +222,34 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
     bookFor,
   );
 
+  // when each file was added to Moon+, by file name
+  const addedByFile = new Map<string, string>();
+  for (const [path, day] of input.added ?? []) {
+    const k = basename(path).toLowerCase();
+    if (!addedByFile.has(k) || day < addedByFile.get(k)!) addedByFile.set(k, day);
+  }
   const out: BookHistory[] = [];
   for (const b of new Set(books.values())) {
     const history = toHistory(b);
-    if (history) out.push(history);
+    if (!history) continue;
+    const added = [...b.files]
+      .map((f) => addedByFile.get(f.toLowerCase()))
+      .filter((d): d is string => !!d)
+      .sort()[0];
+    if (added) history.added = added;
+    out.push(history);
+  }
+
+  // books in Moon+'s library that were never opened: on the to-read pile
+  const unopened: UnopenedBook[] = [];
+  const seenUnopened = new Set<string>();
+  for (const path of input.bookMeta.keys()) {
+    const file = basename(path).toLowerCase();
+    if (byFile.has(file) || seenUnopened.has(file)) continue;
+    const info = identify(path, false);
+    if (!info) continue;
+    seenUnopened.add(file);
+    unopened.push({ ...info, file, added: addedByFile.get(file) ?? null });
   }
   out.sort((a, b) =>
     (b.last_read ?? '') > (a.last_read ?? '')
@@ -239,7 +264,13 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
     seen.set(b.id, n);
     if (n > 1) b.id += `-${n}`;
   }
-  return { books: out, untagged: [...untagged].sort(), syncedApplied, unreadableSyncs };
+  return {
+    books: out,
+    untagged: [...untagged].sort(),
+    syncedApplied,
+    unreadableSyncs,
+    unopened,
+  };
 }
 
 /**

@@ -15,24 +15,26 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 
 **Reading tabs**
 
-- **Overview:** this year against last, streaks, what's on the go, recently finished, a year-end forecast, lifetime words, a quote of the day, personal records, books per year, hours per month, and reading against watching.
+- **Overview:** this year against last, streaks, what's on the go (with when you'll likely finish each book, and a gentle flag on one that looks like a DNF), recently finished, reading challenges, a year-end forecast, lifetime words, a quote of the day, today's highlights to read again, "on this day" (what you were reading on today's date in earlier years, with a highlight from that day; hidden from visitors who don't get exact dates or the diary), personal records, books per year, hours per month, and reading against watching.
 - **Bookshelf:** every book you've read as a spine on a shelf per year (width is length, height is hours, colour is genre), and your years in colour.
 - **Genres & authors:** genre and subgenre mix and how it shifts, book shapes, ratings by genre, most-read authors and series progress.
 - **Origins:** how old your books are when you read them, where your authors come from (a map) and the gender balance over time.
 - **Speed:** words per minute over time and for every book, page turners and slow reads, the finishing sprint, speed by genre, author, rating and year, and whether re-reads go faster.
-- **Timeline & habits:** a day-by-day heatmap, tree rings, a "what you read when" timeline, juggling, weekday and seasonal rhythm, a 24-hour reading clock, biggest reads and books left unfinished.
-- **Patterns:** what you read next, binge loops, palate cleansers, book hangovers, series pull, gateway books, the next book in each series, and a heatmap explorer.
+- **Timeline & habits:** a day-by-day heatmap, tree rings, a "what you read when" timeline, juggling, weekday and seasonal rhythm, a 24-hour reading clock, biggest reads and books left unfinished, and holidays and life events (marked by hand or from a calendar) shaded on the heatmap, the timeline and the diary, with how much you read on them against normal days.
+- **Patterns:** what you read next, binge loops, palate cleansers, book hangovers, series pull, gateway books, the next book in each series, a heatmap explorer, and reading and the weather (whether rain, cold, heat or short days change how much you read or watch).
 - **Diary:** a day-by-day log for any period: which books, minutes, words and progress, with starts and finishes.
 - **Library:** every book and every re-read, searchable and sortable, and where you give up.
 - **TV & film:** hours watched, what's on screen now, dropped seasons, season completion, binge fingerprints, when you watch, genre drift, films, the cost per hour of each subscription, whether TV crowds out reading, and book-to-screen adaptations. It appears once there's something watched.
-- **Money:** spending by month and year, a budget, how you got your books, value for money, the cost to finish a series, whether a subscription paid off, money left on the shelf, and what your reading time is worth at a rate you choose.
+- **To read:** your to-read pile, gathered from Goodreads and StoryGraph to-read shelves, books in Moon+ you haven't started, and books you bought but never opened: how big it is, how long books have waited, how long it would take at your pace, whether you add books faster than you finish them, friends' favourites as suggestions, and **what to read next**: the pile ranked by your own habits, each pick saying why.
+- **Money:** spending by month and year, a budget, how you got your books, value for money, an hour of streaming against an hour of books, the cost to finish a series, whether a subscription paid off, money left on the shelf, and what your reading time is worth at a rate you choose.
+- **Highlights:** every highlight and note across all your books in one place: full-text search (all words must match; "quoted phrases"; case and accents don't matter), filters by book, author, genre, year and notes, the most-highlighted books, highlights per year, and passages you highlighted more than once. It follows the highlights privacy setting and leaves out private books.
 - **Friends:** friends' reading next to yours: a taste match, overlaid heatmaps, opt-in leaderboards, their favourites you haven't read, and book clubs. On a book's page, a buddy-read race against every friend who read it.
 - **Data checks:** things in the log that look odd (stray days, long pauses, implausible speeds, progress jumps, untagged books or books without an ISBN).
 
 **Pages.** Click any book, author, series, genre, subgenre or year, anywhere, for its own page with its own link (`#book/<id>`, `#author/<name>`, `#series/<name>`, `#genre/<name>`, `#subgenre/<name>`, `#year/<year>`):
 
-- **Book:** every read, a day-by-day chart, the shape of each read, the rest of its series, your highlights and notes in book order (with where you highlighted and a word cloud), what it cost you, your rating, a race against friends who read it, and every day you opened it.
-- **Author, series, genre and year:** stats, charts, books, money and time for each. A year page has a **Wrapped**: your year in review as swipeable stories.
+- **Book:** every read, when you'll likely finish it (its own pace so far, corrected by how your finished reads went from the same point, with a range), whether it looks like one you'll give up on (a slowing pace, longer breaks, being left alone and where you usually give up in its genre, explained, with the past reads most like it), a day-by-day chart, the shape of each read, the rest of its series, your highlights and notes in book order (with where you highlighted and a word cloud), what it cost you, your rating, a race against friends who read it, and every day you opened it.
+- **Author, series, genre and year:** stats, charts, books, money and time for each. A year page has a **Wrapped**: your year in review as swipeable stories, with a "year on screen" slide when you watched TV or films (or listened to audiobooks) that year.
 - **Show and film** (`#show/<id>`, `#film/<id>`): seasons, binge fingerprint, episodes and sittings.
 
 **Admin** (`#admin`, for the admin only): upload and rebuild, imports, sync logs, other media, who can see what, friends, the catalogue, prices, covers and the book manager. See [The admin page](#the-admin-page).
@@ -114,6 +116,9 @@ library/
   friends/         friends' reading, from share files or followed dashboards
   clubs.json       book clubs you host
   federation.json  follow tokens (owner-readable only, never served)
+  feeds.json       hashes of the feeds' secret addresses (owner-readable only, never served)
+  notify-state.json what notifications were already sent
+  highlight-review.json  the daily highlight review: answers and settings
   update.log       what happened on each rebuild, upload and sync
   activity.jsonl   the same as JSON lines, for Sync & logs
 ```
@@ -139,7 +144,7 @@ What a backup holds is in [docs/moonplus-backup.md](docs/moonplus-backup.md).
 Upload a Goodreads library export (My Books → Import and export → Export library) or a StoryGraph export in the **Imports** section.
 
 - Books are matched to your Moon+ books by ISBN, then by title and author, and gain your **rating**, **shelves** and any read Moon+ doesn't know about (an earlier read on paper, say).
-- Books only the export knows count as finished on the day it gives. With no minutes or words, they count towards books, genres, authors and series, but not time, speed, streaks or heatmaps. To-read shelves are left out.
+- Books only the export knows count as finished on the day it gives. With no minutes or words, they count towards books, genres, authors and series, but not time, speed, streaks or heatmaps. To-read shelves don't count as books you've read: they go on the **To read** pile instead, with the day you added them.
 - Ratings add views: speed against rating, ratings by genre, and whether you rate books you devoured higher.
 - **Export to Goodreads** downloads your finished books as a CSV that Goodreads' import reads.
 - Every book page links to the book on Goodreads: straight to it when a Goodreads export knows it, otherwise by ISBN or a title search. Private books get no link.
@@ -183,6 +188,8 @@ With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or i
 
 **Finished by hand.** When you finished a book Moon+ didn't see you finish (a broken file with blank pages at the end, or a book from before it recorded progress), add `"finished": true` to its entry, or use **Mark finished** in the Catalogue section (its **Not finished** list shows the candidates). Its latest read then counts as finished. `"finished": false` stops the guesses above for a book you really didn't finish.
 
+**Year and country.** The Origins tab needs each book's first-published year and its author's country. The metadata lookup fills most of them in; to fix a gap or a wrong one, use **First published** (a year, or `400 BC`) and **Author's country** (an English name or a two-letter code) in the Catalogue section's editor, which save `"published_year"` and `"author_country"` to the book's entry. Leave them blank to go back to what the lookup found (shown as the placeholder).
+
 Add a lower-case file name to `"exclude"` to hide something that isn't a book. Per author, `"authors": { "Author Name": { "country": "Ireland", "gender": "male" } }`. What you put in the catalogue always wins over lookups.
 
 **ISBNs and editions.** ISBN-13 or ISBN-10, with or without hyphens (the other form is worked out; invalid ones are ignored). Copies count as one book when they share a title and author, an ISBN, or a `"work_id"` (any id you give every edition, such as an Open Library work id).
@@ -200,11 +207,33 @@ Moon+ doesn't know what you paid, so prices live in `library/prices.json`, set i
 - **Bundles** split their price by length; **subscriptions** (Kindle Unlimited, Kobo Plus…) take a monthly fee and dates.
 - Prices aren't looked up automatically: no free, keyless source covers ebook stores, and only your order history knows what you actually paid.
 
-TV subscriptions are entered in **Other media**, for the cost per hour watched.
+TV subscriptions are entered in **Other media**, for the cost per hour watched; with book prices too, the Money tab puts each subscription's cost per hour next to your books' and the benchmarks (subscriptions in another currency than the home one are left out).
+
+## Holidays, trips and life events
+
+Mark date ranges (a holiday, a trip, a new job, a baby, moving house) in the admin page's **Life events** section, or give it a calendar's iCal address (a shared holiday calendar, or Google Calendar's "secret address in iCal format"; `webcal://` works too). The server reads the calendar every `LIFE_EVENTS_REFRESH_HOURS` and when you press **Read it now**. All-day events and anything of 20 hours or more are marked; shorter appointments are skipped, repeating events count once, and if the calendar can't be reached the events from the last good read are kept. Everything is kept in `library/life_events.json`.
+
+Events are shaded on the heatmap, the "What you read when" timeline and the diary, and **Holidays and life events** on Timeline & habits compares the minutes a day and share of days you read on each kind against normal days. They're personal, so visitors never see them unless you tick **Holidays and life events** for them under **Access & privacy** (no preset does), and the calendar's address is never sent to the page.
+
+## Reading and the weather
+
+Set a home location in the admin page's **Weather** section (a town, looked up with Open-Meteo's geocoding, or `latitude, longitude`). The server then fetches the daily weather there from [Open-Meteo](https://open-meteo.com)'s historical archive (free, no account or key): the highest and lowest temperature, rain and hours of daylight from your first logged day to yesterday. It's cached in `library/weather.json`, so later fetches only ask for new days. It's topped up after every rebuild and once a day. Offline, the cached days are kept and the error is shown in admin. `WEATHER_LOOKUP=off` stops all of it.
+
+**Reading and the weather** on Patterns compares reading and TV and film minutes a day on dry, showery and wet days, cold to warm days, and short to long days against your average. It shows what goes together (seasons and weekends mix in), not what causes what. The location is never sent to the page, and visitors who don't get exact days or the diary get no weather, since daily weather would hint at where you live.
 
 ## Your book manager (*arr)
 
 If you run a Readarr-compatible book manager (Readarr's successors such as Bookshelf), connect it in the **Book manager** section with its URL and API key. You then see, as the admin only, where each book stands there (available, downloading, wanted), a **Get next in series** button and **Get the rest of this author** on author pages. The dashboard only sends requests to your own instance; it never searches for or downloads anything itself, and the API key never leaves the server. Requests are logged in **Sync & logs**. More in [docs/integrations.md](docs/integrations.md).
+
+## Exporting highlights
+
+**Admin → Highlights** exports every highlight and note (Moon+, Kobo and Kindle):
+
+- **Obsidian or Logseq:** a zip with a Markdown file per book (`Highlights/<Title> - <Author>.md`): YAML front matter (title, author, series, genre, ISBN, published year, rating, status, first and last read, book id) and each highlight as a quote with your note and where it comes in the book, in book order. Each book keeps the same file name, so unzipping a new export into your vault replaces last time's files instead of adding copies (edits made in those files are overwritten). Each highlight has a block id (`^hl-<id>`), so links to it keep working.
+- **Readwise CSV:** the columns Readwise's [bulk import](https://readwise.io/import_bulk) reads (Highlight, Title, Author, URL, Note, Location, Date).
+- **Readwise directly:** paste your [access token](https://readwise.io/access_token); it's checked with Readwise, kept in `settings.json` and never sent back to the page. **Send new highlights** posts only what hasn't been sent before (recorded in `readwise-pushed.json`); Readwise itself matches highlights by text, title and author, so **Send all again** updates rather than duplicates.
+
+The export is the admin's own, so private books are included.
 
 ## The admin page
 
@@ -214,13 +243,21 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 |---|---|
 | **Data** | Upload a backup, rebuild now, the backups kept, the WebDAV address |
 | **Imports** | Goodreads, StoryGraph, Kobo and Kindle files; export to Goodreads |
+| **Highlights** | Export highlights to Obsidian or Logseq (Markdown) and Readwise (CSV or straight to your account) |
+| **Daily review** | How many highlights a day, the morning notification, and an Anki export |
 | **Sync & logs** | Every sync, rebuild, upload, lookup and request, filterable and downloadable, with a warning when syncing seems to have stopped or a login failed |
 | **Other media** | Netflix uploads, Tautulli, Audiobookshelf, TMDB and streaming subscriptions |
 | **Access & privacy** | Who can see the dashboard and what each kind of visitor sees; private books and genres; preview as a visitor |
 | **Friends** | Your share file and leaderboards, friends' share files, dashboards you follow and that follow you, book clubs, and who can see friends' reading |
-| **Catalogue** | Titles, authors, series, genres and ISBNs; untagged books |
+| **Catalogue** | Titles, authors, series, genres, ISBNs, first-published years and authors' countries; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
+| **Life events** | Holidays, trips and life events by hand, and a calendar (iCal) address |
+| **Weather** | The home location for "Reading and the weather" |
 | **Covers** | Books without a cover: look them up again or upload your own |
+| **Challenges** | Reading challenges on the Overview: authors from N countries, a book from every decade, series finished, % women authors, a streak or N genres, this year or all time (a default set until you change it) |
+| **Widgets & devices** | The year's reading goal, the device token for Home Assistant and other devices, their setup, and a preview of the e-ink view |
+| **Feeds** | Atom and iCal feeds at secret addresses: make, give a new address, revoke |
+| **Notifications** | ntfy, Gotify, Discord or webhook channels with a **Send test** button; which events to send; when to warn about a streak |
 | **Book manager** | Your *arr book manager's URL and API key |
 
 ## Who can see it
@@ -239,6 +276,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 - **Highlights and notes** (hidden from the public by default).
 - **Prices and spending.**
 - **Ratings and shelves** from Goodreads or StoryGraph.
+- **Holidays and life events** (hidden from everyone by default, and not shown by any preset).
 
 You can also mark books or whole genres as private: visitors then see nothing of them, or "A private book" with no title, author or cover. This is enforced on the server: the data files, stats and API are filtered for each visitor, so hidden details never reach their browser. **Preview as a visitor** shows exactly what each one gets.
 
@@ -253,13 +291,193 @@ Bring friends' reading into your dashboard to compare notes. There are two ways 
 
 Either way, what you share is set by the **friends** audience under Access & privacy (by default everything except prices and highlights), and private books are never shared. Friends' reading shows up as:
 
-- **Taste match:** a compatibility score from genres, authors and books in common, shared authors, and the books you both read.
+- **Taste match:** a compatibility score from genres (50%), authors (30%) and books in common (20%); once you've both rated 3 of the same books on Goodreads or StoryGraph, how alike your stars are counts for a fifth (40/24/16/20). Plus shared authors and the books you both read.
 - **Overlaid heatmaps** of the last 12 months, and **leaderboards** that each person opts into, stat by stat.
 - **Their favourites you haven't read:** books a friend devoured or re-read that aren't in your library.
 - **Buddy-read race** on a book's page: your progress against every friend who read it.
 - **Book clubs:** a book, friends, a start date and an optional schedule, with everyone's progress against it and comments pinned to a position in the book. A comment stays hidden from anyone who hasn't read that far, and this is enforced on the server. Friends who follow your dashboard can comment from theirs.
 
 Their reading is theirs: by default only you, the admin, see it; you can let people with the read password, or everyone, see it too. The share file format, the follow protocol and the book club API are in [docs/friends.md](docs/friends.md).
+
+## Notifications
+
+Get a message on your phone or in a chat when something happens. In **Admin → Notifications**, add one or more channels:
+
+- **ntfy**: a topic's address on ntfy.sh or your own server, with an optional access token;
+- **Gotify**: your server and an application token;
+- **Discord**: a channel's webhook URL;
+- **Webhook**: any URL, which gets a JSON POST (Home Assistant, n8n…).
+
+**Send test** checks each one. The addresses and tokens stay on the server (in `settings.json`) and are never shown again.
+
+These events can each be switched on or off:
+
+- **Book finished**, when a sync brings one in. More than 5 at once come as one message.
+- **New personal record**: a longer streak, a bigger day, week or month, a faster book…
+- **Streak at risk**: from a chosen hour (21:00 by default), if nothing has been synced today and your streak is at least N days (3 by default). Checked every 10 minutes, and sent once a day.
+- **Year goal reached**: the reading goal set under **Widgets & devices**.
+- **A friend finished a book you have**: in your library, read or not.
+- **Daily highlights**: today's highlights from the daily review, each morning, once you switch it on in **Admin → Daily review**.
+
+Events are found by comparing each rebuild with what was already sent (`library/notify-state.json`), so a restart or a second rebuild of the same backup never sends anything twice. The very first check only takes note of where things stand, and finishes older than two weeks (an old import) aren't news. Books marked private are never named. Links in the messages need `PUBLIC_URL`.
+
+## Daily highlight review
+
+A few highlights at least a month old come back each day in **Today's highlights** on the Overview (5 by default, one per book where possible). As the admin you answer each:
+
+- **Keep**: back in a week, then twice as long each time.
+- **Less often**: back in a month, then four times as long.
+- **Never**: retired.
+
+Answers are kept on the server (`library/highlight-review.json`, keyed by book and text so they survive rebuilds), and the day's pick stays the same all day. Visitors who may see highlights get today's list without the buttons; when highlights are hidden from them, or a book is private, they get nothing of it. **Admin → Daily review** sets how many a day, turns on a morning notification through your channels (see [Notifications](#notifications)) from a chosen hour, and downloads every highlight as a text file [Anki](https://apps.ankiweb.net) imports (File → Import).
+
+## Widgets and devices
+
+Your reading can show up outside the dashboard. Everything here is worked out from what the asker may see, the same as the page, so a visitor's widget never shows private books or anything their audience hides (it comes back empty or `null` instead).
+
+**Reading goal.** Set the books you want to finish this year in **Admin → Widgets & devices**. Home Assistant shows your progress against it and whether you're ahead of the pace that would get you there.
+
+**The device token.** Devices that can't sign in (Home Assistant, a display on a shelf) use a token you make in the same section. It's shown once, kept only as a hash, and opens only the device endpoints (`/api/now` and `/api/now/cover`), never the dashboard, its data or the admin page. Send it as `Authorization: Bearer <token>`, `X-Device-Token: <token>` or, for devices that can't set headers, `?token=<token>`. By default it gets your own view (everything); you can give it a visitor audience's view instead, for a screen other people see. Making a new token or revoking it stops the old one at once. Without a token, `/api/now` follows the dashboard's usual rules: open to anyone when it's public, sign-in needed when it has a read password.
+
+### Home Assistant
+
+`GET /api/now` returns a small JSON summary for Home Assistant's [RESTful integration](https://www.home-assistant.io/integrations/rest/) (no MQTT broker or add-on needed):
+
+```json
+{
+  "today": "2026-10-18", "as_of": "2026-10-17", "generated": "2026-10-17T22:10:04",
+  "reading": [{ "id": "the-count-of-monte-cristo", "title": "The Count of Monte Cristo", "author": "Alexandre Dumas",
+                "genre": "Adventure", "progress": 38, "last_read": "2026-10-17", "cover": "covers/the-count-of-monte-cristo.jpg?v=1760000000" }],
+  "today_minutes": 0, "week_minutes": 124,
+  "streak": { "current": 3, "best": 13, "last_day": "2026-10-17", "read_today": false, "at_risk": true },
+  "year": { "year": 2026, "finished": 9, "goal": 24, "percent": 38, "expected": 19, "ahead": -10 },
+  "quote": { "text": "…", "note": null, "book_id": "emma", "title": "Emma", "author": "Jane Austen" }
+}
+```
+
+- `reading`: books opened in the last 30 days and not finished, most recent first (`null` when "what you're reading now" is hidden from the asker).
+- `today_minutes`, `week_minutes` (Monday on): `null` when the asker doesn't get day-by-day reading.
+- `streak.at_risk`: you have a streak going (read yesterday) and haven't read today yet. "Today" is the server's date (set `TZ`), and the numbers only move when a backup or WebDAV sync arrives, so sync before the evening nudge.
+- `year.expected`: books you'd have finished by today at an even pace to the goal; `ahead` is how far ahead (or behind, negative) you are. All `null` without a goal.
+- `quote`: the same quote of the day as the Overview's card.
+- `/api/now/cover` is the cover of the book you're reading (for an `entity_picture`), or 404.
+
+In `configuration.yaml` (the admin section shows this with your address and new token filled in):
+
+```yaml
+rest:
+  - resource: https://reading.example.com/api/now
+    headers:
+      Authorization: !secret reading_dashboard_auth   # "Bearer <token>" in secrets.yaml
+    scan_interval: 300
+    sensor:
+      - name: "Reading now"
+        unique_id: reading_now
+        value_template: "{{ value_json.reading[0].title if value_json.reading else 'Nothing' }}"
+        json_attributes_path: "$.reading[0]"
+        json_attributes: [author, progress, cover, last_read]
+      - name: "Reading progress"
+        unique_id: reading_progress
+        unit_of_measurement: "%"
+        value_template: "{{ value_json.reading[0].progress if value_json.reading else none }}"
+      - name: "Reading today"
+        unique_id: reading_today
+        unit_of_measurement: "min"
+        value_template: "{{ value_json.today_minutes }}"
+      - name: "Reading this week"
+        unique_id: reading_week
+        unit_of_measurement: "min"
+        value_template: "{{ value_json.week_minutes }}"
+      - name: "Reading streak"
+        unique_id: reading_streak
+        unit_of_measurement: "days"
+        value_template: "{{ value_json.streak.current if value_json.streak else none }}"
+      - name: "Books this year"
+        unique_id: reading_books_year
+        value_template: "{{ value_json.year.finished }}"
+        json_attributes_path: "$.year"
+        json_attributes: [goal, percent, expected, ahead]
+    binary_sensor:
+      - name: "Reading streak at risk"
+        unique_id: reading_streak_at_risk
+        value_template: "{{ value_json.streak.at_risk if value_json.streak else false }}"
+```
+
+And an automation that nudges you at 9pm if you haven't read today:
+
+```yaml
+automation:
+  - alias: "Nudge me to read"
+    trigger:
+      - platform: time
+        at: "21:00:00"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.reading_streak_at_risk
+        state: "on"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "Keep your streak"
+          message: >-
+            {{ states('sensor.reading_streak') }} days in a row so far.
+            {{ states('sensor.reading_now') }} is at {{ states('sensor.reading_progress') }}%.
+```
+
+To show the cover on a card, use a [template image](https://www.home-assistant.io/integrations/template/#image) whose `url` is `https://reading.example.com/api/now/cover?token=<token>`.
+
+### E-ink display (TRMNL and others)
+
+An always-on, black-and-white view for a shelf: the book you're reading with its cover, your streak, this week's minutes, the year against your goal, and the quote of the day. It's 800 × 480, the size of a TRMNL and most 7.5" e-paper panels. **Admin → Widgets & devices** shows a live preview and the URLs. Access works as for `/api/now`: with the device token, or by the dashboard's usual rules.
+
+- **`/eink.png`**: the whole view as a 1-bit PNG, drawn on the server (covers are dithered; text uses a built-in pixel font, so accents are dropped). Use it on any frame that shows a picture from a URL: an ESP32 or Inkplate sketch, a Kindle in kiosk mode, or a [TRMNL bring-your-own-server](https://docs.usetrmnl.com/go/diy/byos) setup. Devices that can't send headers can use `?token=…`.
+- **`/eink/cover.png`**: just the current cover, dithered to 1 bit (240 × 360).
+- **`/api/trmnl`**: JSON for a TRMNL **private plugin**, with `title`, `author`, `progress`, `cover_url`, `image_url`, `stats` (the three figures, each with `label`, `value` and `sub`), `streak`, `week_minutes`, `year`, `quote` and `quote_source`.
+
+**TRMNL, step by step.** TRMNL's private plugins can use a **Polling** strategy: TRMNL's server fetches your URL on the plugin's refresh schedule, merges the JSON fields into the plugin's Liquid markup, renders that at 800 × 480 and sends it to the device. The dashboard has to be reachable from the internet for this (TRMNL's server does the fetching, not the device on your Wi-Fi).
+
+1. In TRMNL, go to **Plugins → Private Plugin → Add new**, pick the **Polling** strategy and set the **Polling URL** to `https://reading.example.com/api/trmnl` with verb `GET`.
+2. Under **Polling headers**, add `authorization=Bearer <your device token>`.
+3. Pick a refresh rate. The data only changes when Moon+ syncs, so hourly is plenty.
+4. In **Edit markup**, paste [`examples/trmnl-full.liquid`](examples/trmnl-full.liquid). It uses TRMNL's own layout classes, with the dithered cover from `cover_url`. Or, for the server's picture exactly as in the preview, use just `<img src="{{ image_url }}" style="width:100%;height:100%">`.
+5. Add the plugin to a playlist.
+
+`image_url` and `cover_url` carry the token (TRMNL fetches images without your headers) and change when the picture does, so TRMNL doesn't show a stale copy. These details come from TRMNL's documentation and weren't tried on a device, so check them against [their docs](https://docs.usetrmnl.com/go/private-plugins/create-a-screen) if a field has been renamed.
+
+### Badges for a blog, README or forum signature
+
+Three SVG images you can embed anywhere an image goes, like GitHub's stats cards:
+
+| Image | What it shows |
+|---|---|
+| `/badge/reading.svg` | What you're reading now: the cover, title, author and progress (up to three books) |
+| `/badge/year.svg` | Books finished this year (against your goal, if you set one) as a small badge; `?style=card` for a card with the pace and hours |
+| `/badge/heatmap.svg` | Minutes read per day for the last 26 weeks (`?weeks=4` to `53`) |
+
+Add `?theme=dark` for dark backgrounds and `?title=…` to change the heading. They always show what the **public** may see, whoever asks: "what you're reading now" hidden means the reading card says "Not shared", no day-by-day reading means no hours and no heatmap (a 404), weeks instead of days means one square per week, and private books never appear. They're off (404) while the dashboard has a read password. Each is cached for 30 minutes (`Cache-Control: public, max-age=1800`, with an `ETag`), and the cover is embedded in the image, because GitHub and most forums don't let an SVG load anything else.
+
+```markdown
+![Currently reading](https://reading.example.com/badge/reading.svg)
+![Books this year](https://reading.example.com/badge/year.svg)
+```
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://reading.example.com/badge/heatmap.svg?theme=dark">
+  <img alt="My reading, last 26 weeks" src="https://reading.example.com/badge/heatmap.svg">
+</picture>
+```
+
+## Feeds
+
+Follow your reading from a feed reader or a calendar app. In **Admin → Feeds**, make:
+
+- an **Atom feed** of finished books, the newest 50, each with its cover, your rating (when ratings are visible), author, hours and a link to its page, or
+- an **iCal calendar** (subscribe to it in Google Calendar, Apple Calendar or Outlook) with all-day events for each reading day of the last 400 days (with the minutes and titles), each finish, and your book clubs: the start, each week's target on the schedule and the planned finish.
+
+Each feed has its own secret address (`/feeds/<secret>.atom` or `.ics`), shown once when it's made. Feed readers and calendars can't sign in, so the address works even when the dashboard needs the read password; give it a new address if it gets out, or revoke it. Only a hash of each secret is kept, in `library/feeds.json`.
+
+A feed is built from what one audience may see (the public, people with the read password, or friends; never everything), exactly as their own copy of the data is filtered. Private books never appear, and dates are rounded as theirs are (a finish then spans its week or month). Reading days are only in the calendar when that audience sees exact days, day-by-day reading and streaks. Book clubs are only in it when that audience may see friends' reading and what you're reading now.
 
 ## Behind a reverse proxy
 
@@ -279,11 +497,11 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 |---|---|---|
 | `UPLOAD_TOKEN` | *(empty)* | The admin password. Turns on admin sign-in, uploads and WebDAV |
 | `BASE_PATH` | *(empty)* | Public sub-path, only when the proxy doesn't strip it |
-| `PUBLIC_URL` | *(from the request)* | The dashboard's full address, e.g. `https://books.example.com/reading`, for link previews |
+| `PUBLIC_URL` | *(from the request)* | The dashboard's full address, e.g. `https://books.example.com/reading`, for link previews and the links in notifications |
 | `PORT` | `8080` | Port inside the container |
 | `LIBRARY` | `/library` | Folder for everything the app keeps |
 | `PUID` / `PGID` | `1000` | Who owns the files in `library/` on the host |
-| `TZ` | UTC | Time zone for the log |
+| `TZ` | UTC | Time zone for the log, and what "today" means for `/api/now` (today's minutes, streak at risk) |
 | `POLL_SECONDS` | `30` | How often to check the inbox (at least 5) |
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
 | `FEDERATION_REFRESH_MINUTES` | `60` | How often to refresh friends' reading from the dashboards you follow (`0`: only when you press **Refresh**) |
@@ -293,13 +511,19 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `OPENLIBRARY_URL` | `https://openlibrary.org` | Open Library's address (for a mirror or tests) |
 | `OPENLIBRARY_COVERS_URL` | `https://covers.openlibrary.org` | Open Library's cover server |
 | `WIKIDATA_URL` | `https://www.wikidata.org` | Wikidata's address |
+| `WEATHER_LOOKUP` | `on` | `off` stops fetching the weather for "Reading and the weather" from Open-Meteo |
+| `WEATHER_ARCHIVE_URL` | `https://archive-api.open-meteo.com` | Open-Meteo's historical weather API |
+| `WEATHER_GEOCODING_URL` | `https://geocoding-api.open-meteo.com` | Open-Meteo's place-name search |
 | `TMDB_API_KEY` | *(empty)* | A TMDB key (v3 key or v4 read token) for TV and film genres and posters |
 | `TMDB_URL` / `TMDB_IMAGE_URL` | TMDB's API and image server | TMDB's addresses |
 | `TAUTULLI_URL` / `TAUTULLI_API_KEY` | *(empty)* | Tautulli's address and API key, for Plex watch history |
 | `AUDIOBOOKSHELF_URL` / `AUDIOBOOKSHELF_TOKEN` | *(empty)* | Audiobookshelf's address and API token |
 | `MEDIA_POLL_MINUTES` | `60` | How often to pull from Tautulli and Audiobookshelf |
+| `STATS_WORKER` | `on` | Works out the server's stats in a background thread, so a big library doesn't slow other requests while they're worked out. `off` works them out on the main thread instead (try it if the stats misbehave; if the thread crashes 3 times the server switches to that by itself) |
+| `LIFE_EVENTS_REFRESH_HOURS` | `6` | How often to read the life events calendar again (`0`: only when you press **Read it now**) |
 | `MIXPANEL_TOKEN` | *(empty)* | A Mixpanel project token: sends anonymous page views and clicks (no titles, names or dates) to Mixpanel. Off when empty |
 | `MIXPANEL_API_HOST` | `https://api-js.mixpanel.com` | Mixpanel's address, e.g. `https://api-eu.mixpanel.com` for EU data residency |
+| `READWISE_URL` | `https://readwise.io` | Readwise's address (for tests); the token is set in Admin → Highlights |
 
 The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", `YYYY-MM-DD`) and `DEMO_SEED`, and the demo build `DEMO_URL` (its public address, for link previews); see [docs/contributing.md](docs/contributing.md).
 
@@ -308,7 +532,14 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/healthz`: Docker's health check.
 - `/api/config`: who you're signed in as and the last rebuild.
 - `/api/covers`: the saved covers.
+- `/api/now`, `/api/now/cover`: what you're reading, today's minutes, the streak and the year's goal, for Home Assistant and other devices (see [Widgets and devices](#widgets-and-devices) and [docs/api.md](docs/api.md)).
+- `/eink.png`, `/eink/cover.png`, `/api/trmnl`: the 800 × 480 one-bit e-ink view, and JSON for a TRMNL private plugin (see [E-ink display](#e-ink-display-trmnl-and-others)).
+- `/badge/reading.svg`, `/badge/year.svg`, `/badge/heatmap.svg`: embeddable SVG badges of what the public may see (see [Badges](#badges-for-a-blog-readme-or-forum-signature)).
 - `/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`: every number the page shows, worked out on the server for each viewer from only what they may see. See [docs/api.md](docs/api.md).
+- `/feeds/<secret>.atom` and `/feeds/<secret>.ics`: the feeds made under **Admin → Feeds**; see [docs/api.md](docs/api.md#feeds).
+- `/api/admin/highlights/…` (admin only): highlight exports; see [docs/api.md](docs/api.md#admin-highlight-exports).
+- `/api/admin/life-events` (admin only): holidays and life events; see [docs/api.md](docs/api.md#life-events-admin).
+- `/api/admin/weather` (admin only): the home location for the weather; see [docs/api.md](docs/api.md#weather-admin).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 
 ## How the numbers are worked out
@@ -321,6 +552,8 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - **Highlights:** the backup records a chapter and position, not the book's length, so how far in (%) is estimated from your progress on the day.
 - **Data checks:** a first or last day 30+ days from the rest of a read is stray; a 60+ day gap mid-read is a pause; a read is thinly spread when it spans 60+ days but was opened on under 15% of them (`CHECK` in `web/calcs.js`).
 - **Changing the rules:** the thresholds are at the top of `src/backup-import/reading-history.ts` (and `src/media/media-history.ts` for TV and film), and every chart's calculation is in `web/calcs.js` or the feature script that draws it.
+- **To-read pile:** a book is on it when it's on a to-read shelf, in Moon+'s library but never opened or not started, or priced but never opened; the same book from two places counts once (ISBN, then title and author). Its age runs from the day it was added (the export's Date Added, Moon+'s `addTime`, or the purchase date). A book's length is its words read so far, else its page count × 275, else your typical finished book. "To read it all" uses your words a minute and minutes a day over the last 365 days. "Added" counts books going on the pile plus books you started without them being on it, against first reads finished.
+- **What to read next:** each book on the pile scores out of 100. Series pull is worth 30 (the next book in a series whose previous book you finished, fading to half over 3 years; otherwise up to 18 for an author you've finished 2+ books by). Genre fit is worth 20 (half how much of it you read in the last 2 years, a quarter how fast it goes for you, a quarter how often you finish it). Friends are worth 20 (a friend rated it 4–5★, devoured or re-read it; finishing it counts a little; giving up or a 1–2★ rating counts against; each is scaled by your taste match with them). A palate cleanser is worth 15 (after a long read, finished in the last 30 days or on the go, a book under 60% of your typical length in another genre). Season is worth 10 (a genre you finish more of in this month and the ones either side than across the year, with 2+ years of history). Waiting is worth 5 (full at 2 years). The weights are at the top of `web/features/what-next.js`. Friends' opinions are only added on the page, so `/api/stats/next_reads` ranks without them.
 - **Where they're worked out:** the server runs those same calculations after every rebuild, once per kind of viewer, so the page loads ready-made numbers instead of crunching the whole history on your phone.
 
 ## Development
@@ -363,10 +596,13 @@ src/prices/          prices, currencies, bundles and subscriptions
 src/friends/         share files and friends' data
 src/federation/      following friends' dashboards, and approving the ones that follow yours
 src/clubs/           book clubs and their spoiler-safe comments
+src/feeds/           Atom and iCal feeds at secret addresses
+src/notify/          notifications: finding events, and NotifierService to send them
+src/review/          the daily highlight review and its morning send
 src/arr/             requests to the admin's own *arr book manager
 src/rebuild/         watches for new backups, edits and syncs, and rebuilds
 src/upload/, src/admin/, src/dav/, src/status/   uploads, the admin API, WebDAV, /healthz and /api/config
-src/stats/           runs the page's calcs on the server per viewer; /api/stats
+src/stats/           runs the page's calcs on the server per viewer, in a worker thread; /api/stats
 src/web/             serves the page, its data, feature scripts and covers
 src/share/           link previews: the Open Graph tags and the cover collage
 src/demo/            builds the demo site from made-up data

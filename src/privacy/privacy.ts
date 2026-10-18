@@ -26,10 +26,19 @@ export interface Policy {
   highlights: boolean;
   /** Your ratings and shelves (from Goodreads or StoryGraph). */
   ratings: boolean;
+  /** Holidays, trips and life events (a new job, a baby, a move): personal, so off by default. */
+  life_events: boolean;
 }
 
 export type Category =
-  'exact_dates' | 'diary' | 'current' | 'streaks' | 'money' | 'highlights' | 'ratings';
+  | 'exact_dates'
+  | 'diary'
+  | 'current'
+  | 'streaks'
+  | 'money'
+  | 'highlights'
+  | 'ratings'
+  | 'life_events';
 export const CATEGORIES: Category[] = [
   'exact_dates',
   'diary',
@@ -38,6 +47,7 @@ export const CATEGORIES: Category[] = [
   'money',
   'highlights',
   'ratings',
+  'life_events',
 ];
 
 export interface PrivacySettings {
@@ -62,6 +72,8 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
     money: true,
     highlights: true,
     ratings: true,
+    // life events are personal: only ever shown when ticked by hand
+    life_events: false,
   },
   /** Everything but exact dates: weeks instead of days, so no diary or streaks. */
   no_dates: {
@@ -72,6 +84,7 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
     money: true,
     highlights: true,
     ratings: true,
+    life_events: false,
   },
   /** Taste only: what you read and think of it, nothing about your routine. */
   taste: {
@@ -83,6 +96,7 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
     highlights: false,
     // what you think of what you read is taste
     ratings: true,
+    life_events: false,
   },
 };
 
@@ -116,6 +130,7 @@ function toPolicy(raw: unknown, fallback: Policy): Policy {
     money: flag('money') as boolean,
     highlights: flag('highlights') as boolean,
     ratings: flag('ratings') as boolean,
+    life_events: flag('life_events') as boolean,
   };
 }
 
@@ -149,6 +164,7 @@ export function hiddenCategories(p: Policy): Category[] {
   if (!p.money) out.push('money');
   if (!p.highlights) out.push('highlights');
   if (!p.ratings) out.push('ratings');
+  if (!p.life_events) out.push('life_events');
   return out;
 }
 
@@ -172,6 +188,13 @@ export interface FilterContext {
   current: Set<string>;
   /** Reading on or after this day counts as current. */
   recentFrom: string;
+  /**
+   * Private genres and subgenres (lower case), for rows naming a book that isn't in books.json
+   * (a to-read book): such a row is private when its own genre is.
+   */
+  privateGenres?: Set<string>;
+  /** Anonymise (true) or leave out (false) private books. */
+  anonymise?: boolean;
 }
 
 /** Books opened in this many days before the data was built count as being read now. */
@@ -208,7 +231,7 @@ export function buildContext(
       .filter((b) => b.status === 'in_progress' && (b.last_read ?? '') >= recentFrom)
       .map((b) => b.id),
   );
-  return { policy, private: priv, current, recentFrom };
+  return { policy, private: priv, current, recentFrom, privateGenres: genres, anonymise };
 }
 
 /** A YYYY-MM-DD date (with or without a time) as the first day of its week (Monday) or month. */
@@ -232,6 +255,8 @@ const DATE_KEYS = new Set([
   'synced',
   'finish',
   'finished_on',
+  // when a book went on the to-read pile (BOO-76)
+  'added',
 ]);
 const TIME_KEYS = new Set(['time']);
 /** Opinions from Goodreads or StoryGraph, left out when ratings are hidden. */
@@ -242,6 +267,9 @@ const DROP = Symbol('drop');
 const HIGHLIGHT_FILE = /^highlights?(_[a-z_]+)?\.json$/;
 // media_money.json: streaming subscriptions (features/tv.js)
 const MONEY_FILE = /^(prices|money|spending|purchases|media_money)(_[a-z_]+)?\.json$/;
+
+/** Holidays, trips and life events (src/life-events). */
+const LIFE_EVENTS_FILE = 'life_events.json';
 
 const DIARY_FILES = new Set(['daily.json', 'media_daily.json', 'media_sessions.json']);
 
@@ -266,8 +294,11 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   const highlights = HIGHLIGHT_FILE.test(name);
   if (highlights && !p.highlights) return [];
   if (MONEY_FILE.test(name) && !p.money) return [];
+  if (name === LIFE_EVENTS_FILE && !p.life_events) return [];
   // the day-by-day log; for TV and film, the per-day file and the sittings with their clock times
   if (DIARY_FILES.has(name) && !p.diary) return [];
+  // daily weather at home only means something with exact days, and narrows down where you live
+  if (name === 'weather.json' && (!p.diary || p.dates !== 'day')) return [];
   const dates = effectiveDates(name, p);
   const isBooks = name === 'books.json';
 
@@ -300,6 +331,10 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
       }
     }
     if (bookId !== null) {
+      if (!ctx.private.has(bookId) && ctx.privateGenres?.size && inPrivateGenre(o, ctx)) {
+        // a book only this file knows (the to-read pile), in a private genre
+        ctx.private.set(bookId, ctx.anonymise ? `private-${ctx.private.size + 1}` : '');
+      }
       const alias = ctx.private.get(bookId);
       // a private book left out, and a highlight's text gives the book away
       if (alias === '' || (alias && highlights)) return DROP;
@@ -322,6 +357,11 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   }
   return filtered;
 }
+
+const inPrivateGenre = (o: Record<string, unknown>, ctx: FilterContext) =>
+  [o.genre, o.subgenre].some(
+    (g) => typeof g === 'string' && ctx.privateGenres!.has(g.toLowerCase()),
+  );
 
 /** What an anonymised row keeps: how it was read, not what it is. */
 const ANON_KEEP = new Set([
@@ -349,6 +389,9 @@ const ANON_KEEP = new Set([
   'date',
   'days_read',
   'finished',
+  // the to-read pile: how long it has waited, and where (pages stay out: they name a book)
+  'added',
+  'sources',
   // what it cost (prices.json), so the totals still add up
   'price',
   'list_price',

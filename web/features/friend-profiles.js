@@ -9,7 +9,8 @@
 // from a friend's data (dash.calcWith).
 
 // Matching books across libraries, kept apart from the page so calcs (and tests) can use it:
-// dash.sameBook.{keys, matcher, shared, authorKey}.
+// dash.sameBook.{keys, matcher, shared, authorKey}. The server has the same keys in
+// src/common/book-match.ts (sameBookKeys); its spec checks the two agree.
 (() => {
   // the same book has the same ISBN or work id; failing that, the same title and author once
   // case, accents, punctuation and a leading article are ignored

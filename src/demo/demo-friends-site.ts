@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import type { FriendProfile } from '../friends/friend-store.service';
 import { publicProfile } from '../friends/friends.controller';
 import { BUNDLE_PARTS, LEADERBOARD_STATS, parseBundle, type Row } from '../friends/share';
-import { clubFor, progressOf, sameBook, type Club } from '../clubs/clubs';
+import { clubFor, progressOf, type Club } from '../clubs/clubs';
+import { sameBook } from '../common/book-match';
 import { CURRENT } from './demo-books';
 import { FRIEND_PLANS, simulateFriend } from './demo-friends';
 

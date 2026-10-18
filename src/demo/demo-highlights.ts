@@ -1,4 +1,4 @@
-import { fileName } from './demo-books';
+import { fileName, REREADS } from './demo-books';
 import { Random } from './random';
 import type { DemoDay } from './simulate';
 
@@ -396,5 +396,62 @@ export function simulateHighlights(
     }
     if (notes.length) out.set(fileName(title, author), notes);
   }
+  rehighlight(log, out, seed);
   return out;
+}
+
+/**
+ * On a re-read, some of the passages highlighted the first time are highlighted again (for
+ * the Highlights tab's "passages you came back to"). Its own random numbers, so the
+ * first-read highlights stay the same for a seed.
+ */
+function rehighlight(log: Map<string, DemoDay[]>, out: Map<string, DemoNote[]>, seed: number) {
+  const rng = new Random(seed + 202);
+  for (const title of REREADS) {
+    const quotes = QUOTES[title];
+    if (!quotes) continue;
+    const file = fileName(title, quotes[0]);
+    const entries = log.get(file);
+    const notes = out.get(file);
+    if (!entries || !notes) continue;
+    // the second read starts where progress goes back down
+    const i = entries.findIndex((d, k) => k > 0 && d.progress < entries[k - 1].progress);
+    if (i < 0) continue;
+    const again = entries.slice(i);
+    for (const n of notes.filter((x) => x.original && rng.random() < 0.6)) {
+      const at = (quotes[1].find(([, text]) => text === n.original) ?? [0])[0];
+      const e = again.find((d) => d.progress >= at);
+      if (!e) continue;
+      const weekend = (e.day + 3) % 7 >= 5;
+      notes.push({ ...n, day: e.day, minute: minuteOfDay(rng, weekend), note: '' });
+    }
+  }
+}
+
+/**
+ * Moves one highlight onto the same date as `today` in an earlier year (the nearest year
+ * whose book that day has a passage to move), so the Overview's "On this day" card has a
+ * highlight to show in the demo. `firstDay` is the history's day 0, as days since 1970.
+ */
+export function anniversaryHighlight(
+  log: Map<string, DemoDay[]>,
+  notes: Map<string, DemoNote[]>,
+  firstDay: number,
+  today: string,
+): void {
+  const [y, md] = [+today.slice(0, 4), today.slice(5)];
+  for (let back = 1; back <= 20; back++) {
+    const date = `${y - back}-${md === '02-29' ? '02-28' : md}`;
+    const day = Date.parse(date) / 86_400_000 - firstDay;
+    if (day < 0) return;
+    for (const [file, entries] of log) {
+      if (!entries.some((e) => e.day === day && e.minutes > 0)) continue;
+      const list = notes.get(file)?.filter((n) => !n.bookmark && n.original);
+      if (!list?.length) continue;
+      // the passage nearest that day, so it stays roughly where it comes in the book
+      const n = list.reduce((a, b) => (Math.abs(b.day - day) < Math.abs(a.day - day) ? b : a));
+      n.day = day;
+      return;
+    }
+  }
 }

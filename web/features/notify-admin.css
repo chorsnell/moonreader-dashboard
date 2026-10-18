@@ -1,0 +1,8 @@
+/* Admin → Notifications (notify-admin.js) */
+.ad-page label.nt-toggle{align-items:flex-start}
+.ad-page label.nt-toggle input{margin-top:3px}
+.nt-toggle>span{display:flex;flex-direction:column;gap:1px}
+.nt-note{line-height:1.35}
+.nt-said{white-space:normal}
+.nt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:0 var(--cds-gap-md);margin-top:var(--cds-gap-xs)}
+.nt-check{margin-top:var(--cds-gap-md)}
