@@ -36,6 +36,9 @@ A feature script is an IIFE that uses `dash` (data and calcs) and `rh` (drawing 
   // a new tab; returns its <section>, then add cards with tab: 'mytab'
   rh.tab('mytab', 'My tab', { after: 'timeline' });
 
+  // shade date ranges on the heatmap, the reading timeline and the diary (life-events.js)
+  rh.markDays(() => [{ start: '2025-08-01', end: '2025-08-14', title: 'Holiday', color: rh.C[1] }]);
+
   // a page with no tab, opened by its link (#mypage or #mypage/<anything>); draw(section)
   // runs on every redraw while it's shown, so only rebuild what changed
   rh.page('mypage', (section) => {});
@@ -79,7 +82,8 @@ extra work as long as its rows follow the usual shape:
 Name date fields that way, or extend the lists in `privacy.ts`. On the page,
 `web/features/privacy.js` hides cards whose calc needs a file the visitor gets empty (found
 through `dash.needs(calc)`), cards it lists by id, and any card given `privacy: '<category>'`
-(categories: `exact_dates`, `diary`, `current`, `streaks`, `money`, `highlights`). Draw
+(categories: `exact_dates`, `diary`, `current`, `streaks`, `money`, `highlights`, `ratings`,
+`life_events`). Draw
 functions should cope with empty rows. `dash.dates` is `'week'` or `'month'` when dates
 are rounded, and `rh.fDay` then shows the week or month.
 
@@ -115,7 +119,7 @@ rh.adminSection({
 `api` gives the section:
 - `h(tag, attrs, ...children)`: builds an element (`class`, `on<event>` handlers, `value`, and `true`/`false` attributes).
 - `block(title, note, ...children)`: a titled block, the building piece of every section; `msg()`: a status line.
-- `get(url)`, `post(url, body)`, `put(url, body, contentType?)`: JSON requests to the server that throw an `Error` with the server's `error` message on failure.
+- `get(url)`, `post(url, body)`, `put(url, body, contentType?)`, `del(url)`: JSON requests to the server that throw an `Error` with the server's `error` message on failure.
 - `config()`: what `/api/config` said; `status()`: `/api/admin/status` (current data, backups, last error).
 - `waitForBuild(statusBefore, say)`: after a change that rebuilds, waits for the new data, reports progress through `say(text)` and reloads the dashboard.
 - `when(date)`, `ago(date)`, `size(bytes)`: formatting; `refresh()`: draws the open section again.

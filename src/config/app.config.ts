@@ -45,6 +45,8 @@ export interface AppConfig {
   mediaPollMinutes: number;
   /** How often to refresh friends' data from their installations, in minutes; 0 is never. */
   federationRefreshMinutes: number;
+  /** How often to read the life events calendar (iCal URL) again, in hours; 0 is never. */
+  lifeEventsRefreshHours: number;
   /** A Mixpanel project token: turns on anonymous page-view and interaction analytics. Empty means off. */
   mixpanelToken: string;
   /** Mixpanel's API host, e.g. https://api-eu.mixpanel.com for EU data residency. */
@@ -111,6 +113,7 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     audiobookshelfToken: (env.AUDIOBOOKSHELF_TOKEN ?? '').trim(),
     mediaPollMinutes: Math.max(1, integer(env, 'MEDIA_POLL_MINUTES', 60)),
     federationRefreshMinutes: Math.max(0, integer(env, 'FEDERATION_REFRESH_MINUTES', 60)),
+    lifeEventsRefreshHours: Math.max(0, integer(env, 'LIFE_EVENTS_REFRESH_HOURS', 6)),
     mixpanelToken: (env.MIXPANEL_TOKEN ?? '').trim(),
     mixpanelApiHost: url(env, 'MIXPANEL_API_HOST', 'https://api-js.mixpanel.com'),
     puid: integer(env, 'PUID', 1000),

@@ -16,6 +16,7 @@ import { BOOKS, fileName, ISBN } from './demo-books';
 import { writeDemoFriends } from './demo-friends-site';
 import { demoGoodreadsCsv } from './demo-goodreads';
 import { demoKobo } from './demo-kobo';
+import { demoLifeEvents } from './demo-life-events';
 import { simulateHighlights } from './demo-highlights';
 import { demoMediaCatalogue, simulateAudiobookshelf, simulateNetflix } from './demo-media';
 import { demoMetadata } from './demo-metadata';
@@ -91,6 +92,11 @@ export async function buildDemoLibrary(
   // what the server writes from library/prices.json
   const prices = servedPrices(demoPrices(log, firstDay, seed));
   await writeFile(join(lib, 'data', 'prices.json'), JSON.stringify(prices));
+  // holidays and life events, as the server writes them from library/life_events.json
+  await writeFile(
+    join(lib, 'data', 'life_events.json'),
+    JSON.stringify(demoLifeEvents(log, firstDay, lastDay)),
+  );
   // two friends to compare with, as if their share files had been added
   await writeDemoFriends(lib, firstDay, lastDay);
   return { log, firstDay, lastDay, summary };

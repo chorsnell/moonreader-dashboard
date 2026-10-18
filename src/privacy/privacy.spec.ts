@@ -109,7 +109,9 @@ describe('privacy settings', () => {
   });
 
   it('lists what a policy hides', () => {
-    expect(hiddenCategories(PRESETS.everything)).toEqual([]);
+    // life events are personal: no preset shows them
+    expect(hiddenCategories(PRESETS.everything)).toEqual(['life_events']);
+    expect(hiddenCategories({ ...PRESETS.everything, life_events: true })).toEqual([]);
     expect(hiddenCategories(PRESETS.taste)).toEqual([
       'exact_dates',
       'diary',
@@ -117,7 +119,18 @@ describe('privacy settings', () => {
       'streaks',
       'money',
       'highlights',
+      'life_events',
     ]);
+  });
+
+  it('keeps life events from every role by default', () => {
+    const s = toPrivacySettings(undefined);
+    expect([s.public, s.reader, s.friends].map((p) => p.life_events)).toEqual([
+      false,
+      false,
+      false,
+    ]);
+    expect(toPrivacySettings({ reader: { life_events: true } }).reader.life_events).toBe(true);
   });
 });
 
@@ -146,6 +159,17 @@ describe('filterDataFile', () => {
     expect(filterDataFile('highlights.json', highlights, ctx)).toEqual([]);
     expect(filterDataFile('prices.json', [{ book_id: 'emma', price: 3 }], ctx)).toEqual([]);
     expect(filterDataFile('books.json', books, ctx)).toEqual(books);
+  });
+
+  it('serves life events only when the policy shows them, with dates coarsened', () => {
+    const events = [
+      { id: 'h', title: 'Holiday', kind: 'holiday', start: '2026-03-26', end: '2026-03-29' },
+    ];
+    expect(filterDataFile('life_events.json', events, ctxFor(PRESETS.everything))).toEqual([]);
+    const shown = { ...PRESETS.everything, dates: 'week' as const, life_events: true };
+    expect(filterDataFile('life_events.json', events, ctxFor(shown))).toEqual([
+      { ...events[0], start: '2026-03-23', end: '2026-03-23' },
+    ]);
   });
 
   it('leaves ratings and shelves out when ratings are hidden', () => {

@@ -78,7 +78,11 @@ describe('by default', () => {
     await get('/data/reading_history.json').expect(404);
     await get('/data/reading_history.json', admin).expect(200);
     const cfg = await json('/api/config');
-    expect(cfg.privacy).toEqual({ hidden: ['highlights'], dates: 'day', private_books: false });
+    expect(cfg.privacy).toEqual({
+      hidden: ['highlights', 'life_events'],
+      dates: 'day',
+      private_books: false,
+    });
     expect(cfg.last_build).toBeNull(); // its time of day gives away the last sync
     expect((await json('/api/config', admin)).privacy).toBeNull();
     // the rest is as before
@@ -137,6 +141,7 @@ describe('the admin choosing', () => {
       'streaks',
       'money',
       'highlights',
+      'life_events',
     ]);
     expect(cfg.privacy.dates).toBe('month');
 
@@ -180,7 +185,7 @@ describe('the admin choosing', () => {
     const reader = await signIn('friends');
     expect((await json('/data/daily.json', reader)).length).toBe(5);
     expect((await json('/data/highlights.json', reader)).length).toBeGreaterThan(0);
-    expect((await json('/api/config', reader)).privacy.hidden).toEqual([]);
+    expect((await json('/api/config', reader)).privacy.hidden).toEqual(['life_events']);
     await get('/data/daily.json').expect(401); // and the public can't see it at all now
     await get('/data/reading_history.json', reader).expect(404);
     await request(dash.server)

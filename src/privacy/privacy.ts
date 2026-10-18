@@ -26,10 +26,19 @@ export interface Policy {
   highlights: boolean;
   /** Your ratings and shelves (from Goodreads or StoryGraph). */
   ratings: boolean;
+  /** Holidays, trips and life events (a new job, a baby, a move): personal, so off by default. */
+  life_events: boolean;
 }
 
 export type Category =
-  'exact_dates' | 'diary' | 'current' | 'streaks' | 'money' | 'highlights' | 'ratings';
+  | 'exact_dates'
+  | 'diary'
+  | 'current'
+  | 'streaks'
+  | 'money'
+  | 'highlights'
+  | 'ratings'
+  | 'life_events';
 export const CATEGORIES: Category[] = [
   'exact_dates',
   'diary',
@@ -38,6 +47,7 @@ export const CATEGORIES: Category[] = [
   'money',
   'highlights',
   'ratings',
+  'life_events',
 ];
 
 export interface PrivacySettings {
@@ -62,6 +72,8 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
     money: true,
     highlights: true,
     ratings: true,
+    // life events are personal: only ever shown when ticked by hand
+    life_events: false,
   },
   /** Everything but exact dates: weeks instead of days, so no diary or streaks. */
   no_dates: {
@@ -72,6 +84,7 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
     money: true,
     highlights: true,
     ratings: true,
+    life_events: false,
   },
   /** Taste only: what you read and think of it, nothing about your routine. */
   taste: {
@@ -83,6 +96,7 @@ export const PRESETS: Record<'everything' | 'no_dates' | 'taste', Policy> = {
     highlights: false,
     // what you think of what you read is taste
     ratings: true,
+    life_events: false,
   },
 };
 
@@ -116,6 +130,7 @@ function toPolicy(raw: unknown, fallback: Policy): Policy {
     money: flag('money') as boolean,
     highlights: flag('highlights') as boolean,
     ratings: flag('ratings') as boolean,
+    life_events: flag('life_events') as boolean,
   };
 }
 
@@ -149,6 +164,7 @@ export function hiddenCategories(p: Policy): Category[] {
   if (!p.money) out.push('money');
   if (!p.highlights) out.push('highlights');
   if (!p.ratings) out.push('ratings');
+  if (!p.life_events) out.push('life_events');
   return out;
 }
 
@@ -243,6 +259,9 @@ const HIGHLIGHT_FILE = /^highlights?(_[a-z_]+)?\.json$/;
 // media_money.json: streaming subscriptions (features/tv.js)
 const MONEY_FILE = /^(prices|money|spending|purchases|media_money)(_[a-z_]+)?\.json$/;
 
+/** Holidays, trips and life events (src/life-events). */
+const LIFE_EVENTS_FILE = 'life_events.json';
+
 const DIARY_FILES = new Set(['daily.json', 'media_daily.json', 'media_sessions.json']);
 
 /** Files never served to anyone but the admin. */
@@ -266,6 +285,7 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   const highlights = HIGHLIGHT_FILE.test(name);
   if (highlights && !p.highlights) return [];
   if (MONEY_FILE.test(name) && !p.money) return [];
+  if (name === LIFE_EVENTS_FILE && !p.life_events) return [];
   // the day-by-day log; for TV and film, the per-day file and the sittings with their clock times
   if (DIARY_FILES.has(name) && !p.diary) return [];
   const dates = effectiveDates(name, p);

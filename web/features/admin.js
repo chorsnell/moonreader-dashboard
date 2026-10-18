@@ -85,6 +85,7 @@
     get: (url) => call('GET', url),
     post: (url, b) => call('POST', url, b ?? {}),
     put: (url, b, type) => call('PUT', url, b, type),
+    del: (url) => call('DELETE', url),
     // a titled block inside a section
     block: (title, note, ...kids) => h('div', { class: 'ad-block' }, title && h('h3', {}, title), note && h('p', { class: 'up-note' }, note), ...kids),
     msg: () => h('p', { class: 'up-msg', role: 'status' }),
@@ -259,6 +260,7 @@
       ['highlights', 'Highlights and notes'],
       ['money', 'Prices and spending'],
       ['ratings', 'My ratings and shelves (from Goodreads or StoryGraph)'],
+      ['life_events', 'Holidays and life events (never shown by a preset; tick it to share them)'],
     ];
     const wrap = h('div', {}, h('p', { class: 'note' }, 'Loading…'));
     const block = a.block('What visitors can see', "You always see everything. Anything hidden here is taken out of the data on the server, so visitors can't get at it; cards that need it are left out of their page.", wrap);

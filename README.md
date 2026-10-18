@@ -20,7 +20,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 - **Genres & authors:** genre and subgenre mix and how it shifts, book shapes, ratings by genre, most-read authors and series progress.
 - **Origins:** how old your books are when you read them, where your authors come from (a map) and the gender balance over time.
 - **Speed:** words per minute over time and for every book, page turners and slow reads, the finishing sprint, speed by genre, author, rating and year, and whether re-reads go faster.
-- **Timeline & habits:** a day-by-day heatmap, tree rings, a "what you read when" timeline, juggling, weekday and seasonal rhythm, a 24-hour reading clock, biggest reads and books left unfinished.
+- **Timeline & habits:** a day-by-day heatmap, tree rings, a "what you read when" timeline, juggling, weekday and seasonal rhythm, a 24-hour reading clock, biggest reads and books left unfinished, and holidays and life events (marked by hand or from a calendar) shaded on the heatmap, the timeline and the diary, with how much you read on them against normal days.
 - **Patterns:** what you read next, binge loops, palate cleansers, book hangovers, series pull, gateway books, the next book in each series, and a heatmap explorer.
 - **Diary:** a day-by-day log for any period: which books, minutes, words and progress, with starts and finishes.
 - **Library:** every book and every re-read, searchable and sortable, and where you give up.
@@ -202,6 +202,12 @@ Moon+ doesn't know what you paid, so prices live in `library/prices.json`, set i
 
 TV subscriptions are entered in **Other media**, for the cost per hour watched.
 
+## Holidays, trips and life events
+
+Mark date ranges (a holiday, a trip, a new job, a baby, moving house) in the admin page's **Life events** section, or give it a calendar's iCal address (a shared holiday calendar, or Google Calendar's "secret address in iCal format"; `webcal://` works too). The server reads the calendar every `LIFE_EVENTS_REFRESH_HOURS` and when you press **Read it now**. All-day events and anything of 20 hours or more are marked; shorter appointments are skipped, repeating events count once, and if the calendar can't be reached the events from the last good read are kept. Everything is kept in `library/life_events.json`.
+
+Events are shaded on the heatmap, the "What you read when" timeline and the diary, and **Holidays and life events** on Timeline & habits compares the minutes a day and share of days you read on each kind against normal days. They're personal, so visitors never see them unless you tick **Holidays and life events** for them under **Access & privacy** (no preset does), and the calendar's address is never sent to the page.
+
 ## Your book manager (*arr)
 
 If you run a Readarr-compatible book manager (Readarr's successors such as Bookshelf), connect it in the **Book manager** section with its URL and API key. You then see, as the admin only, where each book stands there (available, downloading, wanted), a **Get next in series** button and **Get the rest of this author** on author pages. The dashboard only sends requests to your own instance; it never searches for or downloads anything itself, and the API key never leaves the server. Requests are logged in **Sync & logs**. More in [docs/integrations.md](docs/integrations.md).
@@ -220,6 +226,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Friends** | Your share file and leaderboards, friends' share files, dashboards you follow and that follow you, book clubs, and who can see friends' reading |
 | **Catalogue** | Titles, authors, series, genres and ISBNs; untagged books |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
+| **Life events** | Holidays, trips and life events by hand, and a calendar (iCal) address |
 | **Covers** | Books without a cover: look them up again or upload your own |
 | **Book manager** | Your *arr book manager's URL and API key |
 
@@ -239,6 +246,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 - **Highlights and notes** (hidden from the public by default).
 - **Prices and spending.**
 - **Ratings and shelves** from Goodreads or StoryGraph.
+- **Holidays and life events** (hidden from everyone by default, and not shown by any preset).
 
 You can also mark books or whole genres as private: visitors then see nothing of them, or "A private book" with no title, author or cover. This is enforced on the server: the data files, stats and API are filtered for each visitor, so hidden details never reach their browser. **Preview as a visitor** shows exactly what each one gets.
 
@@ -298,6 +306,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `TAUTULLI_URL` / `TAUTULLI_API_KEY` | *(empty)* | Tautulli's address and API key, for Plex watch history |
 | `AUDIOBOOKSHELF_URL` / `AUDIOBOOKSHELF_TOKEN` | *(empty)* | Audiobookshelf's address and API token |
 | `MEDIA_POLL_MINUTES` | `60` | How often to pull from Tautulli and Audiobookshelf |
+| `LIFE_EVENTS_REFRESH_HOURS` | `6` | How often to read the life events calendar again (`0`: only when you press **Read it now**) |
 | `MIXPANEL_TOKEN` | *(empty)* | A Mixpanel project token: sends anonymous page views and clicks (no titles, names or dates) to Mixpanel. Off when empty |
 | `MIXPANEL_API_HOST` | `https://api-js.mixpanel.com` | Mixpanel's address, e.g. `https://api-eu.mixpanel.com` for EU data residency |
 
@@ -309,6 +318,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/api/config`: who you're signed in as and the last rebuild.
 - `/api/covers`: the saved covers.
 - `/api/stats`, `/api/stats/<calc>`, `/api/stats/year/<year>`, `/api/author/<name>`: every number the page shows, worked out on the server for each viewer from only what they may see. See [docs/api.md](docs/api.md).
+- `/api/admin/life-events` (admin only): holidays and life events; see [docs/api.md](docs/api.md#life-events-admin).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 
 ## How the numbers are worked out

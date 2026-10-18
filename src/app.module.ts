@@ -9,6 +9,7 @@ import { ClubsModule } from './clubs/clubs.module';
 import { DavModule } from './dav/dav.module';
 import { FederationModule } from './federation/federation.module';
 import { FriendsModule } from './friends/friends.module';
+import { LifeEventsModule } from './life-events/life-events.module';
 import { MediaModule } from './media/media.module';
 import { PricesModule } from './prices/prices.module';
 import { RebuildModule } from './rebuild/rebuild.module';
@@ -30,6 +31,7 @@ import { WebModule } from './web/web.module';
     ArrModule,
     MediaModule,
     PricesModule,
+    LifeEventsModule,
     DavModule,
     FriendsModule,
     FederationModule,
