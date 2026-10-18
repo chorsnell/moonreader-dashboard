@@ -22,6 +22,8 @@ import { localDate } from '../common/time';
 import { WEB_DIR } from '../paths';
 import { loadPageCalcs } from '../stats/page-sandbox';
 import { bundleJson, computeStats, readInputs } from '../stats/stats';
+import { heatmap, readingCard, yearBadge } from '../outbound/badges';
+import { nowSummary } from '../outbound/now';
 import { collage } from '../share/collage';
 import { shareCard, shareTags, withShareTags } from '../share/share-card';
 import { withFeatures } from '../web/features';
@@ -110,6 +112,7 @@ async function main(): Promise<void> {
       await writeFile(join(out, 'api', 'stats', id), JSON.stringify(value));
     }
     await writeShareCard(out, coverUrls, stats.rows.as_of);
+    await writeBadges(out, stats.rows, generated, today, coverUrls);
     const friends = await writeStaticFriends(lib, out);
     await writeStaticClubs(lib, out);
     await writeFile(join(out, '.nojekyll'), '');
@@ -143,6 +146,56 @@ async function writeShareCard(
   const page = await readFile(join(out, 'index.html'), 'utf8');
   const tags = shareTags({ title: card.title, description: card.description, url, image });
   await writeFile(join(out, 'index.html'), withShareTags(page, tags));
+}
+
+/**
+ * The SVG badges (/badge/*.svg) as the server draws them by default (light theme), so the
+ * README's embed examples work against the demo. A static host ignores ?theme= and the like.
+ */
+async function writeBadges(
+  out: string,
+  rows: Record<string, unknown>,
+  generated: string | null,
+  today: string,
+  coverUrls: Record<string, string>,
+): Promise<void> {
+  const read = async (name: string): Promise<unknown> =>
+    JSON.parse(await readFile(join(out, 'data', name), 'utf8'));
+  const daily = await read('daily.json');
+  const now = nowSummary({
+    books: await read('books.json'),
+    reads: await read('reads.json'),
+    daily,
+    current: rows.current,
+    quotes: rows.quote_pool,
+    asOf: rows.as_of,
+    generated,
+    covers: coverUrls,
+    policy: null,
+    goal: null,
+    today,
+  });
+  const kpis = Array.isArray(rows.kpis) ? (rows.kpis as { metric: string; value: unknown }[]) : [];
+  const hours = kpis.find((k) => k.metric === 'hours_ytd')?.value;
+  const first = now.reading?.[0];
+  const file = first?.cover ? join(out, first.cover) : null;
+  const image = file ? await readFile(file).catch(() => null) : null;
+  const cover = image
+    ? `data:image/${file?.endsWith('.png') ? 'png' : 'jpeg'};base64,${image.toString('base64')}`
+    : null;
+  await mkdir(join(out, 'badge'), { recursive: true });
+  await writeFile(join(out, 'badge', 'reading.svg'), readingCard({ now, cover, theme: 'light' }));
+  await writeFile(
+    join(out, 'badge', 'year.svg'),
+    yearBadge({
+      now,
+      hours: typeof hours === 'number' ? hours : null,
+      theme: 'light',
+      style: 'badge',
+    }),
+  );
+  const heat = heatmap({ daily, end: today, dates: 'day', weeks: 26, theme: 'light' });
+  if (heat) await writeFile(join(out, 'badge', 'heatmap.svg'), heat);
 }
 
 main().catch((e: unknown) => {

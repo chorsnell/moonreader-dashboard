@@ -125,3 +125,45 @@ describe('GET /api/now', () => {
     await get('/api/now/cover', admin).expect(404);
   });
 });
+
+describe('GET /badge/*.svg', () => {
+  afterAll(async () => {
+    await setAccess({ access: 'public' });
+    await setPrivacy({});
+  });
+
+  const svgOf = async (path: string, cookie = '') =>
+    String((await get(path, cookie).buffer(true).expect(200)).body);
+
+  it('serves SVG badges from what the public may see, cached', async () => {
+    await setPrivacy({ public: PRESETS.everything });
+    const res = await get('/badge/reading.svg').buffer(true).expect(200);
+    expect(res.headers['content-type']).toMatch(/^image\/svg\+xml/);
+    expect(res.headers['cache-control']).toBe('public, max-age=1800');
+    expect(res.headers['content-security-policy']).toMatch(/default-src 'none'/);
+    const svg = String(res.body);
+    expect(svg).toMatch(/^<svg /);
+    expect(svg).toContain('Beta');
+    await get('/badge/reading.svg').set('If-None-Match', String(res.headers.etag)).expect(304);
+    expect(await svgOf('/badge/reading.svg?theme=dark')).toContain('#211f1d');
+    expect(await svgOf('/badge/year.svg')).toContain('Books in');
+    expect(await svgOf('/badge/year.svg?style=card')).toContain('hours');
+    expect(await svgOf('/badge/heatmap.svg?weeks=52')).toContain('days');
+    await get('/badge/nope.svg').expect(404);
+  });
+
+  it('shows the public view even to the admin, and keeps to it', async () => {
+    await setPrivacy({ public: PRESETS.taste, private_books: ['beta'] });
+    const reading = await svgOf('/badge/reading.svg', admin);
+    expect(reading).toContain('Not shared');
+    expect(reading).not.toContain('Beta');
+    expect(await svgOf('/badge/year.svg?style=card', admin)).not.toContain('hours');
+    await get('/badge/heatmap.svg').expect(404);
+  });
+
+  it('are off behind a read password', async () => {
+    await setAccess({ access: 'password', password: 'letmein' });
+    await get('/badge/year.svg').expect(404);
+    await get('/badge/year.svg', admin).expect(404);
+  });
+});

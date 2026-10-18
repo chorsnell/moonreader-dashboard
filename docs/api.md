@@ -64,6 +64,15 @@ device_audience}`; the token itself is never returned), `PUT /api/admin/outbound
 'public' | 'reader' | 'friends'}`), `POST /api/admin/outbound/token` (a new token, returned
 this once) and `DELETE /api/admin/outbound/token`.
 
+### Badges
+
+`GET /badge/reading.svg`, `/badge/year.svg` (`?style=card`) and `/badge/heatmap.svg`
+(`?weeks=4–53`) are SVG images of what the **public** may see, whoever asks, with
+`?theme=light|dark` and `?title=`. They're `404` while the dashboard has a read password
+(and the heatmap when the public don't get day-by-day reading). `Cache-Control: public,
+max-age=1800`, an `ETag`, and `304` when unchanged. The README's Badges section has embed
+examples.
+
 ### Calcs the server leaves out
 
 - `client_only`: calcs that read something besides their inputs (the viewer's filters or
