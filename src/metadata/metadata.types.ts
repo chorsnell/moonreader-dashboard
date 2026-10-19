@@ -40,3 +40,21 @@ export interface MetadataMisses {
   books: Record<string, string>;
   authors: Record<string, string>;
 }
+
+/** What the lookup found about a book's subjects on Open Library. */
+export interface BookSubjects {
+  /** The work they belong to; looked up again when the book's work changes. */
+  work_id: string | null;
+  /** Open Library's subjects for the work, as it has them (at most MAX_SUBJECTS). */
+  subjects: string[];
+  /** The day they were looked up (YYYY-MM-DD). */
+  looked_up: string;
+}
+
+/**
+ * library/.metadata-subjects.json, keyed by book id. Kept apart from metadata.json because
+ * subjects aren't an input to the build: a change to them needn't rebuild anything.
+ */
+export interface SubjectsFile {
+  books: Record<string, BookSubjects>;
+}

@@ -18,10 +18,12 @@ export interface WorkDoc {
   first_publish_year?: number;
   number_of_pages_median?: number;
   isbn?: string[];
+  /** The work's subjects ("Science fiction", "Space warfare"…), used to suggest a genre. */
+  subject?: string[];
 }
 
 const WORK_FIELDS =
-  'key,title,author_name,author_key,first_publish_year,number_of_pages_median,isbn';
+  'key,title,author_name,author_key,first_publish_year,number_of_pages_median,isbn,subject';
 
 /** GETs a URL as this app (as the APIs ask), with a timeout. Throws on a failed request. */
 export async function httpGet(url: string, signal?: AbortSignal): Promise<Buffer> {
@@ -110,6 +112,26 @@ export class OpenLibraryClient {
     const id = (JSON.parse(body.toString('utf8')) as { remote_ids?: { wikidata?: string } })
       .remote_ids?.wikidata;
     return id && /^Q\d+$/.test(id) ? id : null;
+  }
+
+  /**
+   * The subjects of a work, from its record (e.g. /works/OL66562W.json). An empty list when
+   * the work has none or Open Library no longer knows it; throws when it can't be reached.
+   */
+  async workSubjects(workId: string, signal?: AbortSignal): Promise<string[]> {
+    const id = workId.replace(/^\/?works\//, '');
+    if (!/^OL\d+W$/.test(id)) return [];
+    let body: Buffer;
+    try {
+      body = await this.get(`${this.config.openLibraryUrl}/works/${id}.json`, signal);
+    } catch (e) {
+      if ((e as Error).message.startsWith('HTTP 404 ')) return [];
+      throw e;
+    }
+    const subjects = (JSON.parse(body.toString('utf8')) as { subjects?: unknown }).subjects;
+    return Array.isArray(subjects)
+      ? subjects.filter((s): s is string => typeof s === 'string')
+      : [];
   }
 
   /** The medium-size image for a cover id. */

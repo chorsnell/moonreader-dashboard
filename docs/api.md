@@ -292,3 +292,19 @@ who don't get the diary, get it empty.
 | `GET /api/admin/weather` | `{enabled, location: {name, lat, lon} \| null, pulled, error, days, first, last}` |
 | `PUT /api/admin/weather/location` | `{place}`: a town (Open-Meteo geocoding, first match) or `"lat, lon"`; `''` removes it. A new location clears the cached days and fetches its weather. `400` with `error` if the place isn't found. Returns `{added, error, …}` as GET |
 | `POST /api/admin/weather/refresh` | Fetches the days not cached yet. A failure (offline) keeps the cache and is reported in `error` |
+
+## Genre suggestions (admin)
+
+Suggested genres for untagged books, and starter-catalogue genres their Open Library
+subjects disagree with (BOO-99). Admin only. Suggestions use the genre and subgenre names
+`catalogue.json` already has. A book's suggestion follows its series (when at least half
+its tagged books agree), else its author (when two thirds of their tagged books share a
+genre), else its subjects (kept in `library/.metadata-subjects.json` by the metadata
+lookup). Rejected ones are kept in `library/genre-suggestions.json`, by book id, as
+`{genre, subgenre}` pairs: the same pair isn't offered again.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/catalogue/suggestions` | `{lookup, untagged, untagged_without, review}`. `untagged` and `review` are `[{id, title, author, series, genre, subgenre, suggestion, from_subjects, subjects}]`: `genre`/`subgenre` are the book's now; `suggestion` is `{genre, subgenre, basis: "series" \| "author" \| "subjects", confidence: "high" \| "medium" \| "low", subjects, like}` (`subjects`: the ones that led to it; `like`: up to three tagged books it follows); `from_subjects` is what the subjects alone say when that differs; `subjects` is every subject the book has (`null` before the lookup). `untagged_without` counts untagged books with no suggestion. `review` holds tagged books whose subjects point, with medium or high confidence, at another genre |
+| `POST /api/admin/catalogue/suggestions/accept` | `{items: [{id, genre, subgenre}]}` (up to 1000; the genre and subgenre may be changed from the suggestion): saves them to the books' `catalogue.json` entries in one write and rebuilds. `{ok, saved}`; `400` if none of the books exist |
+| `POST /api/admin/catalogue/suggestions/reject` | `{items: [{id, genre, subgenre}]}`: remembers them as turned down. For `review` rows this is "keep mine" |

@@ -2,7 +2,7 @@ import { readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { LibraryService } from '../library/library.service';
-import type { MetadataFile, MetadataMisses } from './metadata.types';
+import type { MetadataFile, MetadataMisses, SubjectsFile } from './metadata.types';
 
 async function readJson<T>(path: string, fallback: T): Promise<T> {
   try {
@@ -18,8 +18,9 @@ async function writeJson(path: string, value: unknown): Promise<void> {
 }
 
 /**
- * library/metadata.json, what the lookup found, and library/.metadata-misses.json, what it
- * didn't. Only metadata.json is an input to the build.
+ * library/metadata.json, what the lookup found, library/.metadata-misses.json, what it
+ * didn't, and library/.metadata-subjects.json, each book's Open Library subjects. Only
+ * metadata.json is an input to the build.
  */
 @Injectable()
 export class MetadataStore {
@@ -39,6 +40,18 @@ export class MetadataStore {
 
   writeMisses(misses: MetadataMisses): Promise<void> {
     return writeJson(this.missesFile, misses);
+  }
+
+  readSubjects(): Promise<SubjectsFile> {
+    return readJson<SubjectsFile>(this.subjectsFile, { books: {} });
+  }
+
+  writeSubjects(subjects: SubjectsFile): Promise<void> {
+    return writeJson(this.subjectsFile, subjects);
+  }
+
+  private get subjectsFile(): string {
+    return join(this.library.root, '.metadata-subjects.json');
   }
 
   private get missesFile(): string {

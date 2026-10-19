@@ -182,18 +182,22 @@ export class CatalogueService {
     };
   }
 
-  /** Every book of the last build, untagged ones first. */
-  async books(): Promise<CatalogueBook[]> {
-    const catalogue = await this.read();
-    let history: BookHistory[] = [];
+  /** The books of the last build (none before the first). */
+  async history(): Promise<BookHistory[]> {
     try {
       const raw = JSON.parse(
         await readFile(join(this.library.data, 'reading_history.json'), 'utf8'),
       ) as { books?: BookHistory[] };
-      history = raw.books ?? [];
+      return raw.books ?? [];
     } catch {
-      // no build yet
+      return []; // no build yet
     }
+  }
+
+  /** Every book of the last build, untagged ones first. */
+  async books(): Promise<CatalogueBook[]> {
+    const catalogue = await this.read();
+    const history = await this.history();
     const shown = new Map<
       string,
       { published_year?: number | null; author_country?: string | null }
@@ -238,64 +242,72 @@ export class CatalogueService {
 
   /** Saves a change, then asks for a rebuild. */
   save(change: CatalogueChange): Promise<void> {
+    return this.saveMany([change], {
+      message: change.exclude
+        ? `Catalogue: marked ${change.files.length} file(s) as not a book`
+        : `Catalogue: saved "${change.entry.title}" (${change.files.length} file(s))`,
+      details: {
+        files: change.files,
+        exclude: change.exclude,
+        ...(change.exclude ? {} : change.entry),
+        ...(change.finished !== undefined ? { finished: change.finished } : {}),
+        ...(change.published_year !== undefined ? { published_year: change.published_year } : {}),
+        ...(change.author_country !== undefined ? { author_country: change.author_country } : {}),
+      },
+    });
+  }
+
+  /** Saves several changes in one write and one rebuild, recorded as one activity. */
+  saveMany(
+    changes: CatalogueChange[],
+    record: { message: string; details: Record<string, unknown> },
+  ): Promise<void> {
     const run = this.saving.then(async () => {
       const catalogue = await this.read();
-      const keys = change.files.map((f) => f.toLowerCase());
       const exclude = new Set(catalogue.exclude);
-      for (const key of keys) {
-        if (change.exclude) {
-          exclude.add(key);
-          delete catalogue.books[key];
-        } else {
-          exclude.delete(key);
-          const prev = catalogue.books[key];
-          const kept = {
-            isbn13: prev?.isbn13 ?? null,
-            isbn10: prev?.isbn10 ?? null,
-            ...(prev?.isbn && !prev.isbn13 && !prev.isbn10 ? { isbn: prev.isbn } : {}),
-            ...(prev?.work_id ? { work_id: prev.work_id } : {}),
-            ...Object.fromEntries(
-              (['published_year', 'pages', 'author_country', 'author_gender', 'finished'] as const)
-                .filter((k) => prev?.[k] != null)
-                .map((k) => [k, prev![k]]),
-            ),
-          };
-          const entry: CatalogueEntry = { ...kept, ...change.entry };
-          if (change.entry.isbn13 !== undefined) delete entry.isbn;
-          if (!entry.isbn13) delete entry.isbn13;
-          if (!entry.isbn10) delete entry.isbn10;
-          if (change.finished !== undefined) entry.finished = change.finished ?? undefined;
-          if (entry.finished === undefined) delete entry.finished;
-          if (change.published_year === null) delete entry.published_year;
-          else if (change.published_year !== undefined)
-            entry.published_year = change.published_year;
-          if (change.author_country === null) delete entry.author_country;
-          else if (change.author_country !== undefined)
-            entry.author_country = change.author_country;
-          catalogue.books[key] = entry;
-        }
-      }
+      for (const change of changes) applyChange(catalogue, exclude, change);
       catalogue.exclude = [...exclude].sort();
       const file = this.library.catalogue;
       await writeFile(`${file}.part`, `${JSON.stringify(catalogue, null, 1)}\n`, 'utf8');
       await rename(`${file}.part`, file);
-      this.activity.record({
-        type: 'settings',
-        message: change.exclude
-          ? `Catalogue: marked ${keys.length} file(s) as not a book`
-          : `Catalogue: saved "${change.entry.title}" (${keys.length} file(s))`,
-        trigger: 'admin',
-        details: {
-          files: change.files,
-          exclude: change.exclude,
-          ...(change.exclude ? {} : change.entry),
-          ...(change.finished !== undefined ? { finished: change.finished } : {}),
-          ...(change.published_year !== undefined ? { published_year: change.published_year } : {}),
-          ...(change.author_country !== undefined ? { author_country: change.author_country } : {}),
-        },
-      });
+      this.activity.record({ type: 'settings', trigger: 'admin', ...record });
     });
     this.saving = run.catch(() => undefined);
     return run.then(() => this.library.changed('catalogue'));
+  }
+}
+
+/** Applies one change to the catalogue's entries and its exclude list. */
+function applyChange(catalogue: Catalogue, exclude: Set<string>, change: CatalogueChange): void {
+  for (const key of change.files.map((f) => f.toLowerCase())) {
+    if (change.exclude) {
+      exclude.add(key);
+      delete catalogue.books[key];
+      continue;
+    }
+    exclude.delete(key);
+    const prev = catalogue.books[key];
+    const kept = {
+      isbn13: prev?.isbn13 ?? null,
+      isbn10: prev?.isbn10 ?? null,
+      ...(prev?.isbn && !prev.isbn13 && !prev.isbn10 ? { isbn: prev.isbn } : {}),
+      ...(prev?.work_id ? { work_id: prev.work_id } : {}),
+      ...Object.fromEntries(
+        (['published_year', 'pages', 'author_country', 'author_gender', 'finished'] as const)
+          .filter((k) => prev?.[k] != null)
+          .map((k) => [k, prev![k]]),
+      ),
+    };
+    const entry: CatalogueEntry = { ...kept, ...change.entry };
+    if (change.entry.isbn13 !== undefined) delete entry.isbn;
+    if (!entry.isbn13) delete entry.isbn13;
+    if (!entry.isbn10) delete entry.isbn10;
+    if (change.finished !== undefined) entry.finished = change.finished ?? undefined;
+    if (entry.finished === undefined) delete entry.finished;
+    if (change.published_year === null) delete entry.published_year;
+    else if (change.published_year !== undefined) entry.published_year = change.published_year;
+    if (change.author_country === null) delete entry.author_country;
+    else if (change.author_country !== undefined) entry.author_country = change.author_country;
+    catalogue.books[key] = entry;
   }
 }
