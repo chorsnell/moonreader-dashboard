@@ -35,6 +35,7 @@ import { publicPrefix } from '../common/http/public-prefix';
 import { hiddenCategories, PRESETS, toPrivacySettings } from '../privacy/privacy';
 import { PREVIEW_COOKIE } from '../privacy/privacy.service';
 import { CatalogueService, toCatalogueChange } from './catalogue.service';
+import { GenreSuggestionsService, toSuggestionItems } from './genre-suggestions.service';
 
 const MAX_COVER_BYTES = 5 * 1024 * 1024;
 const BOOK_ID = /^[a-z0-9-]+$/;
@@ -81,6 +82,7 @@ export class AdminController {
     private readonly lookup: CoverLookupService,
     private readonly activity: ActivityLogService,
     private readonly settings: AccessSettingsService,
+    private readonly suggestions: GenreSuggestionsService,
   ) {}
 
   /** The current data and the backups kept, for the Data section. */
@@ -146,6 +148,28 @@ export class AdminController {
   @HttpCode(200)
   async saveBook(@Body() body: unknown) {
     await this.catalogue.save(toCatalogueChange(body));
+    return { ok: true };
+  }
+
+  /** Genre suggestions for untagged books, and starter genres their subjects disagree with. */
+  @Get('catalogue/suggestions')
+  @Header('Cache-Control', 'no-store')
+  async genreSuggestions() {
+    return this.suggestions.list();
+  }
+
+  /** Saves the given genres ({ items: [{ id, genre, subgenre }] }) to catalogue.json, then rebuilds. */
+  @Post('catalogue/suggestions/accept')
+  @HttpCode(200)
+  async acceptSuggestions(@Body() body: unknown) {
+    return { ok: true, saved: await this.suggestions.accept(toSuggestionItems(body)) };
+  }
+
+  /** Turns suggestions down ({ items: [{ id, genre, subgenre }] }) so they aren't offered again. */
+  @Post('catalogue/suggestions/reject')
+  @HttpCode(200)
+  async rejectSuggestions(@Body() body: unknown) {
+    await this.suggestions.reject(toSuggestionItems(body));
     return { ok: true };
   }
 

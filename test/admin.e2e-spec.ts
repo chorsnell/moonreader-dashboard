@@ -87,6 +87,9 @@ describe('admin endpoints', () => {
       ['POST', '/api/admin/rebuild'],
       ['GET', '/api/admin/catalogue'],
       ['PUT', '/api/admin/catalogue'],
+      ['GET', '/api/admin/catalogue/suggestions'],
+      ['POST', '/api/admin/catalogue/suggestions/accept'],
+      ['POST', '/api/admin/catalogue/suggestions/reject'],
       ['GET', '/api/admin/covers'],
       ['POST', '/api/admin/covers/lookup'],
       ['PUT', '/api/admin/covers/alpha'],
@@ -324,6 +327,151 @@ describe('the Catalogue section', () => {
     expect(catalogue.exclude).toContain('beta - bob writer.epub');
     const d = dash;
     expect(await waitFor(async () => (await books(d)).length === 1)).toBe(true);
+  });
+});
+
+interface SuggestionRow {
+  id: string;
+  genre: string;
+  subgenre: string;
+  suggestion: { genre: string; subgenre: string; basis: string; subjects: string[] };
+  subjects: string[] | null;
+}
+interface Suggestions {
+  lookup: boolean;
+  untagged: SuggestionRow[];
+  untagged_without: number;
+  review: SuggestionRow[];
+}
+
+describe('genre suggestions', () => {
+  let openLibrary: Server;
+  const asked: string[] = [];
+
+  // Open Library knows Alpha (with subjects, from the search) and Beta (whose subjects are only
+  // on its work record, as for books looked up before subjects were kept)
+  beforeAll(async () => {
+    openLibrary = createServer((req, res) => {
+      const url = new URL(req.url ?? '/', 'http://x');
+      asked.push(`${url.pathname}?${url.searchParams.get('fields') ?? ''}`);
+      res.setHeader('Content-Type', 'application/json');
+      if (url.pathname === '/search.json' && url.searchParams.get('title') === 'Alpha') {
+        res.end(
+          JSON.stringify({
+            docs: [
+              {
+                key: '/works/OL1W',
+                title: 'Alpha',
+                subject: ['Accessible book', 'Science fiction', 'Space warfare'],
+              },
+            ],
+          }),
+        );
+      } else if (url.pathname === '/search.json') {
+        res.end(JSON.stringify({ docs: [] }));
+      } else if (url.pathname === '/works/OL2W.json') {
+        res.end(JSON.stringify({ subjects: ['Ghost stories', 'Horror tales', 'Fiction'] }));
+      } else res.writeHead(404).end();
+    });
+    openLibrary.listen(0, '127.0.0.1');
+    await new Promise((r) => openLibrary.once('listening', r));
+  });
+  afterAll(() => new Promise((r) => openLibrary.close(r)));
+
+  it('suggests genres from Open Library subjects, and saves only what the admin accepts', async () => {
+    const url = `http://127.0.0.1:${(openLibrary.address() as AddressInfo).port}`;
+    const d = await TestDashboard.start({
+      metadataLookup: true,
+      openLibraryUrl: url,
+      coverPauseMs: 0,
+    });
+    dash = d;
+    const today = new Date().toISOString().slice(0, 10);
+    // Beta was looked up before subjects were kept
+    await writeFile(
+      d.path('metadata.json'),
+      JSON.stringify({ books: { beta: { work_id: 'OL2W', looked_up: today } }, authors: {} }),
+    );
+    await request(d.server)
+      .put('/upload?name=test.mrpro')
+      .set('X-Upload-Token', TOKEN)
+      .type('application/octet-stream')
+      .send(backup)
+      .expect(200);
+    const list = async () =>
+      (await admin(d).get('/api/admin/catalogue/suggestions').expect(200)).body as Suggestions;
+    expect(await waitFor(async () => (await list()).untagged.length === 2)).toBe(true);
+    expect(asked).toContain('/works/OL2W.json?');
+    expect(asked.find((a) => a.startsWith('/search.json'))).toContain('subject');
+
+    // in the starter catalogue's own words, with the subjects that led to them
+    const first = await list();
+    expect(first).toMatchObject({ lookup: true, untagged_without: 0, review: [] });
+    expect(
+      first.untagged.map((r) => [r.id, r.genre, r.suggestion.genre, r.suggestion.subgenre]),
+    ).toEqual([
+      ['alpha', 'Untagged', 'Science Fiction', 'Military SF'],
+      ['beta', 'Untagged', 'Horror', 'Supernatural'],
+    ]);
+    expect(first.untagged[0].suggestion).toMatchObject({
+      basis: 'subjects',
+      subjects: ['Science fiction', 'Space warfare'],
+    });
+    expect(first.untagged[0].subjects).toEqual([
+      'Accessible book',
+      'Science fiction',
+      'Space warfare',
+    ]);
+    // nothing is applied by itself
+    const catalogue = () => d.json<{ books: Record<string, BookRow> }>('catalogue.json');
+    expect((await catalogue()).books['alpha - ann author.epub']).toBeUndefined();
+
+    // bad requests
+    const post = (path: string, body: object) =>
+      admin(d).post(`/api/admin/catalogue/suggestions/${path}`, body);
+    await post('accept', { items: [] }).expect(400);
+    await post('accept', { items: [{ id: 'alpha', genre: '' }] }).expect(400);
+    await post('reject', { items: [{ id: '../x', genre: 'Horror' }] }).expect(400);
+    await post('accept', { items: [{ id: 'nope', genre: 'Horror' }] }).expect(400);
+
+    // rejecting Beta's is remembered
+    await post('reject', {
+      items: [{ id: 'beta', genre: 'Horror', subgenre: 'Supernatural' }],
+    }).expect(200, { ok: true });
+    const second = await list();
+    expect(second.untagged.map((r) => r.id)).toEqual(['alpha']);
+    expect(second.untagged_without).toBe(1);
+    expect((await d.json<{ rejected: object }>('genre-suggestions.json')).rejected).toEqual({
+      beta: [{ genre: 'Horror', subgenre: 'Supernatural' }],
+    });
+
+    // accepting Alpha's, changed to something else, saves it to catalogue.json and rebuilds
+    await post('accept', {
+      items: [{ id: 'alpha', genre: 'Fantasy', subgenre: 'Epic Fantasy' }],
+    }).expect(200, { ok: true, saved: 1 });
+    expect((await catalogue()).books['alpha - ann author.epub']).toMatchObject({
+      title: 'Alpha',
+      author: 'Ann Author',
+      genre: 'Fantasy',
+      subgenre: 'Epic Fantasy',
+    });
+    const alpha = async () =>
+      ((await admin(d).get('/api/admin/catalogue')).body as { books: CatalogueBook[] }).books.find(
+        (b) => b.id === 'alpha',
+      );
+    expect(await waitFor(async () => (await alpha())?.untagged === false)).toBe(true);
+    expect((await books(d)).find((b) => b.id === 'alpha')).toMatchObject({ genre: 'Fantasy' });
+
+    // now its subjects disagree with the catalogue, so it's up for review until it's kept
+    const third = await list();
+    expect(third.untagged).toEqual([]);
+    expect(third.review.map((r) => [r.id, r.genre, r.suggestion.genre])).toEqual([
+      ['alpha', 'Fantasy', 'Science Fiction'],
+    ]);
+    await post('reject', {
+      items: [{ id: 'alpha', genre: 'Science Fiction', subgenre: 'Military SF' }],
+    }).expect(200);
+    expect((await list()).review).toEqual([]);
   });
 });
 

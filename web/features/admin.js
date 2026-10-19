@@ -361,16 +361,22 @@
   // ---------- Catalogue ----------
   rh.adminSection({ id: 'catalogue', title: 'Catalogue', order: 40, draw(box, a) {
     let books = [], filter = 'untagged', query = '', limit = 30, flash = '';
+    // genre suggestions by book id: for untagged books, and starter genres up for review
+    let suggested = new Map(), review = new Map(), suggestInfo = null;
     const search = h('input', { type: 'search', placeholder: 'Search titles, authors, files', 'aria-label': 'Search books' });
-    const which = h('select', { 'aria-label': 'Which books' }, h('option', { value: 'untagged' }, 'Untagged'), h('option', { value: 'unfinished' }, 'Not finished'), h('option', { value: 'all' }, 'All books'));
+    const reviewOpt = h('option', { value: 'review' }, 'Review genres');
+    const which = h('select', { 'aria-label': 'Which books' }, h('option', { value: 'untagged' }, 'Untagged'), h('option', { value: 'unfinished' }, 'Not finished'), reviewOpt, h('option', { value: 'all' }, 'All books'));
     const count = h('p', { class: 'up-note' });
+    const hint = h('p', { class: 'up-note', hidden: true });
+    const acceptAll = h('button', { class: 'up-copy', type: 'button', hidden: true }, 'Accept all shown');
     const list = h('ul', { class: 'ad-list ad-books' });
     const more = h('button', { class: 'up-link', type: 'button', hidden: true, onclick: () => { limit += 30; render(); } }, 'Show more');
     const lists = h('div', {});
     search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); limit = 30; render(); });
     which.addEventListener('change', () => { filter = which.value; limit = 30; render(); });
     box.append(h('p', { class: 'up-note' }, 'Books Moon+ knows by file name only show as "Untagged". Give them a title, author, series and genre here; it is saved to catalogue.json and the stats rebuild. Under "Not finished", mark books you finished that Moon+ didn’t see reach the end (a broken file, or before it recorded progress).'),
-      h('div', { class: 'ad-toolbar' }, which, search), count, list, more, lists);
+      h('p', { class: 'up-note' }, 'Untagged books get a suggested genre, from other books in the series or by the author, or from the book’s subjects on Open Library. Nothing changes until you accept one. "Review genres" lists books whose subjects disagree with the genre the starter catalogue guessed.'),
+      h('div', { class: 'ad-toolbar' }, which, search), h('div', { class: 'ad-actions ad-count' }, count, acceptAll), hint, list, more, lists);
 
     // every country the browser can name, for the author's country field
     const regions = typeof Intl.DisplayNames === 'function' ? new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' }) : null;
@@ -387,7 +393,12 @@
     }
     async function load() {
       count.textContent = 'Loading…';
+      const suggestions = a.get('api/admin/catalogue/suggestions').catch(() => null);
       try { books = (await a.get('api/admin/catalogue')).books; } catch (e) { count.textContent = e.message; return; }
+      suggestInfo = await suggestions;
+      suggested = new Map((suggestInfo?.untagged || []).map((r) => [r.id, r]));
+      review = new Map((suggestInfo?.review || []).map((r) => [r.id, r]));
+      reviewOpt.textContent = `Review genres (${review.size})`;
       if (!books.some((b) => b.untagged) && filter === 'untagged') { filter = 'all'; which.value = 'all'; }
       lists.replaceChildren(
         datalist('ad-authors', books.map((b) => b.author)), datalist('ad-series', books.map((b) => b.series)),
@@ -397,14 +408,82 @@
       render();
     }
     function render() {
-      const rows = books.filter((b) => (filter === 'all' || (filter === 'untagged' ? b.untagged : b.status !== 'finished')) &&
+      const shows = (b) => filter === 'all' || (filter === 'untagged' ? b.untagged : filter === 'review' ? review.has(b.id) : b.status !== 'finished');
+      const rows = books.filter((b) => shows(b) &&
         (!query || [b.title, b.author, b.series, ...b.files].some((s) => s && s.toLowerCase().includes(query))));
       const untagged = books.filter((b) => b.untagged).length;
       count.textContent = !books.length ? 'No books yet: upload a backup first.'
         : flash + `${rows.length} book${rows.length === 1 ? '' : 's'} shown · ${untagged} untagged of ${books.length}`;
       flash = '';
-      list.replaceChildren(...rows.slice(0, limit).map(row));
+      const visible = rows.slice(0, limit);
+      list.replaceChildren(...visible.map(row));
+      if (filter === 'review' && !rows.length) list.replaceChildren(h('li', { class: 'note' }, 'No starter genres to review: where Open Library has subjects for a book, they agree with its genre (or you kept yours).'));
       more.hidden = rows.length <= limit;
+      // accept every suggestion on screen at once
+      const offered = visible.map((b) => suggestionFor(b)).filter(Boolean);
+      acceptAll.hidden = offered.length < 2;
+      acceptAll.textContent = `Accept all ${offered.length} shown`;
+      acceptAll.onclick = () => {
+        if (!confirm(`Save the suggested genre of ${offered.length} books to catalogue.json?`)) return;
+        decide('accept', offered.map((s) => ({ id: s.id, genre: s.suggestion.genre, subgenre: s.suggestion.subgenre })), acceptAll);
+      };
+      // why some untagged books have no suggestion
+      const without = suggestInfo?.untagged_without || 0;
+      hint.hidden = filter !== 'untagged' || !without;
+      hint.textContent = !suggestInfo?.lookup
+        ? `${without} untagged book${without === 1 ? ' has' : 's have'} no suggestion. Subjects come from the Open Library lookup, which is turned off on this server (METADATA_LOOKUP=off).`
+        : `${without} untagged book${without === 1 ? ' has' : 's have'} no suggestion yet: Open Library has no subjects that help, or they haven’t been looked up yet (that happens after a rebuild, about a second a book).`;
+    }
+    const suggestionFor = (b) => (filter === 'review' ? review.get(b.id) : b.untagged ? suggested.get(b.id) : null);
+    const pair = (g, s) => (s && s !== g ? `${g} · ${s}` : g);
+    // accepts (saves to catalogue.json, then rebuilds) or rejects suggestions
+    async function decide(how, items, btn, msg) {
+      const say = (t) => { (msg || count).textContent = t; };
+      if (btn) btn.disabled = true;
+      try {
+        if (how === 'reject') {
+          await a.post('api/admin/catalogue/suggestions/reject', { items });
+          for (const i of items) { suggested.delete(i.id); review.delete(i.id); }
+          reviewOpt.textContent = `Review genres (${review.size})`;
+          if (suggestInfo) suggestInfo.untagged_without += items.filter((i) => books.some((b) => b.id === i.id && b.untagged)).length;
+          render();
+          return;
+        }
+        const before = await a.status();
+        await a.post('api/admin/catalogue/suggestions/accept', { items });
+        say(`Saved ${items.length === 1 ? 'the genre' : `${items.length} genres`}. Rebuilding…`);
+        const built = await waitForBuild(before, say);
+        flash = built ? `Saved ${items.length === 1 ? 'a genre' : `${items.length} genres`}. ` : '';
+        await load();
+      } catch (e) { say(e.message); if (btn) btn.disabled = false; }
+    }
+    function suggestionBlock(b, s, item) {
+      const g = s.suggestion, msg = h('span', { class: 'ad-meta', role: 'status' });
+      const isReview = filter === 'review';
+      const why = g.basis === 'series' ? `Like the rest of the series: ${g.like.join(', ')}`
+        : g.basis === 'author' ? `Like ${g.like.length === 1 ? 'their other book' : 'their other books'}: ${g.like.join(', ')}`
+        : `From Open Library subjects: ${g.subjects.join(', ')}`;
+      const accept = h('button', { class: 'up-copy', type: 'button' }, isReview ? 'Use this' : 'Accept');
+      const change = h('button', { class: 'up-copy', type: 'button' }, 'Change…');
+      const reject = h('button', { class: 'up-copy', type: 'button' }, isReview ? 'Keep mine' : 'Reject');
+      const item0 = { id: b.id, genre: g.genre, subgenre: g.subgenre };
+      accept.addEventListener('click', () => decide('accept', [item0], accept, msg));
+      reject.addEventListener('click', () => decide('reject', [item0], reject, msg));
+      change.addEventListener('click', () => {
+        if (item.querySelector('form')) return;
+        item.append(editor(b, g));
+      });
+      const all = s.subjects && s.subjects.length > g.subjects.length
+        ? h('details', { class: 'ad-subjects' }, h('summary', {}, `All ${s.subjects.length} subjects`), h('p', { class: 'ad-meta' }, s.subjects.join(' · ')))
+        : null;
+      return h('div', { class: 'ad-suggest' },
+        h('div', { class: 'ad-suggest-text' },
+          h('div', {}, h('span', { class: 'ad-meta' }, isReview ? 'Subjects suggest ' : 'Suggested '), h('strong', {}, pair(g.genre, g.subgenre)),
+            h('span', { class: `ad-conf ad-conf-${g.confidence}` }, g.confidence === 'high' ? 'likely' : g.confidence === 'medium' ? 'probable' : 'a guess')),
+          h('div', { class: 'ad-meta' }, why),
+          s.from_subjects ? h('div', { class: 'ad-meta' }, `Open Library subjects say ${pair(s.from_subjects.genre, s.from_subjects.subgenre)} (${s.from_subjects.subjects.join(', ')})`) : null,
+          all, msg),
+        h('div', { class: 'ad-buttons' }, accept, change, reject));
     }
     function row(b) {
       const item = h('li', { class: 'ad-book' });
@@ -415,6 +494,8 @@
           h('div', {}, rh.linkBook(h('span', { class: 'ad-name' }, b.title), b.id), b.untagged ? h('span', { class: 'ad-tag' }, 'Untagged') : null),
           rh.byline('div', 'ad-meta', b, ['author', 'series', ...(b.genre === 'Untagged' ? [] : ['genre', 'subgenre'])])),
         h('div', { class: 'ad-buttons' }, done, edit)));
+      const s = suggestionFor(b);
+      if (s) item.append(suggestionBlock(b, s, item));
       edit.addEventListener('click', () => {
         const open = item.querySelector('form');
         if (open) { open.remove(); edit.setAttribute('aria-expanded', 'false'); return; }
@@ -435,7 +516,8 @@
         render();
       } catch (e) { btn.disabled = false; count.textContent = e.message; }
     }
-    function editor(b) {
+    // preset: a genre suggestion to start the genre fields from
+    function editor(b, preset) {
       const id = 'ad-' + b.id;
       const field = (name, label, value, attrs = {}) => h('div', { class: 'ad-field' + (attrs.wide ? ' ad-wide' : '') },
         h('label', { for: `${id}-${name}` }, label),
@@ -452,8 +534,8 @@
         field('author', 'Author', b.author, { list: 'ad-authors' }),
         field('series', 'Series', b.series, { list: 'ad-series' }),
         field('series_no', 'Number in series', b.series_no, { type: 'number', step: 'any', min: '0', inputmode: 'decimal' }),
-        field('genre', 'Genre', keepGenre(b.genre), { list: 'ad-genres' }),
-        field('subgenre', 'Subgenre', keepGenre(b.subgenre), { list: 'ad-subgenres' }),
+        field('genre', 'Genre', keepGenre(preset ? preset.genre : b.genre), { list: 'ad-genres' }),
+        field('subgenre', 'Subgenre', keepGenre(preset ? preset.subgenre : b.subgenre), { list: 'ad-subgenres' }),
         field('isbn', 'ISBN', b.isbn13, { inputmode: 'numeric', placeholder: 'ISBN-13 or ISBN-10' }),
         // blank leaves it to the metadata lookup, whose answer shows as the placeholder
         field('published_year', 'First published', yearText(b.published_year), { pattern: '\\s*-?\\d{1,4}(\\s*(BC|BCE|bc|bce))?\\s*',

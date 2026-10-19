@@ -110,6 +110,7 @@ library/
   covers/          book covers, one <book id>.jpg or .png each
   catalogue.json   titles, authors, series, genres and ISBNs for your books
   metadata.json    publication years, pages and authors looked up online
+  genre-suggestions.json  genre suggestions you turned down
   prices.json      what you paid
   goodreads.json, storygraph.json, kobo.json, kindle*.json   imports
   media/           TV, film and audiobook history and its catalogue.json
@@ -186,6 +187,8 @@ With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or i
 }
 ```
 
+**Suggested genres.** Each untagged book gets a suggested genre and subgenre in the Catalogue section, in your catalogue's own words (the genre and subgenre names it already uses). The strongest hint is other books: when the rest of its series is tagged, or two thirds of its author's tagged books share a genre, it follows them. Otherwise it comes from the book's [Open Library](https://openlibrary.org) subjects ("Space warfare", "Detective and mystery stories"…), matched to your genre names by keywords; a common name such as "Romance" is used only when nothing in your catalogue fits. Each suggestion shows what it's based on (the books it follows, or the subjects) and how sure it is. **Accept** saves it to `catalogue.json` and rebuilds, **Change…** opens the editor with it filled in, **Reject** turns it down for good (remembered in `library/genre-suggestions.json`), and **Accept all shown** takes every suggestion on screen. Nothing is applied without you, and what's in the catalogue always wins. The starter catalogue's genres were guessed from titles and authors, so **Review genres** lists the books whose subjects point at another genre, to **Use this** or **Keep mine**.
+
 **Finished by hand.** When you finished a book Moon+ didn't see you finish (a broken file with blank pages at the end, or a book from before it recorded progress), add `"finished": true` to its entry, or use **Mark finished** in the Catalogue section (its **Not finished** list shows the candidates). Its latest read then counts as finished. `"finished": false` stops the guesses above for a book you really didn't finish.
 
 **Year and country.** The Origins tab needs each book's first-published year and its author's country. The metadata lookup fills most of them in; to fix a gap or a wrong one, use **First published** (a year, or `400 BC`) and **Author's country** (an English name or a two-letter code) in the Catalogue section's editor, which save `"published_year"` and `"author_country"` to the book's entry. Leave them blank to go back to what the lookup found (shown as the placeholder).
@@ -196,7 +199,7 @@ Add a lower-case file name to `"exclude"` to hide something that isn't a book. P
 
 **Covers.** Covers from the backup are saved to `library/covers/`; the rest are looked up on [Open Library](https://openlibrary.org) in the background, about one a second, and misses are retried after 30 days. To fix one, save your own image as `library/covers/<book id>.jpg` (the id is the title in lower case with dashes, such as `project-hail-mary`) or use the **Covers** section. `COVER_LOOKUP=off` stops the lookups.
 
-**Publication years, pages and authors.** Each book is looked up on Open Library (by ISBN, else title and author) for its first publication year, page count and an ISBN, and each author on [Wikidata](https://www.wikidata.org) for their country and gender. Results are stored in `library/metadata.json` (delete an entry to look it up again); misses are retried after 30 days. `METADATA_LOOKUP=off` stops the lookups. Which other sources were considered is in [docs/integrations.md](docs/integrations.md).
+**Publication years, pages and authors.** Each book is looked up on Open Library (by ISBN, else title and author) for its first publication year, page count and an ISBN, and each author on [Wikidata](https://www.wikidata.org) for their country and gender. Results are stored in `library/metadata.json` (delete an entry to look it up again); misses are retried after 30 days. The book's Open Library subjects, for suggested genres, are kept in `library/.metadata-subjects.json`; books looked up before subjects were kept get theirs 100 at a time after each rebuild, untagged ones first. `METADATA_LOOKUP=off` stops the lookups. Which other sources were considered is in [docs/integrations.md](docs/integrations.md).
 
 ## What your books cost
 
@@ -249,7 +252,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | **Other media** | Netflix uploads, Tautulli, Audiobookshelf, TMDB and streaming subscriptions |
 | **Access & privacy** | Who can see the dashboard and what each kind of visitor sees; private books and genres; preview as a visitor |
 | **Friends** | Your share file and leaderboards, friends' share files, dashboards you follow and that follow you, book clubs, and who can see friends' reading |
-| **Catalogue** | Titles, authors, series, genres, ISBNs, first-published years and authors' countries; untagged books |
+| **Catalogue** | Titles, authors, series, genres, ISBNs, first-published years and authors' countries; untagged books with suggested genres to accept, change or reject; starter genres to review |
 | **Prices** | Prices, CSV import, currencies, bundles, subscriptions, budget |
 | **Life events** | Holidays, trips and life events by hand, and a calendar (iCal) address |
 | **Weather** | The home location for "Reading and the weather" |
@@ -506,7 +509,7 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `KEEP_BACKUPS` | `5` | How many backups to keep |
 | `FEDERATION_REFRESH_MINUTES` | `60` | How often to refresh friends' reading from the dashboards you follow (`0`: only when you press **Refresh**) |
 | `COVER_LOOKUP` | `on` | `off` stops looking up missing covers on Open Library |
-| `METADATA_LOOKUP` | `on` | `off` stops looking up publication years, pages and authors on Open Library and Wikidata |
+| `METADATA_LOOKUP` | `on` | `off` stops looking up publication years, pages, subjects (for suggested genres) and authors on Open Library and Wikidata |
 | `COVER_PAUSE` | `1` | Seconds between Open Library and Wikidata requests |
 | `OPENLIBRARY_URL` | `https://openlibrary.org` | Open Library's address (for a mirror or tests) |
 | `OPENLIBRARY_COVERS_URL` | `https://covers.openlibrary.org` | Open Library's cover server |
@@ -540,6 +543,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/api/admin/highlights/…` (admin only): highlight exports; see [docs/api.md](docs/api.md#admin-highlight-exports).
 - `/api/admin/life-events` (admin only): holidays and life events; see [docs/api.md](docs/api.md#life-events-admin).
 - `/api/admin/weather` (admin only): the home location for the weather; see [docs/api.md](docs/api.md#weather-admin).
+- `/api/admin/catalogue/suggestions` (admin only): suggested genres to accept or reject; see [docs/api.md](docs/api.md#genre-suggestions-admin).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 
 ## How the numbers are worked out

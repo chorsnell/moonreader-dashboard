@@ -43,10 +43,21 @@
 .ad-edit .ad-files{margin:12px 0 0;overflow-wrap:anywhere}
 .ad-edit .ad-actions{margin-top:var(--cds-gap-sm)}
 .ad-edit input:not([type=radio]),.ad-edit select{background:var(--color-panel)}
+/* Catalogue: genre suggestions */
+.ad-count{justify-content:space-between;max-width:44rem}
+.ad-count .up-note{margin:0}
+.ad-suggest{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--cds-gap-md);margin:6px 0 2px;padding:8px var(--cds-pad-md);border-radius:8px;background:var(--color-bg);border-left:3px solid var(--color-ok);max-width:44rem;box-sizing:border-box}
+.ad-suggest-text{min-width:0;display:flex;flex-direction:column;gap:2px;overflow-wrap:anywhere}
+.ad-suggest strong{font-weight:500}
+.ad-suggest .ad-buttons{flex-wrap:nowrap}
+.ad-conf{display:inline-block;margin-left:6px;font-size:11px;padding:0 6px;border-radius:999px;border:1px solid currentColor;color:var(--color-fg-muted);vertical-align:1px}
+.ad-conf-high{color:var(--color-ok)}
+.ad-subjects summary{font-size:12px;color:var(--color-fg-muted);cursor:pointer}
+.ad-subjects p{margin:2px 0 0}
 @media (max-width:520px){
   .ad-edit{grid-template-columns:1fr}
   .ad-toolbar{grid-template-columns:1fr}
-  .ad-book-head:has(.ad-buttons){flex-direction:column;gap:6px}
+  .ad-book-head:has(.ad-buttons),.ad-suggest{flex-direction:column;gap:6px}
   .ad-buttons{justify-content:flex-start}
 }
 /* Access & privacy: what visitors can see */
