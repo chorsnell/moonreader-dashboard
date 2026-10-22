@@ -299,8 +299,7 @@ function applySyncedPositions(
       unreadable.push(`${file.name}: ${JSON.stringify(file.text.trim().slice(0, 60))}`);
       continue;
     }
-    const ms = m[1] ? Number(m[1]) * (m[1].length === 13 ? 1 : 1000) : file.mtimeMs;
-    const when = new Date(ms);
+    const stamped = m[1] ? Number(m[1]) * (m[1].length === 13 ? 1 : 1000) : null;
     const bookFile = file.name.slice(0, -3);
     const name = bookFile.toLowerCase();
     let b = byFile.get(name) ?? stems.get(name) ?? stems.get(stem(name)) ?? null;
@@ -316,6 +315,15 @@ function applySyncedPositions(
       if (!inBackup.has(b))
         unmatched.push(`${file.name}  ->  ${b.info.title} (no match in the backup)`);
     }
+    // Moon+'s own time says when the position was saved, but it can be months stale (seen:
+    // a March stamp on a position uploaded in October). A position stamped before the last day
+    // the backup logged for this book would be thrown away, so use when it reached this server.
+    let ms = stamped ?? file.mtimeMs;
+    const lastLogged = [...b.days.keys()].sort().at(-1);
+    if (lastLogged && localDateTime(new Date(ms)).slice(0, 10) < lastLogged) {
+      ms = Math.max(ms, file.mtimeMs);
+    }
+    const when = new Date(ms);
     if (!b.sync || localDateTime(when) > b.sync.time) {
       b.sync = {
         date: localDateTime(when).slice(0, 10),

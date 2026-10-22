@@ -146,6 +146,28 @@ describe('buildReadingHistory', () => {
     });
   });
 
+  it('uses when the .po arrived when Moon+ stamps it with an old time', () => {
+    const stale = new Date(2026, 2, 20, 23, 12).getTime();
+    const arrived = new Date(2026, 9, 22, 12, 20).getTime();
+    const { books } = buildReadingHistory(
+      input(
+        [
+          row('/b/Dune.epub', [
+            `${day('2026-10-14')}|60000`,
+            `${day('2026-10-15')}|60000`,
+            '#7.2%',
+          ]),
+        ],
+        {
+          positions: new Map([['/b/dune.epub', 7.2]]),
+          synced: [{ name: 'Dune.epub.po', text: `${stale}*18@0#17816:12.9%`, mtimeMs: arrived }],
+        },
+      ),
+    );
+    expect(books[0]).toMatchObject({ progress: 12.9, last_read: '2026-10-22' });
+    expect(books[0].synced).toBe('2026-10-22T12:20');
+  });
+
   it('matches a synced position by title when its file name differs from the backup', () => {
     const later = new Date(2026, 9, 20, 22, 0).getTime();
     const result = buildReadingHistory(
