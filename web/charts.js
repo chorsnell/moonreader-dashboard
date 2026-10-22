@@ -687,7 +687,8 @@
         t.append(byline('small', 'by', r));
         const bits = [];
         if (r.minutes) bits.push(mins(r.minutes));
-        if (r.words) bits.push(fmt(r.words) + ' words');
+        if (r.words) bits.push((r.estimated ? '~' : '') + fmt(r.words) + ' words');
+        if (r.estimated) bits.push('from sync');
         bk.append(t, el('div', 'm', bits.join(' · ') || ''));
         if (r.progress != null) {
           const p = el('div', 'dy-prog'), bar = el('div', 'bar'), from = r.prev_progress != null ? Math.min(r.prev_progress, r.progress) : null;
@@ -1160,7 +1161,8 @@
       tr.setAttribute('data-day', d.date);
       c0.append(document.createTextNode(d3.utcFormat('%a %-d %b %Y')(pDate(d.date))));
       if (d.event) c0.append(el('span', 'ev ' + d.event, d.event === 'finished' ? 'Finished' : d.event === 'reread' ? 'Started re-read' : 'Started'));
-      tr.append(c0, el('td', 'n', d.minutes ? mins(d.minutes) : '—'), el('td', 'n hide-sm', d.words ? fmt(d.words) : '—'),
+      if (d.estimated) { const s = el('span', 'ev synced', 'From sync'); s.title = 'After the last backup: progress from Moon+’s synced position, words estimated, no minutes'; c0.append(s); }
+      tr.append(c0, el('td', 'n', d.minutes ? mins(d.minutes) : '—'), el('td', 'n hide-sm', d.words ? (d.estimated ? '~' : '') + fmt(d.words) : '—'),
         el('td', 'n hide-sm', okDay(d) ? fmt(Math.round(d.words / d.minutes)) : '—'), el('td', 'n', progStep(d)));
       return tr;
     }));

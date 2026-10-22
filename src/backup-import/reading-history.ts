@@ -222,6 +222,7 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
     unmatched: unmatchedSyncs,
     byTitle: titleMatchedSyncs,
   } = applySyncedPositions(input.synced, byFile, bookFor);
+  const estimatedDays = applyPositionLog(input.positionLog ?? [], byFile);
 
   // when each file was added to Moon+, by file name
   const addedByFile = new Map<string, string>();
@@ -272,6 +273,7 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
     unreadableSyncs,
     unmatchedSyncs,
     titleMatchedSyncs,
+    estimatedDays,
     unopened,
   };
 }
@@ -315,14 +317,8 @@ function applySyncedPositions(
       if (!inBackup.has(b))
         unmatched.push(`${file.name}  ->  ${b.info.title} (no match in the backup)`);
     }
-    // Moon+'s own time says when the position was saved, but it can be months stale (seen:
-    // a March stamp on a position uploaded in October). A position stamped before the last day
-    // the backup logged for this book would be thrown away, so use when it reached this server.
-    let ms = stamped ?? file.mtimeMs;
-    const lastLogged = [...b.days.keys()].sort().at(-1);
-    if (lastLogged && localDateTime(new Date(ms)).slice(0, 10) < lastLogged) {
-      ms = Math.max(ms, file.mtimeMs);
-    }
+    const lastLogged = [...b.days.keys()].sort().at(-1) ?? null;
+    const ms = syncTime(stamped, file.mtimeMs, lastLogged);
     const when = new Date(ms);
     if (!b.sync || localDateTime(when) > b.sync.time) {
       b.sync = {
@@ -334,6 +330,112 @@ function applySyncedPositions(
     }
   }
   return { applied, unreadable, unmatched, byTitle };
+}
+
+/**
+ * When a synced position was saved. Moon+'s own time, but it can be months stale (seen: a
+ * March stamp on a position uploaded in October), and a position stamped before the last day
+ * the backup logged for the book would be thrown away, so then when it reached this server.
+ */
+function syncTime(stamped: number | null, arrived: number, lastLogged: string | null): number {
+  const ms = stamped ?? arrived;
+  if (lastLogged && localDateTime(new Date(ms)).slice(0, 10) < lastLogged) {
+    return Math.max(ms, arrived);
+  }
+  return ms;
+}
+
+const lastLoggedDay = (b: WorkingBook): string | null => [...b.days.keys()].sort().at(-1) ?? null;
+
+/**
+ * Fills in the days after the last backup from the log of synced positions: for each book, one
+ * day per local date a position arrived on, with the furthest progress synced that day. Words
+ * are estimated from the progress made and the book's own words-per-percent in the backup;
+ * there are no minutes. Days the backup already logged are left alone, so a newer backup
+ * replaces these. Returns how many days were added.
+ */
+function applyPositionLog(log: SyncedPositionFile[], byFile: Map<string, WorkingBook>): number {
+  if (!log.length) return 0;
+  const stems = new Map<string, WorkingBook>();
+  for (const [name, b] of byFile) if (!stems.has(stem(name))) stems.set(stem(name), b);
+  const books = new Set(byFile.values());
+  const titles = titleIndex(books);
+  const found = new Map<string, WorkingBook | null>();
+  const resolve = (bookFile: string): WorkingBook | null => {
+    const name = bookFile.toLowerCase();
+    if (!found.has(name)) {
+      found.set(
+        name,
+        byFile.get(name) ??
+          stems.get(name) ??
+          stems.get(stem(name)) ??
+          matchByTitle(bookFile, titles),
+      );
+    }
+    return found.get(name)!;
+  };
+
+  // book -> local date -> the progress at the end of that day (the latest one synced)
+  const byBook = new Map<WorkingBook, Map<string, { at: number; progress: number }>>();
+  for (const entry of log) {
+    const m = POSITION.exec(entry.text);
+    if (!m || !entry.name.toLowerCase().endsWith('.po')) continue;
+    const b = resolve(entry.name.slice(0, -3));
+    if (!b) continue;
+    const progress = Number(m[2]);
+    if (!Number.isFinite(progress)) continue;
+    const stamped = m[1] ? Number(m[1]) * (m[1].length === 13 ? 1 : 1000) : null;
+    const at = syncTime(stamped, entry.mtimeMs, lastLoggedDay(b));
+    const date = localDateTime(new Date(at)).slice(0, 10);
+    let days = byBook.get(b);
+    if (!days) byBook.set(b, (days = new Map()));
+    const prev = days.get(date);
+    if (!prev || at >= prev.at) days.set(date, { at, progress });
+  }
+
+  let added = 0;
+  for (const [b, synced] of byBook) {
+    const logged = [...b.days.values()].sort((x, y) => (x.date < y.date ? -1 : 1));
+    const lastLogged = logged.at(-1)?.date ?? '';
+    const wpp = wordsPerPercent(logged);
+    let prev = [...logged].reverse().find((d) => d.progress !== null)?.progress ?? null;
+    for (const date of [...synced.keys()].sort()) {
+      if (date <= lastLogged) continue;
+      const { progress } = synced.get(date)!;
+      // no forward progress: opened, or another device catching up, not a day of reading
+      if (prev !== null && progress <= prev) continue;
+      const gained = prev !== null ? progress - prev : null;
+      b.days.set(date, {
+        date,
+        minutes: null,
+        words: wpp !== null && gained !== null ? Math.round(gained * wpp) : null,
+        progress,
+        estimated: true,
+      });
+      prev = progress;
+      added++;
+    }
+  }
+  return added;
+}
+
+/**
+ * Words per 1% of the book, from logged days that moved the progress on: the words read
+ * those days over the progress they made. Null without at least 1% of such reading.
+ */
+function wordsPerPercent(days: DayEntry[]): number | null {
+  let words = 0;
+  let percent = 0;
+  let prev: number | null = null;
+  for (const d of days) {
+    if (d.progress === null) continue;
+    if (prev !== null && d.progress > prev && d.words) {
+      words += d.words;
+      percent += d.progress - prev;
+    }
+    prev = d.progress;
+  }
+  return percent >= 1 ? words / percent : null;
 }
 
 /** A title for matching: lower case, no accents or punctuation, no leading article. */

@@ -1,4 +1,4 @@
-import { copyFile, link, mkdir, readdir, readFile, rename, rm } from 'node:fs/promises';
+import { appendFile, copyFile, link, mkdir, readdir, readFile, rename, rm } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -31,6 +31,11 @@ export class LibraryService implements OnModuleInit {
   readonly catalogue: string;
   /** What the metadata lookup found; an input to the build, like catalogue.json. */
   readonly metadata: string;
+  /**
+   * Every reading position Moon+ synced, one JSON line each as it arrived. The .po files in
+   * dav/ only keep the latest; this keeps the days in between backups.
+   */
+  readonly positionLog: string;
 
   constructor(
     @Inject(appConfig.KEY) private readonly config: AppConfigType,
@@ -45,6 +50,7 @@ export class LibraryService implements OnModuleInit {
     this.covers = join(this.root, 'covers');
     this.catalogue = join(this.root, 'catalogue.json');
     this.metadata = join(this.root, 'metadata.json');
+    this.positionLog = join(this.root, 'positions.jsonl');
   }
 
   /** Creates the folders and a starting catalogue.json on first run. */
@@ -61,6 +67,30 @@ export class LibraryService implements OnModuleInit {
   /** Tells the rebuild watcher to look now rather than at its next poll, and why. */
   changed(reason?: string): void {
     this.events.emit(LIBRARY_CHANGED, reason);
+  }
+
+  /** Notes a reading position that just arrived, with when it arrived. */
+  async logPosition(file: string, text: string, at = Date.now()): Promise<void> {
+    const line = JSON.stringify({ at, file, text: text.trim().slice(0, 200) });
+    await appendFile(this.positionLog, `${line}\n`, 'utf8');
+  }
+
+  /** The synced positions logged so far, oldest first. Lines that don't parse are skipped. */
+  async positionHistory(): Promise<{ name: string; text: string; mtimeMs: number }[]> {
+    const raw = await readFile(this.positionLog, 'utf8').catch(() => '');
+    const out: { name: string; text: string; mtimeMs: number }[] = [];
+    for (const line of raw.split('\n')) {
+      if (!line.trim()) continue;
+      try {
+        const e = JSON.parse(line) as { at?: unknown; file?: unknown; text?: unknown };
+        if (typeof e.at === 'number' && typeof e.file === 'string' && typeof e.text === 'string') {
+          out.push({ name: e.file, text: e.text, mtimeMs: e.at });
+        }
+      } catch {
+        // a line cut short by a crash mid-write
+      }
+    }
+    return out.sort((a, b) => a.mtimeMs - b.mtimeMs);
   }
 
   /** The backups in inbox/, newest first. */

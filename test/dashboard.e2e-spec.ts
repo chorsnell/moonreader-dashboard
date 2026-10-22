@@ -499,4 +499,50 @@ describe('WebDAV', () => {
       (await dash!.json<{ synced_positions: number }>('data', 'meta.json')).synced_positions;
     expect(await waitFor(async () => (await synced()) === 1)).toBe(true);
   });
+
+  it('fills in a day after the backup from a synced position, and logs it', async () => {
+    dash = await TestDashboard.start();
+    await request(dash.server)
+      .put('/dav/Backup/test.mrpro')
+      .set('Authorization', DAV_AUTH)
+      .type('application/octet-stream')
+      .send(backup)
+      .expect(201);
+    expect(await waitFor(built(dash))).toBe(true);
+
+    // Moon+ can stamp a position with a stale time: the day is when it arrived
+    const stale = new Date(2020, 0, 1).getTime();
+    await request(dash.server).mkcol('/dav/Books/').set('Authorization', DAV_AUTH);
+    await request(dash.server)
+      .put('/dav/Books/Beta%20-%20Bob%20Writer.epub.po')
+      .set('Authorization', DAV_AUTH)
+      .type('application/octet-stream')
+      .send(Buffer.from(`${stale}*9@0#10:62.5%`))
+      .expect(201);
+    type Day = {
+      title: string;
+      date: string;
+      minutes: number | null;
+      words: number | null;
+      progress: number;
+      estimated?: boolean;
+    };
+    const estimated = async () =>
+      (await dash!.json<Day[]>('data', 'daily.json')).filter(
+        (d) => d.title === 'Beta' && d.estimated,
+      );
+    expect(await waitFor(async () => (await estimated()).length === 1)).toBe(true);
+    const [day] = await estimated();
+    expect(day).toMatchObject({ progress: 62.5, minutes: null });
+    // Beta's backup: 30% for 4,000 words, so 12.5% more is about 1,667
+    expect(day.words).toBe(1667);
+    expect((await booksByTitle(dash)).Beta).toMatchObject({ progress: 62.5, last_read: day.date });
+
+    const log = (await readFile(join(dash.lib, 'positions.jsonl'), 'utf8')).trim().split('\n');
+    expect(log).toHaveLength(1);
+    expect(JSON.parse(log[0])).toMatchObject({
+      file: 'Beta - Bob Writer.epub.po',
+      text: `${stale}*9@0#10:62.5%`,
+    });
+  });
 });

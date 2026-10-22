@@ -103,6 +103,7 @@ export async function buildDemoLibrary(
     'utf8',
   );
   await writeDemoMedia(lib, seed, log, firstDay, days);
+  await writeDemoPositionLog(lib, log, firstDay, yesterday);
   const summary = await importInto(lib, backup, { lookUpCovers, media: true });
   // what the server writes from library/prices.json
   const prices = servedPrices(demoPrices(log, firstDay, seed));
@@ -122,6 +123,35 @@ export async function buildDemoLibrary(
   // two friends to compare with, as if their share files had been added
   await writeDemoFriends(lib, firstDay, lastDay);
   return { log, firstDay, lastDay, summary };
+}
+
+/**
+ * The book on the go when the backup was made, synced on each day since (up to 3), as Moon+
+ * would over WebDAV: the dashboard fills those days in from positions.jsonl.
+ */
+async function writeDemoPositionLog(
+  lib: string,
+  log: Map<string, DemoDay[]>,
+  firstDay: number,
+  yesterday: number,
+): Promise<void> {
+  let current: { file: string; last: DemoDay } | null = null;
+  for (const [file, entries] of log) {
+    const last = entries.at(-1);
+    if (last && (!current || last.day > current.last.day)) current = { file, last };
+  }
+  if (!current || current.last.progress >= 95) return;
+  const lines: string[] = [];
+  let progress = current.last.progress;
+  const from = firstDay + current.last.day + 1;
+  for (let d = from; d <= Math.min(yesterday, from + 2); d++) {
+    progress = Math.min(95, Math.round((progress + 1.5 + (d % 3)) * 10) / 10);
+    const [y, m, day] = new Date(d * DAY_MS).toISOString().slice(0, 10).split('-').map(Number);
+    const at = new Date(y, m - 1, day, 21, 30).getTime();
+    const name = `${current.file.split('/').pop()}.po`;
+    lines.push(JSON.stringify({ at, file: name, text: `${at}*12@0#4000:${progress}%` }));
+  }
+  if (lines.length) await writeFile(join(lib, 'positions.jsonl'), `${lines.join('\n')}\n`, 'utf8');
 }
 
 /**

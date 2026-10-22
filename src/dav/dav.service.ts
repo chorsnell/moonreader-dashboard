@@ -1,4 +1,4 @@
-import { cp, copyFile, mkdir, open, readdir, rename, rm, stat } from 'node:fs/promises';
+import { cp, copyFile, mkdir, open, readdir, readFile, rename, rm, stat } from 'node:fs/promises';
 import type { Stats } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
 import { basename, dirname, join, relative, sep } from 'node:path';
@@ -225,6 +225,12 @@ export class DavService {
       }
     } else if (lower.endsWith('.po')) {
       this.status.positionSynced();
+      try {
+        const text = (await readFile(full, 'utf8')).slice(0, 200);
+        await this.library.logPosition(basename(full), text);
+      } catch (e) {
+        this.activity.log(`WebDAV: couldn't log the position in ${rel}: ${String(e)}`);
+      }
       this.activity.record({
         type: 'sync',
         message: `WebDAV: reading position ${rel}`,

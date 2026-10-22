@@ -76,6 +76,12 @@ export interface DayEntry {
   minutes: number | null;
   words: number | null;
   progress: number | null;
+  /**
+   * true for a day after the last backup worked out from synced positions alone: progress is
+   * real, words are estimated from it, and there are no minutes. A backup that covers the day
+   * replaces it.
+   */
+  estimated?: boolean;
 }
 
 export interface ReadEntry {
@@ -145,6 +151,11 @@ export interface HistoryInput {
   /** Lower-case file path -> last position (%), from positions10.xml. */
   positions: Map<string, number>;
   synced: SyncedPositionFile[];
+  /**
+   * Every position Moon+ has synced, oldest first, as they arrived (`mtimeMs` is when): fills in
+   * the days after the last backup.
+   */
+  positionLog?: SyncedPositionFile[];
 }
 
 export interface HistoryResult {
@@ -162,6 +173,8 @@ export interface HistoryResult {
   unmatchedSyncs: string[];
   /** .po files matched to a book by title because their file name differs: "<file>.po  ->  <title>". */
   titleMatchedSyncs: string[];
+  /** Days after the last backup filled in from the synced-position log. */
+  estimatedDays: number;
   /** Books in Moon+'s library never opened: no reading log and no position. */
   unopened: UnopenedBook[];
 }
