@@ -107,6 +107,7 @@ library/
   inbox/           backups (.mrpro); the newest is used, the 5 newest are kept
   data/            the generated data the page reads
   dav/             what Moon+ syncs over WebDAV
+  positions.jsonl  every reading position synced, as it arrived (fills in days between backups)
   covers/          book covers, one <book id>.jpg or .png each
   catalogue.json   titles, authors, series, genres and ISBNs for your books
   metadata.json    publication years, pages and authors looked up online
@@ -133,7 +134,7 @@ Every way in triggers a rebuild.
 1. **Upload a backup** in the admin page's **Data** section.
 2. **Drop a backup into `library/inbox/`**, by hand, with `scp` or Syncthing.
 3. **Sync over WebDAV.** When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-domain/dav/` (the **Data** section shows the exact address). Log in with any username and your `UPLOAD_TOKEN` as the password.
-   - **Reading positions:** in a book, **Miscellaneous → Sync reading positions via Dropbox/WebDAV**, choose WebDAV and enter the address and login. Progress, "On the go" and finished status then stay current between backups. Minutes and words per day still only come from backups, because that's the only place Moon+ records them.
+   - **Reading positions:** in a book, **Miscellaneous → Sync reading positions via Dropbox/WebDAV**, choose WebDAV and enter the address and login. Progress, "On the go" and finished status then stay current between backups. Each day a synced position moves a book on also shows as a reading day, marked **From sync**: the progress is real, the words are estimated from how fast that book went in the backup, and there are no minutes, because Moon+ only records reading time in backups. When a backup covering those days arrives, its real figures replace them.
    - **Backups:** if your Moon+ offers WebDAV as a backup destination, use the same details; a `.mrpro` written there is treated like an upload.
 
 > The WebDAV support is built from Moon+'s documented behaviour and tested with standard WebDAV clients, not yet against the app itself. Every file that arrives is listed in `library/update.log` and in **Sync & logs**.

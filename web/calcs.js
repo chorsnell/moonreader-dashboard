@@ -336,7 +336,7 @@ dash.calc('anomalies', {
 
 dash.calc('diary', {
   inputs: ['daily', 'reads'], title: 'Diary',
-  description: 'One row per book per day: minutes, words, progress at the end of the day and the day before, and whether a read started or finished.',
+  description: 'One row per book per day: minutes, words, progress at the end of the day and the day before, and whether a read started or finished. Estimated days (after the last backup, from synced positions) have no minutes and estimated words.',
   fn: (daily, reads) => {
     const starts = {}, ends = {};
     reads.forEach((r) => { starts[r.book_id + '|' + r.start] = r; if (r.finished) ends[r.book_id + '|' + r.end] = r; });
@@ -347,6 +347,7 @@ dash.calc('diary', {
         date: d.date, book_id: d.book_id, title: d.title, author: d.author || '', genre: d.genre,
         minutes: d.minutes, words: d.words, progress: d.progress ?? null, prev_progress: st ? 0 : last[d.book_id] ?? null,
         event: fin ? 'finished' : st ? (st.read_no > 1 ? 'reread' : 'started') : null,
+        estimated: !!d.estimated,
       };
       if (d.progress != null) last[d.book_id] = d.progress;
       return row;

@@ -168,6 +168,79 @@ describe('buildReadingHistory', () => {
     expect(books[0].synced).toBe('2026-10-22T12:20');
   });
 
+  describe('days after the backup, from the position log', () => {
+    // the backup: 2.5% -> 3.3% -> 6.7% -> 7.2%, about 5,700 words per 1%
+    const backupDays = [
+      `${day('2026-10-12')}|5730000@14617`,
+      '#2.5%',
+      `${day('2026-10-13')}|1296000@3455`,
+      '#3.3%',
+      `${day('2026-10-14')}|6192000@19183`,
+      '#6.7%',
+      `${day('2026-10-15')}|1296000@3139`,
+      '#7.2%',
+    ];
+    const at = (iso: string) => new Date(iso).getTime();
+    const stale = new Date(2026, 2, 20, 23, 12).getTime();
+    const po = (when: string, progress: number) => ({
+      name: 'Dune.epub.po',
+      text: `${stale}*18@0#17816:${progress}%`,
+      mtimeMs: at(when),
+    });
+
+    it('adds a day per date with forward progress, words estimated and no minutes', () => {
+      const { books, estimatedDays } = buildReadingHistory(
+        input([row('/b/Dune.epub', backupDays)], {
+          positionLog: [
+            po('2026-10-14T21:00:00', 6.7), // already in the backup
+            po('2026-10-16T08:00:00', 8.0),
+            po('2026-10-16T22:00:00', 9.1), // the day ends at the latest
+            po('2026-10-17T22:00:00', 9.1), // no progress: not a reading day
+            po('2026-10-18T22:00:00', 10.4),
+          ],
+        }),
+      );
+      expect(estimatedDays).toBe(2);
+      const extra = books[0].daily.filter((d) => d.estimated);
+      expect(extra.map((d) => [d.date, d.progress, d.minutes])).toEqual([
+        ['2026-10-16', 9.1, null],
+        ['2026-10-18', 10.4, null],
+      ]);
+      // 1.9% and 1.3% at the backup's own rate
+      const wpp = (3455 + 19183 + 3139) / (0.8 + 3.4 + 0.5);
+      expect(extra[0].words).toBe(Math.round(1.9 * wpp));
+      expect(extra[1].words).toBe(Math.round(1.3 * wpp));
+      expect(books[0]).toMatchObject({ last_read: '2026-10-18' });
+      expect(books[0].reads.at(-1)).toMatchObject({
+        end: '2026-10-18',
+        days_read: 6,
+        progress: 10.4,
+      });
+    });
+
+    it('leaves days the backup logged to the backup', () => {
+      const { books, estimatedDays } = buildReadingHistory(
+        input([row('/b/Dune.epub', backupDays)], {
+          positionLog: [po('2026-10-15T23:00:00', 9.9)],
+        }),
+      );
+      expect(estimatedDays).toBe(0);
+      expect(books[0].daily.find((d) => d.date === '2026-10-15')).toMatchObject({
+        progress: 7.2,
+        words: 3139,
+      });
+    });
+
+    it('ignores positions for books the backup does not have', () => {
+      const { estimatedDays } = buildReadingHistory(
+        input([row('/b/Dune.epub', backupDays)], {
+          positionLog: [{ ...po('2026-10-16T08:00:00', 50), name: 'Unknown Book.epub.po' }],
+        }),
+      );
+      expect(estimatedDays).toBe(0);
+    });
+  });
+
   it('matches a synced position by title when its file name differs from the backup', () => {
     const later = new Date(2026, 9, 20, 22, 0).getTime();
     const result = buildReadingHistory(

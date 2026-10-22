@@ -78,6 +78,7 @@ export class BackupImportService {
       const { bookMeta, isbns, added, statistics, notes } = contents.databasePath
         ? readDatabase(contents.databasePath)
         : { bookMeta: new Map(), isbns: new Map(), added: new Map(), statistics: [], notes: [] };
+      const synced = await this.readSyncedPositions();
       const result = buildReadingHistory({
         catalogue,
         bookMeta,
@@ -85,7 +86,9 @@ export class BackupImportService {
         added,
         statistics,
         positions: parsePositions(contents.positionsXml),
-        synced: await this.readSyncedPositions(),
+        synced,
+        // the .po files there now count too, so the latest day shows before the log has history
+        positionLog: [...(await this.library.positionHistory()), ...synced],
       });
       const metadata = await this.metadata.read();
       // before the imports, which bring their own finished flags
@@ -169,6 +172,11 @@ export class BackupImportService {
           `${result.unreadableSyncs.length} synced .po file(s) not understood (please report):`,
         );
         lines.push(...result.unreadableSyncs.slice(0, 10).map((u) => `  ${u}`));
+      }
+      if (result.estimatedDays) {
+        lines.push(
+          `${result.estimatedDays} day(s) since the backup filled in from synced positions (words estimated, no minutes)`,
+        );
       }
       if (result.titleMatchedSyncs.length) {
         lines.push(`${result.titleMatchedSyncs.length} synced position(s) matched by title:`);
@@ -287,6 +295,7 @@ export class BackupImportService {
           minutes: d.minutes,
           words: d.words,
           progress: d.progress,
+          ...(d.estimated ? { estimated: true } : {}),
         });
       }
     }
