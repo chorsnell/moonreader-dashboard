@@ -145,6 +145,53 @@ describe('buildReadingHistory', () => {
       status: 'in_progress',
     });
   });
+
+  it('matches a synced position by title when its file name differs from the backup', () => {
+    const later = new Date(2026, 9, 20, 22, 0).getTime();
+    const result = buildReadingHistory(
+      input(
+        [
+          row('/b/The Talisman.epub', [
+            `${day('2026-10-14')}|60000`,
+            `${day('2026-10-15')}|60000`,
+            '#40%',
+          ]),
+        ],
+        {
+          synced: [
+            {
+              name: 'The Talisman - Stephen King.epub.po',
+              text: `${later}*9@0#1:52.1%`,
+              mtimeMs: 0,
+            },
+          ],
+        },
+      ),
+    );
+    expect(result.books).toHaveLength(1);
+    expect(result.books[0]).toMatchObject({ progress: 52.1, last_read: '2026-10-20' });
+    expect(result.titleMatchedSyncs).toEqual([
+      'The Talisman - Stephen King.epub.po  ->  The Talisman',
+    ]);
+    expect(result.unmatchedSyncs).toEqual([]);
+  });
+
+  it('does not match a short title partially', () => {
+    const later = new Date(2026, 9, 20, 22, 0).getTime();
+    const result = buildReadingHistory(
+      input(
+        [row('/b/It.epub', [`${day('2026-10-14')}|60000`, `${day('2026-10-15')}|60000`, '#40%'])],
+        {
+          synced: [{ name: 'It Ends With Us.epub.po', text: `${later}*9@0#1:10%`, mtimeMs: 0 }],
+        },
+      ),
+    );
+    expect(result.books.map((b) => b.title).sort()).toEqual(['It', 'It Ends With Us']);
+    expect(result.books.find((b) => b.title === 'It')!.reads.at(-1)!.progress).toBe(40);
+    expect(result.unmatchedSyncs).toEqual([
+      'It Ends With Us.epub.po  ->  It Ends With Us (no match in the backup)',
+    ]);
+  });
 });
 
 describe('titleFromFileName', () => {

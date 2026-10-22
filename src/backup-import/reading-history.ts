@@ -216,11 +216,12 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
     bookFor(path)?.finals.push({ day: EPOCH, progress: p, logged: false });
   }
 
-  const { applied: syncedApplied, unreadable: unreadableSyncs } = applySyncedPositions(
-    input.synced,
-    byFile,
-    bookFor,
-  );
+  const {
+    applied: syncedApplied,
+    unreadable: unreadableSyncs,
+    unmatched: unmatchedSyncs,
+    byTitle: titleMatchedSyncs,
+  } = applySyncedPositions(input.synced, byFile, bookFor);
 
   // when each file was added to Moon+, by file name
   const addedByFile = new Map<string, string>();
@@ -269,6 +270,8 @@ export function buildReadingHistory(input: HistoryInput): HistoryResult {
     untagged: [...untagged].sort(),
     syncedApplied,
     unreadableSyncs,
+    unmatchedSyncs,
+    titleMatchedSyncs,
     unopened,
   };
 }
@@ -281,11 +284,15 @@ function applySyncedPositions(
   files: SyncedPositionFile[],
   byFile: Map<string, WorkingBook>,
   bookFor: (path: string) => WorkingBook | null,
-): { applied: number; unreadable: string[] } {
+): { applied: number; unreadable: string[]; unmatched: string[]; byTitle: string[] } {
   const stems = new Map<string, WorkingBook>();
   for (const [name, b] of byFile) if (!stems.has(stem(name))) stems.set(stem(name), b);
+  const inBackup = new Set(byFile.values());
+  const titles = titleIndex(inBackup);
   let applied = 0;
   const unreadable: string[] = [];
+  const unmatched: string[] = [];
+  const byTitle: string[] = [];
   for (const file of files) {
     const m = POSITION.exec(file.text);
     if (!m) {
@@ -296,8 +303,19 @@ function applySyncedPositions(
     const when = new Date(ms);
     const bookFile = file.name.slice(0, -3);
     const name = bookFile.toLowerCase();
-    const b = byFile.get(name) ?? stems.get(name) ?? stems.get(stem(name)) ?? bookFor(bookFile);
-    if (!b) continue;
+    let b = byFile.get(name) ?? stems.get(name) ?? stems.get(stem(name)) ?? null;
+    if (!b) {
+      // a copy named differently from the one in the backup: match it by title
+      b = matchByTitle(bookFile, titles);
+      if (b) byTitle.push(`${file.name}  ->  ${b.info.title}`);
+    }
+    if (!b) {
+      // a book the backup doesn't have yet (or one the catalogue knows by this file name)
+      b = bookFor(bookFile);
+      if (!b) continue; // excluded in catalogue.json
+      if (!inBackup.has(b))
+        unmatched.push(`${file.name}  ->  ${b.info.title} (no match in the backup)`);
+    }
     if (!b.sync || localDateTime(when) > b.sync.time) {
       b.sync = {
         date: localDateTime(when).slice(0, 10),
@@ -307,7 +325,58 @@ function applySyncedPositions(
       applied++;
     }
   }
-  return { applied, unreadable };
+  return { applied, unreadable, unmatched, byTitle };
+}
+
+/** A title for matching: lower case, no accents or punctuation, no leading article. */
+function matchKey(title: string): string {
+  return title
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/^(the|a|an) /, '');
+}
+
+/** Shorter titles than this only match a synced file name exactly ("It" shouldn't match "It Ends…"). */
+const MIN_PARTIAL_TITLE = 6;
+
+/** Every title each book goes by: its own, and one from each of its file names. */
+function titleIndex(books: Iterable<WorkingBook>): [string, WorkingBook][] {
+  const out: [string, WorkingBook][] = [];
+  for (const b of books) {
+    const keys = new Set([
+      matchKey(b.info.title),
+      ...[...b.files].map((f) => matchKey(titleFromFileName(f))),
+    ]);
+    for (const k of keys) if (k) out.push([k, b]);
+  }
+  return out;
+}
+
+/**
+ * The one book whose title matches a synced file's name, exactly or with an author before or
+ * after it ("The Talisman - Stephen King"). The longest matching title wins; a tie between
+ * different books is no match.
+ */
+function matchByTitle(bookFile: string, titles: [string, WorkingBook][]): WorkingBook | null {
+  const want = matchKey(titleFromFileName(bookFile));
+  if (!want) return null;
+  let best = 0;
+  let found = new Set<WorkingBook>();
+  for (const [key, b] of titles) {
+    const hit =
+      key === want ||
+      (key.length >= MIN_PARTIAL_TITLE && (want.startsWith(`${key} `) || want.endsWith(` ${key}`)));
+    if (!hit) continue;
+    const score = key === want ? Infinity : key.length;
+    if (score > best) {
+      best = score;
+      found = new Set([b]);
+    } else if (score === best) found.add(b);
+  }
+  return found.size === 1 ? [...found][0] : null;
 }
 
 function toHistory(b: WorkingBook): BookHistory | null {

@@ -147,6 +147,10 @@
         fact('Backup', m.backup_file || 'None yet'),
         fact('Built', m.generated ? `${when(m.generated)} (${ago(m.generated)})` : '—'),
         fact('Synced positions', m.synced_positions != null ? String(m.synced_positions) : '—'),
+        m.unmatched_positions && m.unmatched_positions.length
+          ? fact('Unmatched syncs', h('span', { title: m.unmatched_positions.join('\n') },
+            `${m.unmatched_positions.length}: ${m.unmatched_positions.slice(0, 3).map((u) => u.split('  ->  ')[0]).join(', ')}${m.unmatched_positions.length > 3 ? '…' : ''}`))
+          : null,
         fact('Untagged files', m.untagged != null ? String(m.untagged) : '—'),
         last.building ? fact('Now', 'Rebuilding…') : null,
         last.last_error ? fact('Last error', last.last_error, 'ad-bad') : null));

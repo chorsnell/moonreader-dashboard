@@ -155,6 +155,13 @@ export interface HistoryResult {
   syncedApplied: number;
   /** .po files whose contents weren't understood. */
   unreadableSyncs: string[];
+  /**
+   * .po files that matched no book in the backup, so each became a book of its own:
+   * "<file>.po  ->  <title> (no match in the backup)".
+   */
+  unmatchedSyncs: string[];
+  /** .po files matched to a book by title because their file name differs: "<file>.po  ->  <title>". */
+  titleMatchedSyncs: string[];
   /** Books in Moon+'s library never opened: no reading log and no position. */
   unopened: UnopenedBook[];
 }
