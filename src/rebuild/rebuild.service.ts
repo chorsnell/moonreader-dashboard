@@ -149,6 +149,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
           reading_days: summary.readingDays,
           highlights: summary.highlights,
           synced_positions: summary.syncedApplied,
+          unmatched_positions: summary.unmatchedSyncs.slice(0, 100),
           new_covers: summary.newCovers,
           untagged_count: summary.untagged.length,
           untagged: summary.untagged.slice(0, 100),

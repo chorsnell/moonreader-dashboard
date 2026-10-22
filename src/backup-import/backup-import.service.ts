@@ -30,6 +30,8 @@ export interface ImportSummary {
   reads: number;
   readingDays: number;
   syncedApplied: number;
+  /** Synced .po files that matched no book in the backup. */
+  unmatchedSyncs: string[];
   newCovers: number;
   /** "<file>  ->  <title>" for every file not in catalogue.json. */
   untagged: string[];
@@ -137,6 +139,7 @@ export class BackupImportService {
         highlights,
         result.untagged.length,
         result.syncedApplied,
+        result.unmatchedSyncs,
         importFiles.map((f) => ({ source: f.source, file: f.file, imported: f.imported })),
         toRead,
       );
@@ -167,6 +170,16 @@ export class BackupImportService {
         );
         lines.push(...result.unreadableSyncs.slice(0, 10).map((u) => `  ${u}`));
       }
+      if (result.titleMatchedSyncs.length) {
+        lines.push(`${result.titleMatchedSyncs.length} synced position(s) matched by title:`);
+        lines.push(...result.titleMatchedSyncs.map((u) => `  ${u}`));
+      }
+      if (result.unmatchedSyncs.length) {
+        lines.push(
+          `${result.unmatchedSyncs.length} synced position(s) matched no book in the backup (shown as books of their own):`,
+        );
+        lines.push(...result.unmatchedSyncs.map((u) => `  ${u}`));
+      }
       if (result.untagged.length) {
         lines.push(
           `${result.untagged.length} file(s) not in catalogue.json (shown as "Untagged"):`,
@@ -176,6 +189,7 @@ export class BackupImportService {
       return {
         ...counts,
         syncedApplied: result.syncedApplied,
+        unmatchedSyncs: result.unmatchedSyncs,
         newCovers,
         untagged: result.untagged,
         imported,
@@ -208,6 +222,7 @@ export class BackupImportService {
     highlights: Highlight[],
     untagged: number,
     synced: number,
+    unmatchedSyncs: string[],
     imports: { source: string; file: string; imported: string }[] = [],
     toRead: ToReadRow[] = [],
   ): Promise<Pick<ImportSummary, 'books' | 'reads' | 'readingDays' | 'highlights'>> {
@@ -303,6 +318,7 @@ export class BackupImportService {
       generated,
       untagged,
       synced_positions: synced,
+      unmatched_positions: unmatchedSyncs,
       ...(imports.length ? { imports } : {}),
     });
     return {
