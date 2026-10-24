@@ -86,7 +86,7 @@ describe('link previews', () => {
       .expect(200);
     const page = await request(dash.server).get('/').expect(200);
     expect(meta(page.text, 'og:title')).toBe('Reading history');
-    expect(meta(page.text, 'og:description')).toBe('A reading history from Moon+ Reader.');
+    expect(meta(page.text, 'og:description')).toBe('A self-hosted reading history.');
     expect(meta(page.text, 'og:image')).toBeNull();
     await request(dash.server).get('/share.jpg').expect(404);
   });

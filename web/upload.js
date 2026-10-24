@@ -43,7 +43,7 @@
     signInDialog = h('dialog', { class: 'up-dialog', 'aria-labelledby': 'si-title' },
       h('div', { class: 'up-head' }, h('h2', { id: 'si-title' }, 'Admin sign-in'),
         h('button', { class: 'up-close', type: 'button', 'aria-label': 'Close', onclick: () => signInDialog.close() }, '×')),
-      h('section', {}, h('p', { class: 'up-note' }, 'Sign in to upload backups, fix titles and genres, and choose who can see this dashboard.'), form));
+      h('section', {}, h('p', { class: 'up-note' }, 'Sign in to upload your reading data, fix titles and genres, and choose who can see this dashboard.'), form));
     document.body.append(signInDialog);
     signInDialog.addEventListener('click', (e) => { if (e.target === signInDialog) signInDialog.close(); });
     signInDialog.addEventListener('close', clearHash);
@@ -76,13 +76,24 @@
     pw.focus();
   }
 
+  // every file the dashboard can be built from, and where in the admin page it goes
+  const SOURCES = [
+    ['Moon+ Reader', 'a backup (.mrpro), in Admin → Data'],
+    ['Kobo', '.kobo/KoboReader.sqlite from the e-reader, in Admin → Imports'],
+    ['Kindle', 'My Clippings.txt or the reading sessions CSV from Amazon\'s data export, in Admin → Imports'],
+    ['KOReader', 'koreader/settings/statistics.sqlite3 from the device, in Admin → Imports'],
+    ['Goodreads or StoryGraph', 'a library export (CSV), in Admin → Imports'],
+  ];
+  const sourceList = () => h('ul', { class: 'note' }, SOURCES.map(([app, what]) => h('li', {}, h('b', {}, app), ': ' + what)));
+
   function firstRun() {
     const admin = config.uploads;
     replacePage('rh-empty', h('h2', {}, 'No reading data yet'),
-      h('p', { class: 'note' }, admin ? 'Upload a Moon+ Reader backup (.mrpro) to build your dashboard.'
-        : config.admin ? 'Nothing has been uploaded yet. If this is your dashboard, sign in as the admin to upload a backup.'
-          : 'Put a Moon+ Reader backup (.mrpro) in the library/inbox folder on the server, or set UPLOAD_TOKEN to upload one from here.'),
-      admin ? h('button', { class: 'up-primary', type: 'button', style: 'max-width:14rem', onclick: () => { $('#rh-empty')?.remove(); openAdmin(); } }, 'Upload a backup') : '');
+      h('p', { class: 'note' }, admin ? 'Upload a file from the app or e-reader you read on to build your dashboard. Any one of these will do, and you can add the others later:'
+        : config.admin ? 'Nothing has been uploaded yet. If this is your dashboard, sign in as the admin to upload your reading data.'
+          : 'Set UPLOAD_TOKEN on the server to upload your reading data from here: a Moon+ backup, or a Kobo, Kindle, KOReader, Goodreads or StoryGraph file. A Moon+ backup (.mrpro) can also go in the library/inbox folder.'),
+      admin ? sourceList() : '',
+      admin ? h('button', { class: 'up-primary', type: 'button', style: 'max-width:14rem', onclick: () => { $('#rh-empty')?.remove(); openAdmin(); } }, 'Upload your data') : '');
   }
 
   function titleBar() {

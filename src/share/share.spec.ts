@@ -61,7 +61,7 @@ describe('shareCard', () => {
   it('copes with no data', () => {
     expect(shareCard(undefined, null, null)).toEqual({
       title: 'Reading history',
-      description: 'A reading history from Moon+ Reader.',
+      description: 'A self-hosted reading history.',
       coverIds: [],
     });
   });

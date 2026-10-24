@@ -320,7 +320,7 @@
       g.font = `400 30px ${sans}`; g.globalAlpha = 0.75; g.fillText(k, 80, y); g.globalAlpha = 1;
       g.font = `500 36px ${sans}`; g.fillText(fit(v, W - 160 - 300), 380, y);
     });
-    g.font = `400 26px ${sans}`; g.globalAlpha = 0.6; g.fillText('Moon+ Reader dashboard', 80, H - 50); g.globalAlpha = 1;
+    g.font = `400 26px ${sans}`; g.globalAlpha = 0.6; g.fillText('Reading dashboard', 80, H - 50); g.globalAlpha = 1;
     return c;
   }
 

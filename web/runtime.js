@@ -9,7 +9,7 @@ window.dash = (() => {
   const calcs = [];
   const subs = [];
   const PARAMS_KEY = 'moonreader-dashboard:params';
-  let params = {}, covers = {}, server = null;
+  let params = {}, covers = {}, server = null, meta = {};
   try { params = JSON.parse(localStorage.getItem(PARAMS_KEY) || '{}') || {}; } catch (e) { params = {}; }
   const setAll = (status, extra) => Object.keys(files).concat(calcs.map(([id]) => id)).forEach((k) => (state[k] = { status, data: [], ...extra }));
   Object.keys(files).forEach((k) => (state[k] = { status: 'loading', data: [] }));
@@ -19,6 +19,9 @@ window.dash = (() => {
   async function load() {
     let config = { has_data: true };
     try { config = await (await fetch('api/config', { cache: 'no-store' })).json(); } catch (e) { /* static hosting: no API */ }
+    meta = config.meta || {};
+    // notes about how Moon+ records things only show when the data has a Moon+ backup
+    document.querySelectorAll('[data-moonplus]').forEach((n) => (n.hidden = !meta.backup_file));
     window.dispatchEvent(new CustomEvent('dash:config', { detail: config }));
     showBuild(config);
     if (config.has_data === false || config.can_read === false) { setAll('missing'); notify(); return config; }
@@ -62,7 +65,7 @@ window.dash = (() => {
       el.textContent = 'A demo with a made-up reading history of public-domain classics. ';
       const a = document.createElement('a');
       a.href = 'https://github.com/chorsnell/moonreader-dashboard';
-      a.textContent = 'Run it on your own Moon+ Reader data';
+      a.textContent = 'Run it on your own reading data';
       el.append(a, '.');
     } else if (el && (m.backup_file || (m.imports && m.imports.length))) {
       // with no Moon+ backup, the data is from the imports (a Kobo, a Kindle…)
@@ -149,6 +152,10 @@ window.dash = (() => {
     precomputed: () => Object.keys(server || {}),
     onData: (fn) => { subs.push(fn); try { fn(); } catch (e) { console.error(e); } },
     cover: (id) => covers[id] || null,
+    // what the last build says about the data (meta.json): backup_file is set when it has a
+    // Moon+ backup, imports lists the other files it was built from
+    meta: () => meta,
+    hasMoonplus: () => Boolean(meta.backup_file),
     params: () => ({ ...params }),
     setParams: (p) => {
       params = { ...params, ...p };

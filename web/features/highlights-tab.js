@@ -60,7 +60,7 @@
 
   dash.calc('highlight_repeats', {
     inputs: ['highlight_rows'], title: 'Passages highlighted more than once',
-    description: 'The same passage (ignoring case, accents and punctuation) highlighted more than once in a book: on a re-read, or from Moon+ and a Kindle. Most times first.',
+    description: 'The same passage (ignoring case, accents and punctuation) highlighted more than once in a book: on a re-read, or from two apps (Moon+ and a Kindle, say). Most times first.',
     fn: (rows) => {
       const by = new Map();
       for (const h of rows) {

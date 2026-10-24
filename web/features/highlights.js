@@ -1,4 +1,4 @@
-// Highlights, notes and bookmarks from Moon+ (data/highlights.json), on each book's page.
+// Highlights, notes and bookmarks from Moon+ and the imports (data/highlights.json), on each book's page.
 (() => {
   const { el, fmt, plural } = rh;
 

@@ -1,5 +1,5 @@
 // Time-of-day reading clock: when in the day you read, using the times of your highlights,
-// notes and bookmarks as a stand-in (Moon+'s reading log only records days).
+// notes and bookmarks as a stand-in (the reading log only records days).
 (() => {
   const { el, fmt, svgIn, showTip, hideTip, tipLines } = rh;
 
@@ -39,7 +39,7 @@
       if (total < 5) return;
       parts.note.hidden = false;
       parts.note.textContent = `When in the day you made your ${fmt(total)} highlights, notes and bookmarks. ` +
-        'Moon+ only logs which days you read, so this stands in for when you read. Midnight is at the top.';
+        'Your reading log only records which days you read, so this stands in for when you read. Midnight is at the top.';
 
       box.replaceChildren();
       box.classList.add('ck-box');

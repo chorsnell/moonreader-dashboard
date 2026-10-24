@@ -1,6 +1,6 @@
 // Your ratings (BOO-53), from a Goodreads or StoryGraph import: rating against speed, by
 // genre and by the shape of the read (do you rate devoured books higher?), and a card on
-// book pages with the rating, shelves and any reads that happened outside Moon+.
+// book pages with the rating, shelves and any reads that happened in another app.
 // Every card hides itself when no book has a rating.
 (() => {
   const { D, el, fmt, svgIn, showTip, hideTip, tipLines, axis, gColor, link, links, refLine, grow, chip, fDay, pDate, MARK } = rh;
@@ -179,8 +179,8 @@
       const src = SOURCES[b.source] || SOURCES[reads[0]?.source] || 'an import';
       const fin = reads.filter((r) => r.finished);
       if (b.source && b.hours == null) box.append(el('p', 'rt-note', `Only in your ${src} data, so there are dates but no minutes, words or speed for it. It counts towards books per year and genres, not towards time or speed.`));
-      else if (b.source) box.append(el('p', 'rt-note', `Read on your ${src}, not in Moon+.`));
-      else if (reads.length) box.append(el('p', 'rt-note', `Also read outside Moon+ (${[...new Set(reads.map((r) => SOURCES[r.source]))].join(', ')})` + (fin.length ? `: finished ${fin.map((r) => fDay(pDate(r.end))).join(', ')}.` : '.')));
+      else if (b.source) box.append(el('p', 'rt-note', `Read on your ${src}` + (dash.hasMoonplus() ? ', not in Moon+.' : '.')));
+      else if (reads.length) box.append(el('p', 'rt-note', (dash.hasMoonplus() ? 'Also read outside Moon+' : 'Also read elsewhere') + ` (${[...new Set(reads.map((r) => SOURCES[r.source]))].join(', ')})` + (fin.length ? `: finished ${fin.map((r) => fDay(pDate(r.end))).join(', ')}.` : '.')));
       if (b.rating || (b.shelves || []).length) parts.note.hidden = true;
     },
   });

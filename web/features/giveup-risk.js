@@ -186,7 +186,7 @@
         });
         box.append(list);
       }
-      if (e.idle_days != null) box.append(el('p', 'gr-foot', `As of the latest backup day, ${rh.fDay(pDate(dash.data('as_of').data[0].date))}.`));
+      if (e.idle_days != null) box.append(el('p', 'gr-foot', `As of the latest day in your data, ${rh.fDay(pDate(dash.data('as_of').data[0].date))}.`));
     },
   });
 })();

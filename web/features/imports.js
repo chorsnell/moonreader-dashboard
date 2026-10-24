@@ -1,5 +1,5 @@
 // Admin → Imports (BOO-53, BOO-57): a Goodreads or StoryGraph export adds ratings, shelves
-// and books read outside Moon+; a Kobo database or Kindle files add days, reads and
+// and books read elsewhere; a Kobo or KOReader database or Kindle files add days, reads and
 // highlights; finished reads can go back to Goodreads as a CSV.
 (() => {
   const NAMES = { goodreads: 'Goodreads', storygraph: 'StoryGraph', kobo: 'your Kobo', kindle: 'Kindle reading sessions', kindle_clippings: 'My Clippings', koreader: 'KOReader' };
@@ -29,7 +29,7 @@
           } }, 'Remove'))))
         : h('p', { class: 'note' }, 'Nothing imported yet.'));
       if (r.kindle_titles) list.append(h('p', { class: 'up-note' }, `${r.kindle_titles} Kindle titles known, to name books in Kindle reading sessions.`));
-      if (!r.has_backup && r.imports.length) list.append(h('p', { class: 'up-note' }, 'No Moon+ backup yet, so the dashboard is built from these imports alone.'));
+      if (!r.has_backup && r.imports.length) list.append(h('p', { class: 'up-note' }, 'No Moon+ backup, so the dashboard is built from these imports alone.'));
     }
 
     const file = h('input', { type: 'file', accept: '.csv,.txt,.sqlite,.sqlite3,text/csv,text/plain', id: 'ad-import-file' });
@@ -52,7 +52,7 @@
     } }, 'Import');
 
     box.append(
-      a.block('Import from another app', 'Brings in books, reads and highlights from outside Moon+. The file is recognised by what\'s in it; uploading the same kind again replaces the earlier one.',
+      a.block('Import from another app', 'Brings in books, reads and highlights from other apps and e-readers. The file is recognised by what\'s in it; uploading the same kind again replaces the earlier one.',
         h('ul', { class: 'up-note ad-sources' },
           h('li', {}, h('b', {}, 'Goodreads'), ': My Books → Import and export → Export library. Adds ratings, shelves and books read on paper.'),
           h('li', {}, h('b', {}, 'StoryGraph'), ': Manage account → Export StoryGraph library.'),
@@ -61,7 +61,7 @@
           h('li', {}, h('b', {}, 'Kindle highlights'), ': documents/My Clippings.txt on the Kindle.'),
           h('li', {}, h('b', {}, 'Kindle reading sessions'), ': Amazon → Request your data → Kindle; upload Kindle.Devices.ReadingSession.csv. It names books only by ASIN: upload a CSV with ASIN and Title columns (such as your digital orders) to name them, or name them in Catalogue.')),
         h('label', { for: 'ad-import-file' }, 'File'), file, h('div', { class: 'ad-actions' }, go), msg),
-      a.block('Imported', 'Books are matched to your Moon+ books by ISBN, then by title and author; for a day Moon+ already has, Moon+ wins. Books only Goodreads knows show as finished on the day it gives, with no minutes, words or speed, so they count towards books per year and genres but not time. Give imported books a genre in the Catalogue section (their file is shown as goodreads:<id>, kobo:<id>, kindle:<ASIN>…). To-read shelves are left out.',
+      a.block('Imported', 'Books are matched to the books already there (from a Moon+ backup or an earlier import) by ISBN, then by title and author; for a day that\'s already there, its figures stand. Books only Goodreads knows show as finished on the day it gives, with no minutes, words or speed, so they count towards books per year and genres but not time. Give imported books a genre in the Catalogue section (their file is shown as goodreads:<id>, kobo:<id>, kindle:<ASIN>…). To-read shelves are left out.',
         list, listMsg),
       a.block('Export to Goodreads', 'Your finished books (with their ratings and the day you finished) as a CSV in the layout Goodreads imports: My Books → Import and export → Import. Books that came from Goodreads are left out.',
         h('div', { class: 'ad-actions' }, h('a', { class: 'up-primary ad-auto ad-download', href: 'api/admin/imports/export/goodreads', download: 'goodreads_import.csv' }, 'Download CSV'))));

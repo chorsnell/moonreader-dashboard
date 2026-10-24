@@ -522,7 +522,7 @@
     const genres = genreOrder.filter((g) => rows.some((r) => r.genre === g));
     genreLegend($('#leg-speedtl'), genres);
     if (!rows.length) {
-      $('#speedtl-note').textContent = `${rangeLabel(R)}: no timed reading in this period (Moon+ logs minutes and words from 2019).`;
+      $('#speedtl-note').textContent = `${rangeLabel(R)}: no timed reading in this period${dash.hasMoonplus() ? ' (Moon+ logs minutes and words from 2019)' : ''}.`;
       el.style.minHeight = '80px'; el.replaceChildren(Object.assign(document.createElement('div'), { className: 'dy-empty', textContent: 'No timed reading in this period.' })); return;
     }
     // rolling average over the last `win` days, weighted by minutes; reaches back before the range so the line starts filled

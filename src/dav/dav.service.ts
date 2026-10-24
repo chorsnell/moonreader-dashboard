@@ -101,7 +101,7 @@ export class DavService {
 
   private async get(full: string): Promise<DavResponse> {
     const st = await statOrNull(full);
-    if (st?.isDirectory()) return text(200, 'Moon+ Reader dashboard WebDAV folder.\n');
+    if (st?.isDirectory()) return text(200, 'Reading dashboard WebDAV folder.\n');
     if (!st?.isFile()) return text(404, 'Not found');
     return { status: 200, file: full };
   }

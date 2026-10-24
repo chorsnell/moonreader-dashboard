@@ -42,7 +42,7 @@
         if (addSlot.firstChild) { addSlot.replaceChildren(); return; }
         addSlot.append(editor({ id: null, title: '', author: '' }, null, () => addSlot.replaceChildren()));
       });
-      booksBox.replaceChildren(a.block('Books', 'Open a book to set its price. Books bought but never opened in Moon+ can be added too; they count towards spending and the unread pile.',
+      booksBox.replaceChildren(a.block('Books', 'Open a book to set its price. Books bought but never opened can be added too; they count towards spending and the unread pile.',
         h('div', { class: 'ad-toolbar' }, pick, search), h('div', { class: 'ad-actions pr-add' }, add), addSlot, count, list, more));
       renderBooks();
     }
@@ -57,7 +57,7 @@
       const shown = all.filter((b) => (which === 'all' || (which === 'missing' && !p[b.id]) || (which === 'priced' && p[b.id]) || (which === 'unopened' && b.unopened)) &&
         (!query || [b.title, b.author].some((s) => s && s.toLowerCase().includes(query))));
       const priced = all.filter((b) => p[b.id]).length;
-      count.textContent = flash + (all.length ? `${shown.length} shown · ${priced} of ${all.length} books have a price` : 'No books yet: upload a backup first, or add one you haven\'t opened.');
+      count.textContent = flash + (all.length ? `${shown.length} shown · ${priced} of ${all.length} books have a price` : 'No books yet: upload a backup or an import first, or add one you haven\'t opened.');
       flash = '';
       list.replaceChildren(...shown.slice(0, limit).map(row));
       more.hidden = shown.length <= limit;

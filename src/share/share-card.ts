@@ -9,7 +9,7 @@ import { PRIVATE_TITLE } from '../privacy/privacy';
 type Row = Record<string, unknown>;
 
 export const SITE_NAME = 'Reading history';
-export const GENERIC_DESCRIPTION = 'A reading history from Moon+ Reader.';
+export const GENERIC_DESCRIPTION = 'A self-hosted reading history.';
 
 export interface ShareCard {
   title: string;

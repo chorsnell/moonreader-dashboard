@@ -3,13 +3,21 @@
 [![test](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/test.yml/badge.svg)](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/test.yml)
 [![demo](https://github.com/chorsnell/moonreader-dashboard/actions/workflows/pages.yml/badge.svg)](https://chorsnell.github.io/moonreader-dashboard/)
 
-A self-hosted dashboard for your [Moon+ Reader](https://www.moondownload.com/) reading history, with your TV, films and audiobooks alongside.
+A self-hosted reading dashboard: your whole reading history, from the apps and e-readers you read on, with your TV, films and audiobooks alongside.
 
 **[Try the live demo →](https://chorsnell.github.io/moonreader-dashboard/)** It runs on a made-up history of public-domain classics, rebuilt every week.
 
 <a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png"><img src="docs/screenshots/overview.png" alt="The Overview tab"></picture></a>
 
-Moon+ keeps a record of every book, every day you read, the minutes, words and progress, and your highlights and notes inside its backups. The dashboard reads that, keeps the history even for books whose files are long gone, adds what Goodreads, StoryGraph, Kobo, Kindle, KOReader, Netflix, Plex and Audiobookshelf know, and turns it into charts you can click through. It's one small container: a [NestJS](https://nestjs.com) app on Node.js 24, with no database to run.
+Reading apps keep a record of every book, the days you read, the minutes, words and progress, and your highlights and notes. The dashboard reads what yours kept, from any mix of these:
+
+- **[Moon+ Reader](https://www.moondownload.com/):** a backup (`.mrpro`), uploaded or synced over WebDAV. It has the most detail: every day, its minutes and words, progress and highlights.
+- **Kobo:** the e-reader's `KoboReader.sqlite`.
+- **Kindle:** `My Clippings.txt` and the reading sessions from Amazon's data export.
+- **KOReader:** its `statistics.sqlite3`.
+- **Goodreads and StoryGraph:** a library export (CSV), for ratings, shelves and books read on paper.
+
+It matches the same book across them, keeps the history even for books whose files are long gone, adds what Netflix, Plex and Audiobookshelf know about your watching and listening, and turns it all into charts you can click through. It's one small container: a [NestJS](https://nestjs.com) app on Node.js 24, with no database to run. See [Getting data in](#getting-data-in) for how each source gets there.
 
 ## What's in it
 
@@ -25,7 +33,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 - **Diary:** a day-by-day log for any period: which books, minutes, words and progress, with starts and finishes.
 - **Library:** every book and every re-read, searchable and sortable, and where you give up.
 - **TV & film:** hours watched, what's on screen now, dropped seasons, season completion, binge fingerprints, when you watch, genre drift, films, the cost per hour of each subscription, whether TV crowds out reading, and book-to-screen adaptations. It appears once there's something watched.
-- **To read:** your to-read pile, gathered from Goodreads and StoryGraph to-read shelves, books in Moon+ you haven't started, and books you bought but never opened: how big it is, how long books have waited, how long it would take at your pace, whether you add books faster than you finish them, friends' favourites as suggestions, and **what to read next**: the pile ranked by your own habits, each pick saying why.
+- **To read:** your to-read pile, gathered from Goodreads and StoryGraph to-read shelves, books in your reading app you haven't started, and books you bought but never opened: how big it is, how long books have waited, how long it would take at your pace, whether you add books faster than you finish them, friends' favourites as suggestions, and **what to read next**: the pile ranked by your own habits, each pick saying why.
 - **Money:** spending by month and year, a budget, how you got your books, value for money, an hour of streaming against an hour of books, the cost to finish a series, whether a subscription paid off, money left on the shelf, and what your reading time is worth at a rate you choose.
 - **Highlights:** every highlight and note across all your books in one place: full-text search (all words must match; "quoted phrases"; case and accents don't matter), filters by book, author, genre, year and notes, the most-highlighted books, highlights per year, and passages you highlighted more than once. It follows the highlights privacy setting and leaves out private books.
 - **Friends:** friends' reading next to yours: a taste match, overlaid heatmaps, opt-in leaderboards, their favourites you haven't read, and book clubs. On a book's page, a buddy-read race against every friend who read it.
@@ -39,7 +47,7 @@ Moon+ keeps a record of every book, every day you read, the minutes, words and p
 
 **Admin** (`#admin`, for the admin only): upload and rebuild, imports, sync logs, other media, who can see what, friends, the catalogue, prices, covers and the book manager. See [The admin page](#the-admin-page).
 
-Every book shows its cover, from the backup or looked up on Open Library. It all works on a phone, in light and dark.
+Every book shows its cover, from a Moon+ backup or looked up on Open Library. It all works on a phone, in light and dark.
 
 ## Screenshots
 
@@ -95,7 +103,7 @@ cp .env.example .env
 GIT_COMMIT=$(git rev-parse HEAD) docker compose up -d --build
 ```
 
-Open `http://SERVER_IP:9080/` (the port is set in `docker-compose.yml`), click **Admin**, sign in with your `UPLOAD_TOKEN`, and upload a Moon+ backup in the **Data** section. To make one in Moon+, go to **Options → Backup & Restore → Backup**; it produces a `.mrpro` file. The dashboard builds itself in a few seconds.
+Open `http://SERVER_IP:9080/` (the port is set in `docker-compose.yml`), click **Admin**, sign in with your `UPLOAD_TOKEN`, and upload your reading data: a Moon+ backup in the **Data** section, or a Kobo, Kindle, KOReader, Goodreads or StoryGraph file in the **Imports** section (see [Getting data in](#getting-data-in)). Any one is enough to start. The dashboard builds itself in a few seconds.
 
 To update later: `git pull && docker compose up -d --build`.
 
@@ -104,7 +112,7 @@ Everything the container keeps lives in `./library/`, which git ignores:
 ```
 library/
   settings.json    who can see what (the read password is stored hashed)
-  inbox/           backups (.mrpro); the newest is used, the 5 newest are kept
+  inbox/           Moon+ backups (.mrpro); the newest is used, the 5 newest are kept
   data/            the generated data the page reads
   dav/             what Moon+ syncs over WebDAV
   covers/          book covers, one <book id>.jpg or .png each
@@ -126,11 +134,13 @@ library/
 
 ## Getting data in
 
-Every way in triggers a rebuild.
+The dashboard is built from whichever of these you have: a Moon+ backup, imports, or both. Every way in triggers a rebuild.
 
 ### Moon+ Reader
 
-1. **Upload a backup** in the admin page's **Data** section.
+To make a backup in Moon+, go to **Options → Backup & Restore → Backup**; it produces a `.mrpro` file. Then:
+
+1. **Upload it** in the admin page's **Data** section.
 2. **Drop a backup into `library/inbox/`**, by hand, with `scp` or Syncthing.
 3. **Sync over WebDAV.** When `UPLOAD_TOKEN` is set, the server is also a WebDAV server at `https://your-domain/dav/` (the **Data** section shows the exact address). Log in with any username and your `UPLOAD_TOKEN` as the password.
    - **Reading positions:** in a book, **Miscellaneous → Sync reading positions via Dropbox/WebDAV**, choose WebDAV and enter the address and login. Progress, "On the go" and finished status then stay current between backups. Minutes and words per day still only come from backups, because that's the only place Moon+ records them.
@@ -144,7 +154,7 @@ What a backup holds is in [docs/moonplus-backup.md](docs/moonplus-backup.md).
 
 Upload a Goodreads library export (My Books → Import and export → Export library) or a StoryGraph export in the **Imports** section.
 
-- Books are matched to your Moon+ books by ISBN, then by title and author, and gain your **rating**, **shelves** and any read Moon+ doesn't know about (an earlier read on paper, say).
+- Books are matched to the books already there (from a Moon+ backup or another import) by ISBN, then by title and author, and gain your **rating**, **shelves** and any read the rest doesn't know about (an earlier read on paper, say).
 - Books only the export knows count as finished on the day it gives. With no minutes or words, they count towards books, genres, authors and series, but not time, speed, streaks or heatmaps. To-read shelves don't count as books you've read: they go on the **To read** pile instead, with the day you added them.
 - Ratings add views: speed against rating, ratings by genre, and whether you rate books you devoured higher.
 - **Export to Goodreads** downloads your finished books as a CSV that Goodreads' import reads.
@@ -177,7 +187,7 @@ With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or i
 
 ## Books, covers and details
 
-**Titles, authors and genres.** Moon+ doesn't store genres, so they come from `library/catalogue.json`, keyed by the lower-case book file name. New books show as **Untagged** until you tag them in the admin page's **Catalogue** section, or by hand:
+**Titles, authors and genres.** Reading apps don't store genres, so they come from `library/catalogue.json`, keyed by the lower-case book file name. Books known only by a file name (as in a Moon+ backup) show as **Untagged** until you tag them in the admin page's **Catalogue** section, or by hand:
 
 ```json
 "some new book - author.epub": {
@@ -190,7 +200,7 @@ With a [TMDB](https://www.themoviedb.org/settings/api) key (`TMDB_API_KEY`, or i
 
 **Suggested genres.** Each untagged book gets a suggested genre and subgenre in the Catalogue section, in your catalogue's own words (the genre and subgenre names it already uses). The strongest hint is other books: when the rest of its series is tagged, or two thirds of its author's tagged books share a genre, it follows them. Otherwise it comes from the book's [Open Library](https://openlibrary.org) subjects ("Space warfare", "Detective and mystery stories"…), matched to your genre names by keywords; a common name such as "Romance" is used only when nothing in your catalogue fits. Each suggestion shows what it's based on (the books it follows, or the subjects) and how sure it is. **Accept** saves it to `catalogue.json` and rebuilds, **Change…** opens the editor with it filled in, **Reject** turns it down for good (remembered in `library/genre-suggestions.json`), and **Accept all shown** takes every suggestion on screen. Nothing is applied without you, and what's in the catalogue always wins. The starter catalogue's genres were guessed from titles and authors, so **Review genres** lists the books whose subjects point at another genre, to **Use this** or **Keep mine**.
 
-**Finished by hand.** When you finished a book Moon+ didn't see you finish (a broken file with blank pages at the end, or a book from before it recorded progress), add `"finished": true` to its entry, or use **Mark finished** in the Catalogue section (its **Not finished** list shows the candidates). Its latest read then counts as finished. `"finished": false` stops the guesses above for a book you really didn't finish.
+**Finished by hand.** When you finished a book your reading app didn't see you finish (a broken file with blank pages at the end, or a book from before it recorded progress), add `"finished": true` to its entry, or use **Mark finished** in the Catalogue section (its **Not finished** list shows the candidates). Its latest read then counts as finished. `"finished": false` stops the guesses above for a book you really didn't finish.
 
 **Year and country.** The Origins tab needs each book's first-published year and its author's country. The metadata lookup fills most of them in; to fix a gap or a wrong one, use **First published** (a year, or `400 BC`) and **Author's country** (an English name or a two-letter code) in the Catalogue section's editor, which save `"published_year"` and `"author_country"` to the book's entry. Leave them blank to go back to what the lookup found (shown as the placeholder).
 
@@ -198,13 +208,13 @@ Add a lower-case file name to `"exclude"` to hide something that isn't a book. P
 
 **ISBNs and editions.** ISBN-13 or ISBN-10, with or without hyphens (the other form is worked out; invalid ones are ignored). Copies count as one book when they share a title and author, an ISBN, or a `"work_id"` (any id you give every edition, such as an Open Library work id).
 
-**Covers.** Covers from the backup are saved to `library/covers/`; the rest are looked up on [Open Library](https://openlibrary.org) in the background, about one a second, and misses are retried after 30 days. To fix one, save your own image as `library/covers/<book id>.jpg` (the id is the title in lower case with dashes, such as `project-hail-mary`) or use the **Covers** section. `COVER_LOOKUP=off` stops the lookups.
+**Covers.** Covers from a Moon+ backup are saved to `library/covers/`; the rest are looked up on [Open Library](https://openlibrary.org) in the background, about one a second, and misses are retried after 30 days. To fix one, save your own image as `library/covers/<book id>.jpg` (the id is the title in lower case with dashes, such as `project-hail-mary`) or use the **Covers** section. `COVER_LOOKUP=off` stops the lookups.
 
 **Publication years, pages and authors.** Each book is looked up on Open Library (by ISBN, else title and author) for its first publication year, page count and an ISBN, and each author on [Wikidata](https://www.wikidata.org) for their country and gender. Results are stored in `library/metadata.json` (delete an entry to look it up again); misses are retried after 30 days. The book's Open Library subjects, for suggested genres, are kept in `library/.metadata-subjects.json`; books looked up before subjects were kept get theirs 100 at a time after each rebuild, untagged ones first. `METADATA_LOOKUP=off` stops the lookups. Which other sources were considered is in [docs/integrations.md](docs/integrations.md).
 
 ## What your books cost
 
-Moon+ doesn't know what you paid, so prices live in `library/prices.json`, set in the admin page's **Prices** section: price, currency, date, how you got it (bought, free, library, subscription, gift), store, list price, bundle and private notes. Books you bought but never opened can be added too.
+Reading apps don't know what you paid, so prices live in `library/prices.json`, set in the admin page's **Prices** section: price, currency, date, how you got it (bought, free, library, subscription, gift), store, list price, bundle and private notes. Books you bought but never opened can be added too.
 
 - **CSV import** of a store's order history or a spreadsheet (needs a `title` column; reads `author`, `isbn`, `price`, `currency`, `date`, `acquisition`, `store`, `subscription`, `list_price`, `bundle`, `notes`). You see what matched before anything is saved. **Download all as CSV** gives the same columns back.
 - **Currencies** are converted to one home currency with exchange rates you set; nothing is looked up online.
@@ -231,7 +241,7 @@ If you run a Readarr-compatible book manager (Readarr's successors such as Books
 
 ## Exporting highlights
 
-**Admin → Highlights** exports every highlight and note (Moon+, Kobo and Kindle):
+**Admin → Highlights** exports every highlight and note (from Moon+, Kobo and Kindle):
 
 - **Obsidian or Logseq:** a zip with a Markdown file per book (`Highlights/<Title> - <Author>.md`): YAML front matter (title, author, series, genre, ISBN, published year, rating, status, first and last read, book id) and each highlight as a quote with your note and where it comes in the book, in book order. Each book keeps the same file name, so unzipping a new export into your vault replaces last time's files instead of adding copies (edits made in those files are overwritten). Each highlight has a block id (`^hl-<id>`), so links to it keep working.
 - **Readwise CSV:** the columns Readwise's [bulk import](https://readwise.io/import_bulk) reads (Highlight, Title, Author, URL, Note, Location, Date).
@@ -245,8 +255,8 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 
 | Section | What it's for |
 |---|---|
-| **Data** | Upload a backup, rebuild now, the backups kept, the WebDAV address |
-| **Imports** | Goodreads, StoryGraph, Kobo, Kindle and KOReader files; export to Goodreads |
+| **Data** | What you can upload, a Moon+ backup, rebuild now, the backups kept, the WebDAV address |
+| **Imports** | Kobo, Kindle, KOReader, Goodreads and StoryGraph files; export to Goodreads |
 | **Highlights** | Export highlights to Obsidian or Logseq (Markdown) and Readwise (CSV or straight to your account) |
 | **Daily review** | How many highlights a day, the morning notification, and an Anki export |
 | **Sync & logs** | Every sync, rebuild, upload, lookup and request, filterable and downloadable, with a warning when syncing seems to have stopped or a login failed |
@@ -361,7 +371,7 @@ Your reading can show up outside the dashboard. Everything here is worked out fr
 
 - `reading`: books opened in the last 30 days and not finished, most recent first (`null` when "what you're reading now" is hidden from the asker).
 - `today_minutes`, `week_minutes` (Monday on): `null` when the asker doesn't get day-by-day reading.
-- `streak.at_risk`: you have a streak going (read yesterday) and haven't read today yet. "Today" is the server's date (set `TZ`), and the numbers only move when a backup or WebDAV sync arrives, so sync before the evening nudge.
+- `streak.at_risk`: you have a streak going (read yesterday) and haven't read today yet. "Today" is the server's date (set `TZ`), and the numbers only move when new data arrives (an upload, an import or a WebDAV sync), so sync before the evening nudge.
 - `year.expected`: books you'd have finished by today at an even pace to the goal; `ahead` is how far ahead (or behind, negative) you are. All `null` without a goal.
 - `quote`: the same quote of the day as the Overview's card.
 - `/api/now/cover` is the cover of the book you're reading (for an `entity_picture`), or 404.
@@ -442,7 +452,7 @@ An always-on, black-and-white view for a shelf: the book you're reading with its
 
 1. In TRMNL, go to **Plugins → Private Plugin → Add new**, pick the **Polling** strategy and set the **Polling URL** to `https://reading.example.com/api/trmnl` with verb `GET`.
 2. Under **Polling headers**, add `authorization=Bearer <your device token>`.
-3. Pick a refresh rate. The data only changes when Moon+ syncs, so hourly is plenty.
+3. Pick a refresh rate. The data only changes when new reading data arrives, so hourly is plenty.
 4. In **Edit markup**, paste [`examples/trmnl-full.liquid`](examples/trmnl-full.liquid). It uses TRMNL's own layout classes, with the dithered cover from `cover_url`. Or, for the server's picture exactly as in the preview, use just `<img src="{{ image_url }}" style="width:100%;height:100%">`.
 5. Add the plugin to a playlist.
 
@@ -551,10 +561,10 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 
 - **New reads:** returning to a book after 365 days or more starts a new read. A single day back in a book only counts as a read if the book has no longer one.
 - **Finished:** a read is finished when it ends at 99% or more, or at 95% or more once it's over (not opened for 14 days, or read again since), the rest being afterwords and credits. Before about 2019 Moon+ often didn't record progress; those reads count as finished when the words read (or the minutes, at your usual speed) come to 80% of the book's page count × 250 words. **Data checks → Guessed finished** lists every read counted this way. The rules are at the top of `src/backup-import/finish-rules.ts`.
-- **Minutes and words:** only logged per day from 2019 onwards. Per-book totals use the app's lifetime counters.
+- **Minutes and words:** Moon+ only logs them per day from 2019 onwards. Per-book totals use the app's lifetime counters.
 - **Speed:** words divided by minutes, over days where Moon+ logged both. Days above 800 wpm (flicking through) or below 40 wpm (book left open) are skipped, and a book needs 2+ hours of timed reading to get a speed.
 - **Time of day:** the reading log only records days, not times. Highlights and notes carry a time, so time-of-day views use them as a stand-in.
-- **Highlights:** the backup records a chapter and position, not the book's length, so how far in (%) is estimated from your progress on the day.
+- **Highlights:** a Moon+ backup records a chapter and position, not the book's length, so how far in (%) is estimated from your progress on the day.
 - **Data checks:** a first or last day 30+ days from the rest of a read is stray; a 60+ day gap mid-read is a pause; a read is thinly spread when it spans 60+ days but was opened on under 15% of them (`CHECK` in `web/calcs.js`).
 - **Changing the rules:** the thresholds are at the top of `src/backup-import/reading-history.ts` (and `src/media/media-history.ts` for TV and film), and every chart's calculation is in `web/calcs.js` or the feature script that draws it.
 - **To-read pile:** a book is on it when it's on a to-read shelf, in Moon+'s library but never opened or not started, or priced but never opened; the same book from two places counts once (ISBN, then title and author). Its age runs from the day it was added (the export's Date Added, Moon+'s `addTime`, or the purchase date). A book's length is its words read so far, else its page count × 275, else your typical finished book. "To read it all" uses your words a minute and minutes a day over the last 365 days. "Added" counts books going on the pile plus books you started without them being on it, against first reads finished.
