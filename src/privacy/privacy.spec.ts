@@ -562,3 +562,49 @@ describe('bibliography.json', () => {
     expect(filterDataFile('bibliography.json', { x: 1 }, ctxFor(PRESETS.everything))).toEqual([]);
   });
 });
+
+describe('genre_picks.json', () => {
+  const pick = (title: string, genre: string, subgenre: string | null = null) => ({
+    genre,
+    subgenre,
+    work_id: null,
+    title,
+    author: 'Someone',
+    published_year: 1900,
+    editions: 10,
+    rank: 1,
+    on_pile: false,
+  });
+  const rows = [
+    pick('Ivanhoe', 'Classics'),
+    pick('North and South', 'Classics', 'Romance'),
+    pick('Foundation', 'Science Fiction'),
+    pick('Solaris', 'Science Fiction', 'Space'),
+  ];
+  const titles = (out: unknown) => (out as { title: string }[]).map((r) => r.title);
+
+  it('passes through when no genre is private', () => {
+    expect(filterDataFile('genre_picks.json', rows, ctxFor(PRESETS.everything))).toEqual(rows);
+    // private books alone don't hide a genre's picks
+    const ctx = ctxFor(PRESETS.everything, { private_books: ['emma'] });
+    expect(filterDataFile('genre_picks.json', rows, ctx)).toEqual(rows);
+  });
+
+  it('leaves out private genres and subgenres, and the subgenres of a private genre', () => {
+    const ctx = ctxFor(PRESETS.taste, { private_genres: ['romance', 'Science Fiction'] });
+    expect(titles(filterDataFile('genre_picks.json', rows, ctx))).toEqual(['Ivanhoe']);
+    const anon = ctxFor(PRESETS.everything, {
+      private_genres: ['Space'],
+      private_mode: 'anonymise',
+    });
+    expect(titles(filterDataFile('genre_picks.json', rows, anon))).toEqual([
+      'Ivanhoe',
+      'North and South',
+      'Foundation',
+    ]);
+  });
+
+  it('copes with a file that is not a list', () => {
+    expect(filterDataFile('genre_picks.json', { x: 1 }, ctxFor(PRESETS.everything))).toEqual([]);
+  });
+});

@@ -5,6 +5,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { Injectable } from '@nestjs/common';
 import { BibliographyStore } from '../bibliography/bibliography-store.service';
 import { buildBibliography } from '../bibliography/build';
+import { DiscoverySettings } from '../bibliography/discovery-settings.service';
+import { buildGenrePicks } from '../bibliography/genre-picks';
 import { findFiles, mtimeMs } from '../common/files';
 import { localDate, localDateTime, round1 } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
@@ -65,6 +67,7 @@ export class BackupImportService {
     private readonly metadata: MetadataStore,
     private readonly imports: ImportsStore,
     private readonly bibliography: BibliographyStore,
+    private readonly discovery: DiscoverySettings,
     private readonly want: WantStore,
   ) {}
 
@@ -314,9 +317,12 @@ export class BackupImportService {
     // books waiting to be read that the library doesn't otherwise have
     await this.dump('to_read.json', toRead);
     // books by your authors and in your series that you don't have (BOO-103)
+    const bibliography = await this.bibliography.read();
+    await this.dump('bibliography.json', buildBibliography(booksRows, toRead, bibliography));
+    // popular books in your genres that you don't have (BOO-105)
     await this.dump(
-      'bibliography.json',
-      buildBibliography(booksRows, toRead, await this.bibliography.read()),
+      'genre_picks.json',
+      buildGenrePicks(booksRows, toRead, bibliography, await this.discovery.overrides()),
     );
     await this.dump(
       'reading_history.json',

@@ -213,6 +213,24 @@ export class OpenLibraryClient {
     return Array.isArray(docs) ? (docs as AuthorWorkDoc[]) : [];
   }
 
+  /**
+   * The works in a subject (e.g. "fantasy"), most popular first as Open Library lists them
+   * (at most 50): for the genre picks (BOO-105). The raw `works` list, or [] when the
+   * subject is unknown (404) or the answer has none; throws when it can't be reached.
+   */
+  async subjectWorks(slug: string, signal?: AbortSignal): Promise<unknown[]> {
+    if (!/^[a-z0-9_]+$/.test(slug)) return [];
+    let body: Buffer;
+    try {
+      body = await this.get(`${this.config.openLibraryUrl}/subjects/${slug}.json?limit=50`, signal);
+    } catch (e) {
+      if ((e as Error).message.startsWith('HTTP 404 ')) return [];
+      throw e;
+    }
+    const parsed = JSON.parse(body.toString('utf8')) as { works?: unknown } | null;
+    return Array.isArray(parsed?.works) ? parsed.works : [];
+  }
+
   /** Authors whose name matches, Open Library's best guess first (at most 5). */
   async searchAuthors(name: string, signal?: AbortSignal): Promise<AuthorDoc[]> {
     const query = new URLSearchParams({ q: name, limit: '5' });

@@ -3,6 +3,7 @@ import type {
   BibliographyFile,
   WorkSource,
 } from '../bibliography/bibliography.types';
+import { demoSubjects } from './demo-subjects';
 
 /** [title, first published, editions (rough), series, number in the series] */
 type DemoWork = [
@@ -89,5 +90,6 @@ export function demoBibliography(today: string): BibliographyFile {
       }),
     };
   }
-  return { authors };
+  // and the Open Library subjects of the demo's genres, for the genre picks (BOO-105)
+  return { authors, subjects: demoSubjects(today) };
 }

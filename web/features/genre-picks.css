@@ -1,0 +1,19 @@
+/* popular books in your genres you haven't read (genre-picks.js) */
+#ch-genre-picks{min-height:0}
+.gp-list li{align-items:center}
+.gp-list .ttl small{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px}
+.gp-title{overflow-wrap:anywhere}
+.gp-tag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;border:1px solid var(--color-border-line);color:var(--color-fg);font-size:11px;line-height:1.6;white-space:nowrap}
+.gp-act{align-self:center}
+.gp-genre{display:flex;align-items:center;gap:var(--cds-gap-sm);margin:var(--cds-gap-md) 0 var(--cds-gap-sm);font-size:var(--cds-font-size-body);font-weight:600}
+.gp-genre:first-child{margin-top:0}
+.gp-hours{font-weight:400;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.gp-more{margin-top:var(--cds-gap-sm)}
+/* Admin → Discovery */
+.gp-admin-list li{display:flex;justify-content:space-between;align-items:center;gap:var(--cds-gap-md)}
+.gp-admin-name{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}
+.gp-admin-field{display:flex;align-items:center;gap:var(--cds-gap-sm)}
+.gp-admin-field input[type=text]{font:inherit;font-size:14px;width:14rem;max-width:100%;padding:6px 8px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg)}
+.gp-admin-field input[type=text]:disabled{opacity:.5}
+.gp-skip{display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--color-fg-muted);white-space:nowrap}
+@media (max-width:640px){.gp-list li{flex-wrap:wrap}.gp-act{margin-left:auto}.gp-admin-list li{flex-direction:column;align-items:stretch}.gp-admin-field input[type=text]{flex:1;width:auto}}
