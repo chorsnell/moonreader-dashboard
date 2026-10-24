@@ -200,7 +200,7 @@
   });
 
   // ---------- series pages ----------
-  const STATE = { read: 'Read', reading: 'Reading', not_started: 'Not started', on_pile: 'On your pile', unread: 'Not got' };
+  const STATE = { read: 'Read', reading: 'Reading', not_started: 'Not started', on_pile: 'On your pile', unread: 'Unread' };
   rh.extend('series', (name, root) => {
     const rows = ready('series_gaps');
     const s = rows && rows.find((r) => r.series === name);
@@ -214,7 +214,8 @@
       const li = el('li', 'dc-step ' + e.state + (e.next ? ' next' : ''));
       if (e.book_id) rh.linkBook(li, e.book_id);
       li.title = `${e.series_no != null ? '#' + e.series_no + ' ' : ''}${e.title}: ${STATE[e.state]}${e.next ? ' (next up)' : ''}`;
-      li.append(el('span', 'dc-no', e.series_no != null ? '#' + e.series_no : '·'), el('span', 'dc-mark'), el('span', 'dc-state', e.next ? 'Next up' : STATE[e.state]));
+      li.append(el('span', 'dc-no', e.series_no != null ? '#' + e.series_no : '·'), el('span', 'dc-mark'), el('span', 'dc-state', STATE[e.state]));
+      if (e.next) li.append(el('span', 'dc-next', 'Next up'));
       strip.append(li);
     });
     c.append(strip);
@@ -242,9 +243,9 @@
       const ul = el('ul', 'rh-list dc-list');
       (showAll ? rows : rows.slice(0, SHOWN)).forEach((r) => {
         const why = r.kind === 'series'
-          ? `${plural(r.series_read, 'book')} of the series read`
+          ? `next after ${fmt(r.series_read)} read`
           : r.author_finished >= 2 ? `you’ve finished ${fmt(r.author_finished)} of theirs` : `you rate them ${fmt(r.author_rating)} on average`;
-        const tags = r.kind === 'series' ? [tag('Next up', 'next')] : [];
+        const tags = [];
         if (r.in_library) tags.push(tag('In your library'));
         ul.append(workItem(r, { genre: r.genre, from: r.kind, author: true, extra: why, tags }));
       });
