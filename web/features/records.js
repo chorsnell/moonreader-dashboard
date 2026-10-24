@@ -137,7 +137,7 @@
 
   rh.card({
     tab: 'overview', id: 'records', title: 'Personal records', calc: 'records', before: 'card-years',
-    note: `Your bests so far, and how each has improved. A badge marks one broken in the last ${RECENT_DAYS} days of the backup.`,
+    note: `Your bests so far, and how each has improved. A badge marks one broken in the last ${RECENT_DAYS} days of your data.`,
     draw(box, rows) {
       box.classList.add('pr-chart');
       const asOf = (dash.data('as_of').data[0] || {}).date;

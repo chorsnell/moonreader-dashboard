@@ -332,7 +332,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
 
     <div class="rh-grid">
       <div class="rh-card" id="card-current"><h2>On the go</h2>
-        <p class="note">Books opened in the last 30 days of the backup, with progress.</p>
+        <p class="note">Books opened in the last 30 days of your data, with progress.</p>
         <ul class="rh-list" id="current" data-source="current"></ul></div>
       <div class="rh-card" id="card-recent"><h2>Recently finished</h2>
         <p class="note">The last ten finished reads. ↻ marks a re-read.</p>
@@ -353,7 +353,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
   <section class="rh-page" id="genres" hidden>
     <div class="rh-grid">
       <div class="rh-card" id="card-genre"><h2>Finished books by genre</h2>
-        <p class="note">Genres were tagged by Claude from title and author; Moon+ doesn't store them.</p>
+        <p class="note">Genres were tagged by Claude from title and author; reading apps don't store them.</p>
         <div class="chart" id="ch-genre" data-source="genre_counts"></div></div>
       <div class="rh-card" id="card-sub"><h2>Top subgenres</h2>
         <p class="note">Finished books in the 12 most-read subgenres.</p>
@@ -401,7 +401,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
       <div class="chart tall" id="ch-speedtl" data-source="speed_days"></div></div>
 
     <div class="rh-card wide" id="card-speed-books"><h2>Every book by speed</h2>
-      <p class="note">Words per minute for each book with 2+ hours of timed reading (Moon+ logs this from 2019). Right of the line is faster than your average. Bigger dots took longer. Hover for details.</p>
+      <p class="note">Words per minute for each book with 2+ hours of timed reading<span data-moonplus hidden> (Moon+ logs this from 2019)</span>. Right of the line is faster than your average. Bigger dots took longer. Hover for details.</p>
       <div class="legend" id="leg-speed"></div>
       <div class="chart tall" id="ch-speed-books" data-source="book_speed"></div></div>
 
@@ -469,7 +469,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
         <select aria-label="Period"><option value="30d">Last 30 days</option><option value="90d">Last 3 months</option><option value="12m">Last 12 months</option><option value="ytd">This year</option><option value="ly">Last year</option><option value="24m">Last 2 years</option><option value="all">All time</option><option value="custom">Custom…</option></select>
         <label>From <input type="date" aria-label="From"></label><label>To <input type="date" aria-label="To"></label>
       </div></div>
-      <p class="note">What you read each day: minutes, words and how far you got. The strip shows minutes per day, coloured by genre; click a day to jump to it in the list. Moon+ records the day you read, not the time of day; minutes and words are logged from 2019.</p>
+      <p class="note">What you read each day: minutes, words and how far you got. The strip shows minutes per day, coloured by genre; click a day to jump to it in the list. Your reading log records the day you read, not the time of day.<span data-moonplus hidden> Moon+ logs minutes and words from 2019.</span></p>
       <div class="dy-sum" id="dy-sum" data-source="diary"></div>
       <div class="legend" id="leg-dytl"></div>
       <div class="chart short" id="ch-dytl" data-source="diary"></div>
@@ -481,7 +481,7 @@ body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(-
   <!-- LIBRARY -->
   <section class="rh-page" id="library" hidden>
     <div class="rh-card wide" id="card-library"><h2>Every book</h2>
-      <p class="note">Search, filter and sort everything Moon+ remembers. Click a header to sort.</p>
+      <p class="note">Search, filter and sort every book in your reading data. Click a header to sort.</p>
       <div class="tbl-tools">
         <input type="search" id="lib-q" placeholder="Search title, author, series…" aria-label="Search books">
         <select id="lib-genre" aria-label="Genre"><option value="">All genres</option></select>

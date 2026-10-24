@@ -1,6 +1,6 @@
 // The to-read pile (BOO-76): every book you have but haven't started, from wherever it waits.
 // data/to_read.json (written by the build) has the Goodreads/StoryGraph to-read shelves and
-// the books in Moon+'s library never opened; books.json adds the ones Moon+ shows as not
+// the books in Moon+'s library never opened; books.json adds the ones shown as not
 // started, prices.json the ones you bought and never opened. How big the pile is, how long
 // it has waited, how long it would take at your pace, and whether it grows faster than you
 // read. Friends' favourites are suggestions, so they're listed but not counted.
@@ -18,7 +18,7 @@
   dash.calc('to_read_pile', {
     inputs: ['books', 'to_read', 'prices'],
     title: 'To-read pile',
-    description: 'Every book waiting to be read: to-read shelves from Goodreads or StoryGraph, books in Moon+ never opened or not started, and priced books never opened, one row per book (matched by ISBN, then title and author), with when it was added and its estimated length in words.',
+    description: 'Every book waiting to be read: to-read shelves from Goodreads or StoryGraph, books in your reading app never opened or not started, and priced books never opened, one row per book (matched by ISBN, then title and author), with when it was added and its estimated length in words.',
     fn: (books, toRead, prices) => {
       const { matcher } = dash.sameBook;
       // a typical length: the median finished book's words per read
@@ -46,7 +46,7 @@
           in_library: !!o.in_library, words: words || null, estimated: !(o.words > 0),
         };
       };
-      // Moon+ books opened but not started (no progress yet)
+      // books opened but not started (no progress yet): from a Moon+ backup
       books.filter((b) => b.status === 'not_started').forEach((b) => add(row({ ...b, book_id: b.id, sources: ['moonplus'], added: b.added || b.first_read, words: 0, in_library: true })));
       (Array.isArray(toRead) ? toRead : []).forEach((r) => add(row({ ...r, words: 0 })));
       // bought but never opened (not in the reading data at all)
@@ -121,11 +121,11 @@
   const kpi = (lbl, val, sub) => { const n = el('div', 'rh-kpi'); n.append(el('div', 'lbl', lbl), el('div', 'val', val)); if (sub) n.append(el('div', 'sub', sub)); return n; };
   const ago = (days) => (days == null ? 'when unknown' : days < 45 ? plural(days, 'day') : days < 548 ? plural(Math.round(days / 30.4), 'month') : `${fmt(Math.round(days / 36.5) / 10)} years`);
   const kWords = (w) => (w >= 1e6 ? `${fmt(Math.round(w / 1e5) / 10)}M` : `${fmt(Math.round(w / 1000))}k`);
-  const empty = (box) => box.replaceChildren(el('div', 'dy-empty', 'Nothing waiting. Import a Goodreads or StoryGraph export with a to-read shelf, add books to Moon+ or price books you bought, and they’ll show here.'));
+  const empty = (box) => box.replaceChildren(el('div', 'dy-empty', 'Nothing waiting. Import a Goodreads or StoryGraph export with a to-read shelf, add books to your reading app or price books you bought, and they’ll show here.'));
 
   card({
     id: 'toread-kpis', title: 'Your to-read pile', calc: 'to_read_stats',
-    note: 'Books you have but haven’t started: to-read shelves, books in Moon+ you haven’t opened, and books you bought and never opened. Time to read it all uses your words a minute and minutes a day over the last year, if you read nothing else.',
+    note: 'Books you have but haven’t started: to-read shelves, books in your reading app you haven’t opened, and books you bought and never opened. Time to read it all uses your words a minute and minutes a day over the last year, if you read nothing else.',
     draw(box, rows) {
       const s = rows[0];
       if (!s || !s.books) { empty(box); return; }
@@ -147,7 +147,7 @@
 
   card({
     id: 'toread-flow', title: 'Adding versus finishing', calc: 'to_read_stats',
-    note: `Books added each month (to a to-read shelf or to Moon+, or started without being on a pile) against first reads finished, over the last ${FLOW_MONTHS} months.`,
+    note: `Books added each month (to a to-read shelf or your reading app, or started without being on a pile) against first reads finished, over the last ${FLOW_MONTHS} months.`,
     draw(box, rows) {
       const s = rows[0];
       if (!s || !s.months.some((m) => m.added || m.finished)) { box.replaceChildren(el('div', 'dy-empty', 'No books added or finished in this time.')); return; }

@@ -11,7 +11,7 @@ export class DavExceptionFilter implements ExceptionFilter {
     const res = host.switchToHttp().getResponse<Response>();
     const status = exception.getStatus();
     if (status === HttpStatus.UNAUTHORIZED) {
-      res.setHeader('WWW-Authenticate', 'Basic realm="Moon+ Reader dashboard"');
+      res.setHeader('WWW-Authenticate', 'Basic realm="Reading dashboard"');
     }
     res.status(status).type('text/plain; charset=utf-8').send(exception.message);
   }

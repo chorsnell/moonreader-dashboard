@@ -24,7 +24,7 @@
     q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(reload, 250); });
 
     box.append(health,
-      a.block('Activity', 'Every sync from Moon+, rebuild, upload, cover lookup and removed backup, newest first. Kept up to about 4 MB.',
+      a.block('Activity', 'Every WebDAV sync, rebuild, upload, cover lookup and removed backup, newest first. Kept up to about 4 MB.',
         h('div', { class: 'lg-filters' }, type, outcome, from, to, q),
         h('div', { class: 'lg-row' }, count, h('span', { class: 'lg-dl' }, 'Download: ',
           h('a', { href: 'api/admin/logs/download', download: 'activity.jsonl' }, 'activity.jsonl'), ' · ',
@@ -38,7 +38,7 @@
       const kids = [];
       kids.push(s.last_sync
         ? tile('Last synced', a.ago(s.last_sync), a.when(s.last_sync) + (s.usual_gap_hours ? ` · usually every ${s.usual_gap_hours < 36 ? s.usual_gap_hours + ' hours' : Math.round(s.usual_gap_hours / 24) + ' days'}` : ''), s.sync_stopped ? 'lg-warn' : '')
-        : tile('Last synced', 'Never', 'Set up WebDAV sync in Moon+ (see the Data section).'));
+        : tile('Last synced', 'Never', 'If you read in Moon+, set up WebDAV sync (see the Data section).'));
       const r = s.last_rebuild;
       kids.push(r ? tile('Last rebuild', a.ago(r.time), `${r.outcome === 'failed' ? 'Failed' : 'OK'}${r.trigger ? ' · ' + r.trigger : ''}`, r.outcome === 'failed' ? 'lg-bad' : '') : tile('Last rebuild', '—'));
       kids.push(tile('Last upload', s.last_upload ? a.ago(s.last_upload) : '—', s.last_upload ? a.when(s.last_upload) : null));

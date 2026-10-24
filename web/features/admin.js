@@ -69,7 +69,7 @@
       let s; try { s = await call('GET', 'api/admin/status'); } catch (e) { continue; }
       if (s.building) { say('Rebuilding your stats…'); continue; }
       if (s.meta && s.meta.generated && s.meta.generated !== (before.meta || {}).generated) {
-        say(`Done. Data now from ${s.meta.backup_file}.`);
+        say(s.meta.backup_file ? `Done. Data now from ${s.meta.backup_file}.` : 'Done.');
         await window.dash.reload();
         return s;
       }
@@ -144,7 +144,7 @@
       const m = last.meta || {};
       const fact = (k, v, cls) => h('div', { class: 'ad-fact' + (cls ? ' ' + cls : '') }, h('dt', {}, k), h('dd', {}, v));
       info.replaceChildren(h('dl', {},
-        fact('Backup', m.backup_file || 'None yet'),
+        fact('Moon+ backup', m.backup_file || 'None'),
         fact('Built', m.generated ? `${when(m.generated)} (${ago(m.generated)})` : '—'),
         fact('Synced positions', m.synced_positions != null ? String(m.synced_positions) : '—'),
         m.unmatched_positions && m.unmatched_positions.length
@@ -198,6 +198,7 @@
       x.send(f);
     });
 
+    const importsLink = () => h('a', { href: '#admin/imports' }, 'Imports');
     const davUrl = new URL('dav/', document.baseURI).href;
     const copy = h('button', { class: 'up-copy', type: 'button', onclick: () => {
       navigator.clipboard?.writeText(davUrl).then(() => { copy.textContent = 'Copied'; setTimeout(() => (copy.textContent = 'Copy'), 1500); });
@@ -205,7 +206,14 @@
 
     box.append(
       a.block('Current data', null, info, h('div', { class: 'ad-actions' }, rebuild), rebuildMsg),
-      a.block('Upload a backup', 'In Moon+ Reader, go to Options → Backup & Restore → Backup, then choose the .mrpro file here. The stats rebuild in a few seconds.',
+      a.block('What you can upload', 'The dashboard is built from any of these, together or on their own. Books in more than one are matched up.',
+        h('ul', { class: 'up-note ad-sources' },
+          h('li', {}, h('b', {}, 'Moon+ Reader'), ': a backup (.mrpro), below. It can also sync over WebDAV.'),
+          h('li', {}, h('b', {}, 'Kobo'), ': .kobo/KoboReader.sqlite from the e-reader, in ', importsLink(), '.'),
+          h('li', {}, h('b', {}, 'Kindle'), ': My Clippings.txt, or the reading sessions CSV from Amazon\'s data export, in ', importsLink(), '.'),
+          h('li', {}, h('b', {}, 'KOReader'), ': statistics.sqlite3, in ', importsLink(), '.'),
+          h('li', {}, h('b', {}, 'Goodreads or StoryGraph'), ': a library export (CSV), in ', importsLink(), '.'))),
+      a.block('Upload a Moon+ backup', 'In Moon+ Reader, go to Options → Backup & Restore → Backup, then choose the .mrpro file here. The stats rebuild in a few seconds.',
         h('label', { for: 'ad-file' }, 'Backup file'), file, h('div', { class: 'ad-actions' }, go), bar, msg),
       a.block('Or sync straight from Moon+', 'Moon+ can sync reading positions to a WebDAV server, and this dashboard is one. Use these details in Moon+ (see the README for where):',
         h('div', { class: 'up-dav' }, h('code', {}, davUrl), copy),
@@ -378,7 +386,7 @@
     const lists = h('div', {});
     search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); limit = 30; render(); });
     which.addEventListener('change', () => { filter = which.value; limit = 30; render(); });
-    box.append(h('p', { class: 'up-note' }, 'Books Moon+ knows by file name only show as "Untagged". Give them a title, author, series and genre here; it is saved to catalogue.json and the stats rebuild. Under "Not finished", mark books you finished that Moon+ didn’t see reach the end (a broken file, or before it recorded progress).'),
+    box.append(h('p', { class: 'up-note' }, 'Books known only by a file name (as in a Moon+ backup) show as "Untagged". Give them a title, author, series and genre here; it is saved to catalogue.json and the stats rebuild. Under "Not finished", mark books you finished that your reading app didn’t see reach the end (a broken file, or before it recorded progress).'),
       h('p', { class: 'up-note' }, 'Untagged books get a suggested genre, from other books in the series or by the author, or from the book’s subjects on Open Library. Nothing changes until you accept one. "Review genres" lists books whose subjects disagree with the genre the starter catalogue guessed.'),
       h('div', { class: 'ad-toolbar' }, which, search), h('div', { class: 'ad-actions ad-count' }, count, acceptAll), hint, list, more, lists);
 
@@ -416,7 +424,7 @@
       const rows = books.filter((b) => shows(b) &&
         (!query || [b.title, b.author, b.series, ...b.files].some((s) => s && s.toLowerCase().includes(query))));
       const untagged = books.filter((b) => b.untagged).length;
-      count.textContent = !books.length ? 'No books yet: upload a backup first.'
+      count.textContent = !books.length ? 'No books yet: upload a backup or an import first.'
         : flash + `${rows.length} book${rows.length === 1 ? '' : 's'} shown · ${untagged} untagged of ${books.length}`;
       flash = '';
       const visible = rows.slice(0, limit);

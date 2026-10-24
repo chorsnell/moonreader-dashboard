@@ -13,7 +13,7 @@
   dash.calc('on_this_day', {
     inputs: ['daily', 'reads', 'as_of'],
     title: 'On this day',
-    description: 'For each earlier year with reading on the backup date\'s month and day: the books read that day (minutes, progress, started or finished), or, when nothing was opened, the books on the go then. Newest year first.',
+    description: 'For each earlier year with reading on the latest day\'s month and day: the books read that day (minutes, progress, started or finished), or, when nothing was opened, the books on the go then. Newest year first.',
     fn: (daily, reads, as_of) => {
       const today = as_of[0].date, y0 = +today.slice(0, 4), md = today.slice(5);
       const first = daily.reduce((m, d) => (d.date < m ? d.date : m), today);
