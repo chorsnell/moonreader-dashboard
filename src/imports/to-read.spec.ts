@@ -127,6 +127,8 @@ describe('the to-read pile', () => {
       [],
       [unopened('Kim', 'Rudyard Kipling', '2025-06-01')],
       [
+        // merged into Moon+'s "kim": hiding that row hides the book
+        shelved({ id: '7' }),
         shelved({ id: '8', title: 'Bleak House', author: 'Charles Dickens' }),
         shelved({ id: '9', title: 'Vanity Fair', author: 'Thackeray' }),
       ],
@@ -136,6 +138,8 @@ describe('the to-read pile', () => {
         hidden: ['kim', 'goodreads:8', 'goodreads:9'],
       },
     );
-    expect(rows.map((r) => [r.book_id, r.sources])).toEqual([['mine:vanity-fair', ['mine']]]);
+    expect(rows.map((r) => [r.book_id, r.sources])).toEqual([
+      ['goodreads:9', ['goodreads', 'mine']],
+    ]);
   });
 });

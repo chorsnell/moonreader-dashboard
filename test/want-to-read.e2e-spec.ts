@@ -160,8 +160,9 @@ describe('the want-to-read list', () => {
   it('keeps and hides books from a to-read shelf', async () => {
     const d = (dash = await withData());
     const a = admin(d);
-    await a
+    await request(d.server)
       .put('/api/admin/imports?name=goodreads_library_export.csv')
+      .set('X-Upload-Token', TOKEN)
       .type('text/csv')
       .send(GOODREADS)
       .expect(200);

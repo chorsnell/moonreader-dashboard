@@ -45,8 +45,8 @@ const slug = (title: string) =>
 /**
  * The pile, one row per book: Moon+'s unopened files first, then the to-read shelves, then
  * your own list, the same book from two places merged (by ISBN, then title and author). A
- * book that's in the library already (read, or being read) isn't on the pile, and nor is a
- * shelf row or unopened file you hid (`want.hidden`, by book_id).
+ * book that's in the library already (read, or being read) isn't on the pile, and nor is one
+ * you hid (`want.hidden`: the book_id of any row merged into it), unless it's on your list.
  */
 export function buildToRead(
   books: BookHistory[],
@@ -61,13 +61,15 @@ export function buildToRead(
   const byKey = new Map<string, ToReadRow>();
   const byIsbn = new Map<string, ToReadRow>();
   const out: ToReadRow[] = [];
+  // every row's own id and the ids of the rows merged into it, for hiding
+  const merged = new Map<ToReadRow, string[]>();
 
   const add = (row: ToReadRow) => {
     const key = bookKey(row.title, row.author);
-    if (hidden.has(row.book_id)) return;
     if (have.has(key) || (row.isbn13 && haveIsbn.has(row.isbn13))) return;
     const same = (row.isbn13 && byIsbn.get(row.isbn13)) || byKey.get(key);
     if (same) {
+      merged.get(same)!.push(row.book_id);
       same.sources = [...new Set([...same.sources, ...row.sources])];
       same.shelves = [...new Set([...same.shelves, ...row.shelves])];
       if (row.added && (!same.added || row.added < same.added)) same.added = row.added;
@@ -88,6 +90,7 @@ export function buildToRead(
       return;
     }
     out.push(row);
+    merged.set(row, [row.book_id]);
     byKey.set(key, row);
     if (row.isbn13) byIsbn.set(row.isbn13, row);
   };
@@ -147,8 +150,10 @@ export function buildToRead(
       published_year: w.published_year,
     });
   }
-  return out.sort(
-    (a, b) =>
-      (a.added ?? '9999').localeCompare(b.added ?? '9999') || a.title.localeCompare(b.title),
-  );
+  return out
+    .filter((r) => r.want_id || !merged.get(r)!.some((id) => hidden.has(id)))
+    .sort(
+      (a, b) =>
+        (a.added ?? '9999').localeCompare(b.added ?? '9999') || a.title.localeCompare(b.title),
+    );
 }
