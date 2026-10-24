@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { appConfig, type AppConfigType } from '../config/app.config';
 import { exists, findFiles, mtimeMs, newestFirst } from '../common/files';
 import { ImportsStore } from '../imports/imports.store';
+import { WantStore } from '../want-to-read/want-to-read.store';
 import { SEED_CATALOGUE } from '../paths';
 import { ActivityLogService } from './activity-log.service';
 import { LIBRARY_CHANGED } from './library.events';
@@ -39,6 +40,7 @@ export class LibraryService implements OnModuleInit {
     private readonly activity: ActivityLogService,
     private readonly events: EventEmitter2,
     private readonly imports: ImportsStore,
+    private readonly want: WantStore,
   ) {
     this.root = config.library;
     this.inbox = join(this.root, 'inbox');
@@ -77,8 +79,9 @@ export class LibraryService implements OnModuleInit {
   }
 
   /**
-   * The newest backup, if it, catalogue.json, metadata.json, bibliography.json, an import or a
-   * synced position is newer than the data. With no backup but imports (Kobo, Kindle…), IMPORTS_ONLY.
+   * The newest backup, if it, catalogue.json, metadata.json, bibliography.json, an import,
+   * want_to_read.json or a synced position is newer than the data. With no backup but imports
+   * (Kobo, Kindle…), IMPORTS_ONLY.
    */
   async needsBuild(): Promise<string | null> {
     const [newest] = await this.backups();
@@ -91,6 +94,7 @@ export class LibraryService implements OnModuleInit {
         await mtimeMs(this.catalogue),
         await mtimeMs(this.metadata),
         await mtimeMs(this.bibliography),
+        await this.want.mtime(),
       );
       return changed > built ? IMPORTS_ONLY : null;
     }
@@ -101,6 +105,7 @@ export class LibraryService implements OnModuleInit {
       await mtimeMs(this.metadata),
       await mtimeMs(this.bibliography),
       await this.imports.newest(),
+      await this.want.mtime(),
       ...syncs,
     );
     return changed > built ? newest : null;

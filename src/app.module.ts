@@ -22,6 +22,7 @@ import { ReviewModule } from './review/review.module';
 import { StatsModule } from './stats/stats.module';
 import { StatusModule } from './status/status.module';
 import { UploadModule } from './upload/upload.module';
+import { WantToReadModule } from './want-to-read/want-to-read.module';
 import { WeatherModule } from './weather/weather.module';
 import { WebModule } from './web/web.module';
 
@@ -50,6 +51,7 @@ import { WebModule } from './web/web.module';
     OutboundModule,
     FeedsModule,
     HighlightsModule,
+    WantToReadModule,
     // last: its catch-all route for the page's files must come after every other route
     WebModule,
   ],

@@ -309,6 +309,9 @@ const LIFE_EVENTS_FILE = 'life_events.json';
 
 const DIARY_FILES = new Set(['daily.json', 'media_daily.json', 'media_sessions.json']);
 
+/** Fields of a data file only the admin sees: the owner's own notes on their list (BOO-102). */
+const ADMIN_ONLY_KEYS: Record<string, Set<string>> = { 'to_read.json': new Set(['note']) };
+
 /** Files never served to anyone but the admin. */
 export const ADMIN_ONLY_FILES = new Set(['reading_history.json']);
 
@@ -338,6 +341,7 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   if (name === BIBLIOGRAPHY_FILE) return filterBibliography(data, ctx);
   const dates = effectiveDates(name, p);
   const isBooks = name === 'books.json';
+  const ownKeys = ADMIN_ONLY_KEYS[name];
 
   const walk = (value: unknown, depth: number): unknown => {
     if (Array.isArray(value)) {
@@ -359,6 +363,7 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(o)) {
       if (!p.ratings && RATING_KEYS.has(k)) continue;
+      if (ownKeys?.has(k)) continue;
       if (DATE_KEYS.has(k) && typeof v === 'string' && DATE_VALUE.test(v)) {
         out[k] = coarsenDate(v, dates);
       } else if (TIME_KEYS.has(k) && dates !== 'day') {

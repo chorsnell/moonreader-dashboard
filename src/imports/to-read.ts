@@ -1,12 +1,14 @@
 /**
  * The to-read pile's server side (BOO-76): books you have but haven't started, written to
- * data/to_read.json. Two sources only the build can see go in here: books on a Goodreads or
- * StoryGraph to-read shelf, and book files in Moon+'s library that were never opened. The page
+ * data/to_read.json. Sources only the build can see go in here: books on a Goodreads or
+ * StoryGraph to-read shelf, book files in Moon+'s library that were never opened, and the
+ * owner's own want-to-read list (BOO-102, library/want_to_read.json). The page
  * (web/features/to-read.js) adds the rest: books Moon+ shows as not started, priced books
  * never opened, and friends' favourites.
  */
 import type { BookHistory, UnopenedBook } from '../backup-import/reading-history.types';
 import { bookKey } from '../common/book-match';
+import type { WantFile } from '../want-to-read/want-to-read';
 import type { ToReadImport } from './merge';
 
 /** One row of data/to_read.json. */
@@ -23,10 +25,15 @@ export interface ToReadRow {
   pages: number | null;
   /** The day it was added to a shelf or to Moon+ (YYYY-MM-DD), when known. */
   added: string | null;
-  /** Where it's waiting: moonplus, goodreads, storygraph. */
+  /** Where it's waiting: moonplus, goodreads, storygraph, mine (your own list). */
   sources: string[];
   /** Your own shelves or tags for it, from the imports. */
   shelves: string[];
+  /** From your own list: its id there, your note (never served to visitors) and the work. */
+  want_id?: string;
+  note?: string;
+  work_id?: string | null;
+  published_year?: number | null;
 }
 
 const slug = (title: string) =>
@@ -36,15 +43,18 @@ const slug = (title: string) =>
     .replace(/^-+|-+$/g, '') || 'book';
 
 /**
- * The pile, one row per book: Moon+'s unopened files first, then the to-read shelves, the
- * same book from two places merged (by ISBN, then title and author). A book that's in the
- * library already (read, or being read) isn't on the pile.
+ * The pile, one row per book: Moon+'s unopened files first, then the to-read shelves, then
+ * your own list, the same book from two places merged (by ISBN, then title and author). A
+ * book that's in the library already (read, or being read) isn't on the pile, and nor is a
+ * shelf row or unopened file you hid (`want.hidden`, by book_id).
  */
 export function buildToRead(
   books: BookHistory[],
   unopened: UnopenedBook[],
   shelved: ToReadImport[],
+  want: WantFile | null = null,
 ): ToReadRow[] {
+  const hidden = new Set(want?.hidden ?? []);
   const ids = new Set(books.map((b) => b.id));
   const have = new Set(books.map((b) => bookKey(b.title, b.author)));
   const haveIsbn = new Set(books.map((b) => b.isbn13).filter(Boolean));
@@ -54,6 +64,7 @@ export function buildToRead(
 
   const add = (row: ToReadRow) => {
     const key = bookKey(row.title, row.author);
+    if (hidden.has(row.book_id)) return;
     if (have.has(key) || (row.isbn13 && haveIsbn.has(row.isbn13))) return;
     const same = (row.isbn13 && byIsbn.get(row.isbn13)) || byKey.get(key);
     if (same) {
@@ -67,6 +78,12 @@ export function buildToRead(
       if (same.genre === 'Untagged' && row.genre !== 'Untagged') {
         same.genre = row.genre;
         same.subgenre = row.subgenre;
+      }
+      if (row.want_id) {
+        same.want_id = row.want_id;
+        same.note = row.note;
+        same.work_id ??= row.work_id;
+        same.published_year ??= row.published_year;
       }
       return;
     }
@@ -108,6 +125,26 @@ export function buildToRead(
       added: s.added,
       sources: [s.source],
       shelves: s.shelves,
+    });
+  }
+  for (const w of want?.books ?? []) {
+    add({
+      book_id: w.id,
+      title: w.title,
+      author: w.author,
+      series: w.series,
+      series_no: w.series_no,
+      genre: w.genre || 'Untagged',
+      subgenre: w.subgenre || 'Untagged',
+      isbn13: w.isbn13,
+      pages: w.pages,
+      added: w.added,
+      sources: ['mine'],
+      shelves: [],
+      want_id: w.id,
+      note: w.note,
+      work_id: w.work_id,
+      published_year: w.published_year,
     });
   }
   return out.sort(

@@ -14,6 +14,7 @@ import { buildToRead, type ToReadRow } from '../imports/to-read';
 import { LibraryService } from '../library/library.service';
 import { bookFacts } from '../metadata/merge';
 import { MetadataStore } from '../metadata/metadata-store.service';
+import { WantStore } from '../want-to-read/want-to-read.store';
 import type { MetadataFile } from '../metadata/metadata.types';
 import { readBackup } from './backup-archive';
 import { applyFinishRules } from './finish-rules';
@@ -64,6 +65,7 @@ export class BackupImportService {
     private readonly metadata: MetadataStore,
     private readonly imports: ImportsStore,
     private readonly bibliography: BibliographyStore,
+    private readonly want: WantStore,
   ) {}
 
   /** Builds from a backup, or from the imports alone (Kobo, Kindle…) when backup is null. */
@@ -102,8 +104,13 @@ export class BackupImportService {
           }
         : null;
 
-      // the to-read pile: unopened Moon+ files and to-read shelves (BOO-76)
-      const toRead = buildToRead(result.books, result.unopened, imported?.toRead ?? []);
+      // the to-read pile: unopened Moon+ files, to-read shelves (BOO-76) and your own list (BOO-102)
+      const toRead = buildToRead(
+        result.books,
+        result.unopened,
+        imported?.toRead ?? [],
+        await this.want.load(),
+      );
 
       const { highlights } = buildHighlights(result.books, notes);
       // highlights from Kobo and Kindle, numbered after Moon+'s

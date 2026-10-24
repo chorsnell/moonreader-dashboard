@@ -338,6 +338,35 @@ describe('filterDataFile', () => {
     expect(JSON.stringify(out)).not.toMatch(/Persuasion|Romance|goodreads:1/);
   });
 
+  it("keeps the owner's notes on their want-to-read list from visitors", () => {
+    const pile = [
+      {
+        book_id: 'mine:kim',
+        title: 'Kim',
+        genre: 'Untagged',
+        subgenre: 'Untagged',
+        sources: ['mine'],
+        want_id: 'mine:kim',
+        note: 'Ask Sam for a copy',
+        added: '2026-03-26',
+      },
+    ];
+    const ctx = ctxFor(PRESETS.everything, {});
+    const out = filterDataFile('to_read.json', pile, ctx) as Record<string, unknown>[];
+    expect(out).toEqual([
+      {
+        book_id: 'mine:kim',
+        title: 'Kim',
+        genre: 'Untagged',
+        subgenre: 'Untagged',
+        sources: ['mine'],
+        want_id: 'mine:kim',
+        added: '2026-03-26',
+      },
+    ]);
+    expect(JSON.stringify(out)).not.toContain('Sam');
+  });
+
   it('filters files it has never heard of by the same rules', () => {
     const ctx = ctxFor({ ...PRESETS.everything, dates: 'month' }, { private_books: ['diary'] });
     const rows = [
