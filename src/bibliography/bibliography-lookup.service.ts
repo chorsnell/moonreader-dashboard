@@ -40,7 +40,9 @@ export function plainName(name: string): string {
  */
 export function sameName(ours: string, theirs: string | undefined): boolean {
   const a = plainName(ours).split(' ').filter(Boolean);
-  const b = plainName(theirs ?? '').split(' ').filter(Boolean);
+  const b = plainName(theirs ?? '')
+    .split(' ')
+    .filter(Boolean);
   if (!a.length || !b.length) return false;
   if (a.join(' ') === b.join(' ') || a.join('') === b.join('')) return true;
   return a.length > 1 && b.length > 1 && a.at(-1) === b.at(-1) && a[0][0] === b[0][0];

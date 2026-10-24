@@ -120,6 +120,32 @@ the same for every viewer; progress is worked out from each viewer's own filtere
 | `PUT /api/admin/challenges` | admin | `{challenges: [{id?, kind, title, target, period, from?, to?}]}`. `kind` is `countries`, `decades` (with `from` and `to`, years), `series`, `women` (target in %), `streak` (days) or `genres`; `period` is `year` (the latest reading's year) or `all`. Up to 20. `400` with an `error` when something can't be used |
 | `POST /api/admin/challenges/reset` | admin | Back to the defaults |
 
+## Bibliography: books you haven't got
+
+BOO-103. `/data/bibliography.json` lists the books by your authors, and in your series, that
+aren't in your library. The build writes it from `library/bibliography.json`, which the
+bibliography lookup fills in after the metadata lookup (see
+[integrations.md](integrations.md#bibliography-lookup-boo-103)). One row per work:
+
+```json
+{ "work_id": "OL66518W", "title": "Mansfield Park", "author": "Jane Austen",
+  "published_year": 1814, "editions": 900, "series": null, "series_no": null,
+  "isbn13": "9780141439808", "why": ["author"], "on_pile": false }
+```
+
+- `author` is spelled as `books.json` spells it (for a co-written book, as the first author's
+  own books spell them), so `rh.linkPage('author', row.author)` works.
+- `why` is `["author"]` (an author with a finished book, or two or more books),
+  `["series"]` (a series you've started a book of) or both. `series` is spelled as yours
+  when it's one of your series; `series_no` comes from Wikidata and may be `null`.
+- A book in `books.json` (read, being read or not started) is never a row. A book on the
+  to-read pile (`to_read.json`) is, with `on_pile: true`. Matching is by work id, then
+  ISBN, then title and author.
+- `work_id`, `editions` and `isbn13` are `null` for a work only Wikidata knows.
+- Sorted by author, then series (works in no series last), number and year.
+- Visitors don't get rows by an author all of whose books are private, or in a series all
+  of whose books are (private books, genres or subgenres). The admin gets every row.
+
 ## How it works
 
 `src/stats/page-sandbox.ts` loads the page's scripts in Node, in the order `index.html` loads

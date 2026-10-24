@@ -94,7 +94,9 @@ describe('Open Library and Wikidata bibliography requests', () => {
 
   it('asks for an author’s works, sorted by editions, and searches authors', async () => {
     const ol = new OpenLibraryClient(config);
-    expect(await ol.authorWorks('/authors/OL21594A')).toEqual([{ key: '/works/OL1W', title: 'Emma' }]);
+    expect(await ol.authorWorks('/authors/OL21594A')).toEqual([
+      { key: '/works/OL1W', title: 'Emma' },
+    ]);
     const asked = urls.at(-1)!;
     expect(Object.fromEntries(asked.searchParams)).toEqual({
       author_key: 'OL21594A',
@@ -103,7 +105,9 @@ describe('Open Library and Wikidata bibliography requests', () => {
       limit: '100',
     });
     expect(await ol.authorWorks('not a key')).toEqual([]);
-    expect(await ol.searchAuthors('Jane Austen')).toEqual([{ key: 'OL21594A', name: 'Jane Austen' }]);
+    expect(await ol.searchAuthors('Jane Austen')).toEqual([
+      { key: 'OL21594A', name: 'Jane Austen' },
+    ]);
     expect(urls.at(-1)!.searchParams.get('q')).toBe('Jane Austen');
   });
 

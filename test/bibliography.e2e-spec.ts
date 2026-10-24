@@ -51,7 +51,12 @@ beforeAll(async () => {
               language: ['eng'],
               isbn: ['9780141439587'],
             },
-            { key: '/works/OL4W', title: 'Study Guide: Alpha', first_publish_year: 2004, edition_count: 3 },
+            {
+              key: '/works/OL4W',
+              title: 'Study Guide: Alpha',
+              first_publish_year: 2004,
+              edition_count: 3,
+            },
             { key: '/works/OL5W', title: 'Letters', first_publish_year: 2010, edition_count: 1 },
           ],
         }),

@@ -8,12 +8,45 @@ considered, which were built, and why some were not.
 | --- | --- | --- | --- |
 | Open Library | covers, first-published year, pages, ISBNs | live lookup, one request a second, cached in `library/` | built (`COVER_LOOKUP`, `METADATA_LOOKUP`) |
 | Wikidata | author country and gender | live lookup, cached | built |
+| Open Library, Wikidata | authors' other books and the rest of your series | live lookup after the metadata lookup, one request a second per service, cached in `library/bibliography.json` | built (`BIBLIOGRAPHY_LOOKUP`, BOO-103) |
 | Goodreads, StoryGraph | ratings, shelves, books read elsewhere | your export file, uploaded in Admin → Imports | built (BOO-53) |
 | Goodreads | a link from each book page to the book there | the Book Id from your export, else ISBN or title (no request is made) | built (BOO-65) |
 | Kobo, Kindle | reads, days and highlights from e-readers | your files, uploaded in Admin → Imports | built (BOO-57) |
 | KOReader | reads, days, minutes and progress from its reading statistics | `statistics.sqlite3`, uploaded in Admin → Imports | built (BOO-101) |
 | Your *arr book manager (Readarr API: Bookshelf…) | asking for the next book in a series or the rest of an author | your own instance, admin only | built (BOO-64) |
 | Anna's Archive | filling gaps in book metadata | — | **not built** (below) |
+
+## Bibliography lookup (BOO-103)
+
+After the metadata lookup, the dashboard looks up the other books by the authors you read,
+and the rest of the series you've started, so the page can show what you haven't read yet.
+`BIBLIOGRAPHY_LOOKUP=off` turns it off; it is always off when `METADATA_LOOKUP` is.
+
+- **Who is looked up:** each author with a finished book or two or more books, and each
+  author of a series you've started (only that series is then shown), most hours read first,
+  at most 40 a round. A co-written book counts for its first author ("King, Stephen &
+  Straub, Peter" is Stephen King), as the rest of the dashboard matches authors. Each
+  author is looked up again after 30 days; one Open Library can't find is retried after 30
+  days.
+- **What is sent:** to Open Library, the author's Open Library id (from the metadata
+  lookup), or for an author without one, their name (`/search/authors.json?q=`, taking the
+  first result whose name matches); then `/search.json?author_key=…` for their works, most
+  editions first. To Wikidata's SPARQL endpoint (`query.wikidata.org`), the author's
+  Wikidata item, asking for works with them as author (P50), their series (P179), number in
+  the series (P1545) and publication date (P577). Nothing about your reading is sent.
+- **What is kept:** works with two or more editions and a first-published year, without study
+  guides, summaries, SparkNotes, box sets, omnibuses, collections or "complete works", and
+  without titles only published in other languages, one per title. Wikidata adds the series
+  and number; a work only Wikidata knows is kept when it's part of a series. The results go
+  in `library/bibliography.json` (misses in `library/.bibliography-misses.json`); delete an
+  author's entry to look them up again.
+- **Rate limits:** one request a second (`COVER_PAUSE`) to each service, in the background.
+  After three failures in a row it stops for the round and tries again after the next
+  rebuild. Shutting down stops it at once.
+- **Metadata only:** titles, years, edition counts, series and an ISBN. There are no links
+  to book files and nothing is downloaded. It is logged in Sync & logs under Metadata.
+- **Results:** a new `library/bibliography.json` rebuilds the data, which writes
+  `data/bibliography.json` (see [api.md](api.md#bibliography-books-you-havent-got)).
 
 ## Your book manager: the *arr stack (BOO-64)
 

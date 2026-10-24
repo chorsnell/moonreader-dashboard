@@ -116,6 +116,9 @@ extra work as long as its rows follow the usual shape:
   are emptied;
 - `highlights*.json` is served empty when highlights are hidden, `prices*.json` (or
   `money*`, `spending*`, `purchases*`) when money is.
+- `bibliography.json` (books by your authors and in your series that you haven't got; see
+  `docs/api.md`) names no book of yours, so it has its own rule: rows by an author, or in a
+  series, whose every book is private are left out.
 
 Name date fields that way, or extend the lists in `privacy.ts`. On the page,
 `web/features/privacy.js` hides cards whose calc needs a file the visitor gets empty (found

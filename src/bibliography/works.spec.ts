@@ -99,8 +99,20 @@ describe('mergeWikidata', () => {
 
   it('adds series to works both know, and series works only Wikidata knows', () => {
     const merged = mergeWikidata(ol, [
-      { id: 'Q1', title: 'A Study in Scarlet', year: 1887, series: 'Sherlock Holmes', series_no: 1 },
-      { id: 'Q2', title: 'The Valley of Fear', year: 1915, series: 'Sherlock Holmes', series_no: 7 },
+      {
+        id: 'Q1',
+        title: 'A Study in Scarlet',
+        year: 1887,
+        series: 'Sherlock Holmes',
+        series_no: 1,
+      },
+      {
+        id: 'Q2',
+        title: 'The Valley of Fear',
+        year: 1915,
+        series: 'Sherlock Holmes',
+        series_no: 7,
+      },
       // not in a series, so not added
       { id: 'Q3', title: 'Micah Clarke', year: 1889, series: null, series_no: null },
       { id: 'Q4', title: 'The Lost World', year: 1912, series: null, series_no: null },

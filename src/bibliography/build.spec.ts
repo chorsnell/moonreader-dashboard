@@ -62,7 +62,10 @@ const file: BibliographyFile = {
       wikidata: null,
       looked_up: '2026-10-01',
       works: [
-        work('A Study in Scarlet (Sherlock Holmes, #1)', { series: 'Sherlock Holmes', series_no: 1 }),
+        work('A Study in Scarlet (Sherlock Holmes, #1)', {
+          series: 'Sherlock Holmes',
+          series_no: 1,
+        }),
         work('The Sign of the Four', { series: 'The Sherlock Holmes series', series_no: 2 }),
         work('The Lost World', { year: 1912 }), // not a followed author, no series of yours
       ],
@@ -80,13 +83,23 @@ const file: BibliographyFile = {
       works: [work('The Stand', { work_id: 'OL9W', year: 1978 })],
     },
     // no longer in the library
-    'gone author': { author_key: null, wikidata: null, looked_up: '2026-10-01', works: [work('X')] },
+    'gone author': {
+      author_key: null,
+      wikidata: null,
+      looked_up: '2026-10-01',
+      works: [work('X')],
+    },
   },
 };
 
 describe('seriesNameKey', () => {
   it('ignores case, accents, a leading The and a trailing series word', () => {
-    const same = ['The Wheel of Time', 'Wheel of Time series', 'wheel of time', 'Wheel Of Time Saga'];
+    const same = [
+      'The Wheel of Time',
+      'Wheel of Time series',
+      'wheel of time',
+      'Wheel Of Time Saga',
+    ];
     expect(new Set(same.map(seriesNameKey)).size).toBe(1);
     expect(seriesNameKey('Les Rougon-Macquart')).toBe(seriesNameKey('Les Rougon Macquart'));
     expect(seriesNameKey('Mistborn Trilogy')).toBe(seriesNameKey('Mistborn'));

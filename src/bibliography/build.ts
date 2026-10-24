@@ -106,7 +106,12 @@ class Shelf {
   private readonly isbns = new Set<string>();
   private readonly keys = new Set<string>();
 
-  add(b: { title: string; author?: string | null; isbn13?: string | null; work_id?: string | null }) {
+  add(b: {
+    title: string;
+    author?: string | null;
+    isbn13?: string | null;
+    work_id?: string | null;
+  }) {
     if (b.work_id) this.works.add(b.work_id);
     const isbn = isbnDigits(b.isbn13);
     if (isbn) this.isbns.add(isbn);
