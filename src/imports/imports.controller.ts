@@ -27,7 +27,7 @@ import { type FinishedBook, goodreadsCsv } from './goodreads';
 import { ImportsStore } from './imports.store';
 import { IMPORT_SOURCES, type ImportSource, SOURCE_NAMES } from './imports.types';
 
-/** A Kobo database with years of books can run to a few hundred MB. */
+/** A Kobo or KOReader database with years of books can run to a few hundred MB. */
 const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 
 interface BookRow {
@@ -50,7 +50,7 @@ interface ReadRow {
 
 /**
  * Imports from other reading apps, sites and e-readers (Goodreads, StoryGraph, Kobo,
- * Kindle), for the admin's Imports section.
+ * Kindle, KOReader), for the admin's Imports section.
  */
 @Controller('api/admin/imports')
 @AdminOnly({ denied: 'Only the admin can do this.' })
@@ -85,7 +85,8 @@ export class ImportsController {
 
   /**
    * PUT the file as the body: a Goodreads or StoryGraph export, a Kobo's KoboReader.sqlite,
-   * a Kindle's My Clippings.txt, Amazon's Kindle reading sessions, or a list of Kindle titles.
+   * KOReader's statistics.sqlite3, a Kindle's My Clippings.txt, Amazon's Kindle reading
+   * sessions, or a list of Kindle titles.
    * What it is comes from its contents.
    */
   @Put()

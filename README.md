@@ -9,7 +9,7 @@ A self-hosted dashboard for your [Moon+ Reader](https://www.moondownload.com/) r
 
 <a href="https://chorsnell.github.io/moonreader-dashboard/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png"><img src="docs/screenshots/overview.png" alt="The Overview tab"></picture></a>
 
-Moon+ keeps a record of every book, every day you read, the minutes, words and progress, and your highlights and notes inside its backups. The dashboard reads that, keeps the history even for books whose files are long gone, adds what Goodreads, StoryGraph, Kobo, Kindle, Netflix, Plex and Audiobookshelf know, and turns it into charts you can click through. It's one small container: a [NestJS](https://nestjs.com) app on Node.js 24, with no database to run.
+Moon+ keeps a record of every book, every day you read, the minutes, words and progress, and your highlights and notes inside its backups. The dashboard reads that, keeps the history even for books whose files are long gone, adds what Goodreads, StoryGraph, Kobo, Kindle, KOReader, Netflix, Plex and Audiobookshelf know, and turns it into charts you can click through. It's one small container: a [NestJS](https://nestjs.com) app on Node.js 24, with no database to run.
 
 ## What's in it
 
@@ -112,7 +112,7 @@ library/
   metadata.json    publication years, pages and authors looked up online
   genre-suggestions.json  genre suggestions you turned down
   prices.json      what you paid
-  goodreads.json, storygraph.json, kobo.json, kindle*.json   imports
+  goodreads.json, storygraph.json, kobo.json, kindle*.json, koreader.json   imports
   media/           TV, film and audiobook history and its catalogue.json
   friends/         friends' reading, from share files or followed dashboards
   clubs.json       book clubs you host
@@ -150,13 +150,14 @@ Upload a Goodreads library export (My Books → Import and export → Export lib
 - **Export to Goodreads** downloads your finished books as a CSV that Goodreads' import reads.
 - Every book page links to the book on Goodreads: straight to it when a Goodreads export knows it, otherwise by ISBN or a title search. Private books get no link.
 
-### Kobo and Kindle
+### Kobo, Kindle and KOReader
 
 The same **Imports** section takes e-reader data; files are recognised by their contents.
 
 - **Kobo:** `.kobo/KoboReader.sqlite` from the device (over USB): progress, time spent, start, last-read and finish dates, highlights and notes.
 - **Kindle highlights:** `documents/My Clippings.txt`: highlights, notes and bookmarks with their dates.
 - **Kindle reading sessions:** `Kindle.Devices.ReadingSession.csv` from Amazon's "Request your data" export: minutes per day for each book. It names books only by ASIN, so upload any CSV with `ASIN` and `Title` columns (your digital orders) or name them in **Catalogue** (`kindle:<ASIN>`).
+- **KOReader:** `koreader/settings/statistics.sqlite3` from the device: minutes and progress for every day read, from its page statistics, and reads split where a book was left for a year. A single page entry over four hours (the device left on) is ignored.
 
 For a day Moon+ already has, Moon+'s figures stand; imports fill in the other days. With no Moon+ backup at all, the dashboard is built from the imports alone.
 
@@ -245,7 +246,7 @@ Click **Admin** in the corner and sign in with your `UPLOAD_TOKEN`. The page (`#
 | Section | What it's for |
 |---|---|
 | **Data** | Upload a backup, rebuild now, the backups kept, the WebDAV address |
-| **Imports** | Goodreads, StoryGraph, Kobo and Kindle files; export to Goodreads |
+| **Imports** | Goodreads, StoryGraph, Kobo, Kindle and KOReader files; export to Goodreads |
 | **Highlights** | Export highlights to Obsidian or Logseq (Markdown) and Readwise (CSV or straight to your account) |
 | **Daily review** | How many highlights a day, the morning notification, and an Anki export |
 | **Sync & logs** | Every sync, rebuild, upload, lookup and request, filterable and downloadable, with a warning when syncing seems to have stopped or a login failed |
@@ -592,7 +593,7 @@ src/library/         the library folder, update.log, the activity log and the se
 src/access/          sign-in, sessions, and whether the dashboard needs the read password
 src/privacy/         what each kind of visitor may see, and the filter that enforces it
 src/backup-import/   turns a .mrpro backup (plus synced positions) into data/*.json
-src/imports/         Goodreads, StoryGraph, Kobo and Kindle: reading, matching, exporting
+src/imports/         Goodreads, StoryGraph, Kobo, Kindle and KOReader: reading, matching, exporting
 src/media/           TV, film and audiobooks: Netflix, Tautulli, Audiobookshelf, TMDB, the media build
 src/covers/          covers from the backup and Open Library
 src/metadata/        ISBNs, Open Library and Wikidata lookups

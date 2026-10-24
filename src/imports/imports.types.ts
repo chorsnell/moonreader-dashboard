@@ -1,13 +1,15 @@
 import type { DayEntry } from '../backup-import/reading-history.types';
 
 /** Where a book or read came from, when it wasn't Moon+. */
-export type ImportSource = 'kobo' | 'kindle' | 'kindle_clippings' | 'goodreads' | 'storygraph';
+export type ImportSource =
+  'kobo' | 'kindle' | 'kindle_clippings' | 'koreader' | 'goodreads' | 'storygraph';
 
 /** In merge order: devices (with days and times) first, then the sites that add ratings. */
 export const IMPORT_SOURCES: readonly ImportSource[] = [
   'kobo',
   'kindle',
   'kindle_clippings',
+  'koreader',
   'goodreads',
   'storygraph',
 ];
@@ -17,6 +19,7 @@ export const SOURCE_NAMES: Record<ImportSource, string> = {
   kobo: 'Kobo',
   kindle: 'Kindle reading sessions',
   kindle_clippings: 'Kindle highlights',
+  koreader: 'KOReader',
   goodreads: 'Goodreads',
   storygraph: 'StoryGraph',
 };
@@ -66,7 +69,7 @@ export interface ImportedBook {
   reads: ImportedRead[];
   /** Per-day reading, when the source has it. */
   daily?: DayEntry[];
-  /** When the source has them as fields (Kobo); Goodreads puts them in the title. */
+  /** When the source has them as fields (Kobo, KOReader); Goodreads puts them in the title. */
   series?: string | null;
   series_no?: number | null;
   /** How far the reader has got (%), when the source knows. */
