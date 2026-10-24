@@ -162,7 +162,8 @@
     const side = el('div', 'dc-side');
     (o.tags || []).forEach((t) => side.append(t));
     if (w.on_pile && !w.in_library) side.append(tag('On your pile', 'pile'));
-    const btn = !w.book_id && wantButton(w, o.from);
+    // a book on the pile already says so; the button would only say "On your list"
+    const btn = !w.book_id && !w.on_pile && wantButton(w, o.from);
     if (btn) side.append(btn);
     li.append(ttl);
     if (side.childNodes.length) li.append(side);
@@ -235,7 +236,13 @@
   rh.card({
     tab: 'toread', id: 'discover', title: 'More from your authors and series', calc: 'discover_picks', after: 'card-what-next',
     note: 'The next book in each series you’re part-way through, then books by authors you’ve finished two or more of, or rate 4 or more.',
-    draw(box, rows) {
+    draw(box, rows, parts) {
+      // discover.js loads before to-read.js and what-next.js, so their cards are placed after
+      // this one draws: once the tab is drawn, sit after the want-to-read list (else what next)
+      setTimeout(() => {
+        const anchor = document.getElementById('card-toread-want') || document.getElementById('card-what-next');
+        if (anchor && anchor.parentNode === parts.card.parentNode && anchor.nextElementSibling !== parts.card) anchor.after(parts.card);
+      }, 0);
       if (!rows.length) {
         box.replaceChildren(el('div', 'dy-empty', bibEmpty() ? LOOKUP_NOTE : 'Nothing to suggest yet: finish a couple of books by one author, or start a series.'));
         return;

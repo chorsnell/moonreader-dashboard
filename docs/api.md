@@ -146,6 +146,18 @@ bibliography lookup fills in after the metadata lookup (see
 - Visitors don't get rows by an author all of whose books are private, or in a series all
   of whose books are (private books, genres or subgenres). The admin gets every row.
 
+BOO-104 works three calcs out from it, with `books` and `reads` (`/api/stats/<calc>`):
+
+- `unread_by_author`: one row per author with rows in the file: `works` (most editions
+  first, then oldest), and `books`, `finished`, `avg_rating` (when you rate books, else
+  `null`) and `hours` for what you have of theirs.
+- `series_gaps`: one row per series you've read or are reading a book of: `entries`, every
+  known book in order (numbered first, then by year), each with a `state` of `read`,
+  `reading`, `not_started`, `on_pile` or `unread`; and `next_up`, the first unread entry
+  after the highest number you've read (or the first unread when the numbers don't say).
+- `discover_picks`: the To read tab's "More from your authors and series": each part-read
+  series' next book, then books by authors you've finished two or more of or rate 4+.
+
 ## How it works
 
 `src/stats/page-sandbox.ts` loads the page's scripts in Node, in the order `index.html` loads
