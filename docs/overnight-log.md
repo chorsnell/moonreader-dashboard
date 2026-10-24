@@ -1,5 +1,33 @@
 # Overnight log
 
+## Run 3: EP-18 and EP-19 (24 Oct 2026)
+
+You asked for three things: a reading dashboard rather than a Moon+ one, a want-to-read list of your own (partly from Goodreads), and the books you haven't read by your authors, series and genres. They became two epics on the [BOO board](https://tasks.kiss.cat/BOO): **EP-18** (A reading dashboard, not a Moon+ one) and **EP-19** (Want to read & what to discover). Parallel agents built one PR per ticket; each was reviewed, checked on top of main and **merged once CI was green**, in this order: #112, #113, #114, #115, #116, #117, then this log (#118).
+
+### Things for you
+
+- **Give the lookups a real run.** Nothing here could reach Open Library or Wikidata from the build machine, so the bibliography (BOO-103), genre subjects (BOO-105) and the want-to-read search (BOO-102) were only tested against fake servers. After deploying, rebuild once and look at Sync & logs for "Bibliography…" entries, then an author page.
+- **Tune the title filter** in `src/bibliography/works.ts` (`isNotAWork`) once you see real authors: Open Library lists study guides, omnibuses and foreign editions, and the rules are a first guess.
+- **Check the genre → subject mapping** in Admin → Discovery against your own genres (the defaults are in BOO-105's decisions below).
+- **Try a real KOReader `statistics.sqlite3`** if you move to KOReader (or Kobo with KOReader): it was built to the schema, not tested on a device's file.
+- **Renaming the repo** (for example to `reading-dashboard`) is your call. The package, Docker image, container and repo names were left alone because your deploy workflow and compose file use them. GitHub redirects a renamed repo, but `chorsnell/workflows` and the Traefik route would still need the new name.
+- **Screenshots** were retaken for the To read tab and an author page (see BOO-106).
+
+### Decisions by ticket
+
+- **BOO-100 Reading dashboard (#113)**: package, Docker image/container and repo names unchanged (deploys use them); the internal `moonplus` source id and `moonreader-dashboard:*` localStorage keys kept, so existing data and settings still work. Notes only true of Moon+ ("Moon+ logs minutes from 2019", WebDAV sync) are marked `data-moonplus` or use `dash.hasMoonplus()`, and only show when the data has a Moon+ backup (`meta.backup_file`). The first-run screen and Admin → Data list every source and where it goes.
+- **BOO-101 KOReader (#112)**: book id is the file's md5, so it stays the same across devices; progress is the highest page that day ÷ total pages (the book's page count in older databases); reads split at the shared one-year gap and count as finished at the shared 99%; no words (as Kindle); a single page entry over four hours is dropped as the device left on; "N/A" author or series means none; "Name #3" gives a series and number.
+- **BOO-102 Want-to-read list (#115)**: kept in `library/want_to_read.json`, which no import writes. It joins the pile as the source "On your list", merged with the same shelf book by ISBN, then title and author. **Keep** copies a Goodreads/StoryGraph shelf row (or an unopened Moon+ file) into the list so it survives the shelf changing; **Hide** drops a row from the pile unless it's also on your list. No Keep/Hide on books Moon+ opened, bought books or rows already on the list. Notes are stripped for visitors and previews, and the demo has none because it serves `data/` unfiltered. The list shows the date added, not "N days ago": the page's "today" is your last reading day, which made new books 0 or negative days old (pile ages now clamp at 0). `rh.wantToRead` is the shared helper the other views use.
+- **BOO-103 Bibliography lookup (#114)**: a co-written book counts for its first author only (as everywhere else); authors with a finished book or two books are looked up, plus the author of any series you've started, 40 a round, again after 30 days. Lookups run cover → metadata → bibliography. Open Library gives the works (2+ editions, a first-published year, junk titles and other-language-only works dropped); Wikidata adds series and their order, and series members Open Library lacks. If Wikidata fails, Open Library's works are kept and the author is retried next round. The Wikidata id falls back to the Open Library author record. New setting `WIKIDATA_SPARQL_URL`, mainly for tests. Visitors don't get rows for authors or series that only private books belong to.
+- **BOO-104 Unread by author and series (#116)**: "next up" is the first unread book after the highest number you've read (else the first unread); unnumbered books go after numbered ones, by year. A series counts as started once you've read or are reading one of its books. A third calc, `discover_picks`, works out the To read card on the server, taking one book per author in turn so one author can't fill it. Cards hide on author and series pages with nothing to show; the To read card says the lookup fills it in after a rebuild. The series strip writes each state as text with its own outline, not colour alone. A book already on your pile shows "On your pile" instead of a button.
+
+### Coordinator
+
+- Merged each PR only after its CI was green and, where main had moved, after running lint, tsc and the unit tests on the merge locally.
+- Checked by hand: every want-to-read endpoint is admin-only at the controller; the Moon+ scoping reads `meta` that both `/api/config` and the static demo provide; the Wikidata query skips editions and articles and drops works with no English label.
+
+---
+
 ## Run 2: EP-12 to 15 and EP-17 (18 Oct 2026)
 
 Eight parallel agents built the 24 tickets in EP-12 (Outbound), EP-13 (To-read pile & predictions), EP-14 (Highlights, everywhere), EP-15 (Reading in context) and EP-17 (Loose ends). EP-16 (Media, round two) was left out on purpose. Each ticket has its own PR (#82 to #105) with lint, tsc, unit and e2e tests green. **None was merged by the agents**: self-merging was refused ("Merge Without Review"), so every ticket is in **REVIEW**. **PR #106** combines all 24 with the conflicts resolved (343 unit and 135 e2e tests green, demo checked in light, dark and 390px with no console errors). Merge #106, then close the others; GitHub marks them merged.
