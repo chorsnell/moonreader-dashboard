@@ -86,16 +86,17 @@ export class DiscoveryController {
       DISCOVERY_SECTION,
       Object.keys(subjects).length ? { subjects } : undefined,
     );
-    const changed = before !== JSON.stringify(subjects);
-    if (changed) {
+    let rebuilding = false;
+    if (before !== JSON.stringify(subjects)) {
       this.activity.record({
         type: 'settings',
         message: 'Changed the Open Library subjects for genre picks',
         trigger: 'admin',
         details: { overrides: Object.keys(subjects).length },
       });
-      await this.rebuild.rebuildNow();
+      // false when there's nothing to build from yet
+      rebuilding = await this.rebuild.rebuildNow();
     }
-    return { ok: true, subjects, rebuilding: changed };
+    return { ok: true, subjects, rebuilding };
   }
 }

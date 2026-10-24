@@ -158,6 +158,40 @@ BOO-104 works three calcs out from it, with `books` and `reads` (`/api/stats/<ca
 - `discover_picks`: the To read tab's "More from your authors and series": each part-read
   series' next book, then books by authors you've finished two or more of or rate 4+.
 
+## Genre picks: popular in your genres
+
+BOO-105. `/data/genre_picks.json` lists well-loved books in each of your genres that aren't
+in your library. The build writes it from the `subjects` part of `library/bibliography.json`,
+which the bibliography lookup fills in from Open Library's subjects (see
+[integrations.md](integrations.md#genre-picks-lookup-boo-105)). One row per book per genre or
+subgenre:
+
+```json
+{ "genre": "Fantasy", "subgenre": null, "work_id": "OL27482W", "title": "The Hobbit",
+  "author": "J.R.R. Tolkien", "published_year": 1937, "editions": 600, "rank": 2,
+  "on_pile": false }
+```
+
+- Every genre in `books.json` but Untagged gets rows, and so does every subgenre with three
+  or more books (`subgenre` set, `genre` the genre most of its books are in). Non-fiction is
+  skipped by default (too broad).
+- `rank` is the book's place in Open Library's subject list (1 the most popular); rows come
+  in that order, at most 25 a genre or subgenre. Books in `books.json` are left out (matched
+  by work id, then title and author), as are study guides, box sets and collections. A book
+  on the to-read pile is kept, with `on_pile: true`.
+- `author` is the first author as Open Library writes them, which may not be how
+  `books.json` spells them; the page links it only when it matches one of your authors.
+- Visitors don't get rows for a private genre or subgenre, or for subgenres of a private
+  genre. The admin gets every row.
+- The calc `genre_picks_top` (the To read tab's "Popular in your genres") is the top 3 rows
+  of each of your 3 most-read genres, by hours read in the last two years (else ever), each
+  with `genre_hours`.
+
+| Endpoint | Who | What |
+|---|---|---|
+| `GET /api/admin/discovery` | admin | `{genres: [{genre, subgenre, books, default_subject, subject, override, looked_up, works}]}`: each genre (and subgenre with 3+ books), the Open Library subject it maps to by default and the one in use (`null`: not looked up), the admin's `override` (`null`: none, `""`: skipped), and when its subject was looked up and how many works it has |
+| `PUT /api/admin/discovery` | admin | `{subjects: {<genre or subgenre>: <slug> \| ""}}`: replaces the overrides (`""` skips a genre; a name left out or `null` uses its default). Slugs are lower-cased with anything else as `_`. Kept in `settings.json` under `discovery.subjects`. When they change, the data rebuilds and the lookup that follows fetches any new subject. `{ok, subjects, rebuilding}`; `400` for a body that isn't `{subjects: {…}}` |
+
 ## How it works
 
 `src/stats/page-sandbox.ts` loads the page's scripts in Node, in the order `index.html` loads

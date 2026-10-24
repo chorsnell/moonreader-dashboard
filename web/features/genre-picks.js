@@ -80,22 +80,25 @@
   function pageCard(kind, id, root) {
     const res = rh.D('genre_picks');
     if (res.status !== 'ok') return;
-    const rows = (res.data || []).filter((r) => (kind === 'genre' ? r.genre === id && r.subgenre == null : r.subgenre === id)).sort((a, b) => a.rank - b.rank);
+    const all = res.data || [];
+    const rows = all.filter((r) => (kind === 'genre' ? r.genre === id && r.subgenre == null : r.subgenre === id)).sort((a, b) => a.rank - b.rank);
+    // other genres have picks, this one none: skipped (Non-fiction, a small subgenre) or nothing left
+    if (!rows.length && all.length) return;
     const c = el('div', 'rh-card wide gp-card');
     c.id = 'card-genre-page-picks';
     c.append(el('h2', null, `Popular in ${id} you haven’t read`));
     if (!rows.length) {
       c.append(el('p', 'note', 'Nothing to suggest yet. Suggestions come from Open Library after the next lookup.'));
     } else {
-      const key = kind + '/' + id, all = !!expanded[key];
+      const key = kind + '/' + id, showAll = !!expanded[key];
       c.append(el('p', 'note', `The best-loved books in ${id} on Open Library that aren’t in your library, most popular first.`));
       const ul = el('ul', 'rh-list gp-list');
-      ul.append(...(all ? rows : rows.slice(0, PAGE_SHOWN)).map(item));
+      ul.append(...(showAll ? rows : rows.slice(0, PAGE_SHOWN)).map(item));
       c.append(ul);
       if (rows.length > PAGE_SHOWN) {
-        const b = el('button', 'up-link gp-more', all ? 'Show fewer' : `Show all ${fmt(rows.length)}`);
+        const b = el('button', 'up-link gp-more', showAll ? 'Show fewer' : `Show all ${fmt(rows.length)}`);
         b.type = 'button'; b.id = 'genre-picks-more';
-        b.addEventListener('click', () => { expanded[key] = !all; rh.redraw(); });
+        b.addEventListener('click', () => { expanded[key] = !showAll; rh.redraw(); });
         c.append(b);
       }
     }
@@ -107,11 +110,17 @@
   rh.extend('genre', (id, root) => pageCard('genre', id, root));
   rh.extend('subgenre', (id, root) => pageCard('subgenre', id, root));
 
-  // the To read tab: at the end, after "More from your authors and series" when that's there
+  // the To read tab: after "More from your authors and series" (discover.js) when that's
+  // there, else at the end. That card moves itself in a timeout once the tab draws, so this
+  // one follows it in a later one.
   rh.card({
-    tab: 'toread', id: 'genre-picks', title: 'Popular in your genres', calc: 'genre_picks_top', after: 'card-discover-more',
+    tab: 'toread', id: 'genre-picks', title: 'Popular in your genres', calc: 'genre_picks_top', after: 'card-discover',
     note: `The best-loved books on Open Library in the genres you’ve read most lately that you haven’t got.`,
     draw(box, rows, parts) {
+      setTimeout(() => {
+        const anchor = document.getElementById('card-discover');
+        if (anchor && anchor.parentNode === parts.card.parentNode && anchor.nextElementSibling !== parts.card) anchor.after(parts.card);
+      }, 0);
       if (!rows.length) { box.replaceChildren(el('div', 'dy-empty', 'Nothing to suggest yet.')); return; }
       const out = [];
       [...new Set(rows.map((r) => r.genre))].forEach((g) => {
@@ -133,7 +142,7 @@
     const { h, block, msg } = a;
     const out = msg(), list = h('div', { class: 'gp-admin' });
     const save = h('button', { class: 'up-primary ad-auto', type: 'button', id: 'discovery-save', disabled: true }, 'Save');
-    box.append(block('Popular in your genres', 'Each genre page, and the To read tab, suggests well-loved books from that genre’s subject on Open Library. Change the subject a genre is looked up under (as in openlibrary.org/subjects/fantasy), or leave it blank and tick Skip to suggest nothing for it. Subgenres with three or more books get their own.', list, h('div', { class: 'ad-actions' }, save), out));
+    box.append(block('Popular in your genres', 'Each genre page, and the To read tab, suggests well-loved books from that genre’s subject on Open Library. Type another subject for a genre (as in openlibrary.org/subjects/fantasy), leave the box empty to use the one shown, or tick Skip to suggest nothing for it. Subgenres with three or more books get their own.', list, h('div', { class: 'ad-actions' }, save), out));
     let rows = [], inputs = [];
     const render = () => {
       if (!rows.length) { list.replaceChildren(h('p', { class: 'up-note' }, 'No genres yet. Tag your books in Catalogue and they’ll show here.')); save.disabled = true; return; }
@@ -170,9 +179,8 @@
         const before = await a.status().catch(() => ({}));
         const r = await a.put('api/admin/discovery', { subjects });
         if (r.rebuilding) await a.waitForBuild(before, (s) => { out.textContent = s; });
-        else out.textContent = 'Nothing changed.';
         await load();
-        if (r.rebuilding) out.textContent = 'Saved. Any new subject is looked up on Open Library in the background, and the suggestions update after that.';
+        out.textContent = r.rebuilding ? 'Saved. Any new subject is looked up on Open Library in the background, and the suggestions update after that.' : 'Saved.';
       } catch (e) { out.textContent = e.message; save.disabled = false; }
     });
     load();

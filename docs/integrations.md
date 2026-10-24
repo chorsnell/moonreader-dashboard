@@ -9,6 +9,7 @@ page records which services were considered, which were built, and why some were
 | Open Library | covers, first-published year, pages, ISBNs | live lookup, one request a second, cached in `library/` | built (`COVER_LOOKUP`, `METADATA_LOOKUP`) |
 | Wikidata | author country and gender | live lookup, cached | built |
 | Open Library, Wikidata | authors' other books and the rest of your series | live lookup after the metadata lookup, one request a second per service, cached in `library/bibliography.json` | built (`BIBLIOGRAPHY_LOOKUP`, BOO-103) |
+| Open Library subjects | popular books in your genres that you haven't read | live lookup after the author lookup, one request a second, cached in `library/bibliography.json` | built (`BIBLIOGRAPHY_LOOKUP`, BOO-105) |
 | Goodreads, StoryGraph | ratings, shelves, books read elsewhere | your export file, uploaded in Admin → Imports | built (BOO-53) |
 | Goodreads | a link from each book page to the book there | the Book Id from your export, else ISBN or title (no request is made) | built (BOO-65) |
 | Kobo, Kindle | reads, days and highlights from e-readers | your files, uploaded in Admin → Imports | built (BOO-57) |
@@ -47,6 +48,38 @@ and the rest of the series you've started, so the page can show what you haven't
   to book files and nothing is downloaded. It is logged in Sync & logs under Metadata.
 - **Results:** a new `library/bibliography.json` rebuilds the data, which writes
   `data/bibliography.json` (see [api.md](api.md#bibliography-books-you-havent-got)).
+
+## Genre picks lookup (BOO-105)
+
+Right after the author lookup, in the same background run, the dashboard fetches the most
+popular books in each of your genres from Open Library's subjects, so each genre page (and
+the To read tab) can suggest well-loved books you haven't read. `BIBLIOGRAPHY_LOOKUP=off`
+turns it off with the author lookup.
+
+- **What is looked up:** one Open Library subject for each genre in your library (not
+  Untagged), and for each subgenre with three or more books. Science Fiction is
+  `science_fiction`, Fantasy `fantasy`, Horror `horror`, Thriller `thrillers`, Young Adult
+  `young_adult_fiction`, Literary Fiction `literary_fiction`, Classics `classic_literature`,
+  LitRPG `litrpg`, Mystery or Crime `mystery_and_detective_stories`, Romance `romance` and
+  Historical Fiction `historical_fiction`; Non-fiction is skipped (too broad); any other name
+  becomes its slug ("Time Travel" is `time_travel`). **Admin → Discovery** changes a genre's
+  subject or skips it (kept in `library/settings.json` under `discovery.subjects`); a change
+  rebuilds, and the next lookup fetches any new subject.
+- **What is sent:** `/subjects/<slug>.json?limit=50` for each subject, nothing else. Nothing
+  about your reading is sent beyond which subjects you ask for.
+- **What is kept:** each work's Open Library id, title, first author's name, first-published
+  year and edition count, in Open Library's order, in `library/bibliography.json` under
+  `subjects` (an older file without it still reads). A subject is looked up again after 30
+  days; one with no works is retried after 30 days (`library/.bibliography-misses.json`).
+  Delete a subject's entry to look it up again.
+- **Rate limits:** one request a second (`COVER_PAUSE`), shared with the author lookup.
+  After three failures in a row it stops for the round and tries again after the next
+  rebuild. Shutting down stops it at once. Logged in Sync & logs under Metadata.
+- **Results:** like the authors, a new `library/bibliography.json` rebuilds the data, which
+  writes `data/genre_picks.json` (see [api.md](api.md#genre-picks-popular-in-your-genres)):
+  at most 25 a genre, without books in your library, study guides or box sets.
+- **Tested against a fake Open Library only** so far: the sandbox it was built in can't reach
+  openlibrary.org, so real subject answers may need the parsing adjusting.
 
 ## Your book manager: the *arr stack (BOO-64)
 
