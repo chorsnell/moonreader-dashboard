@@ -111,6 +111,8 @@ async function settle(page) {
     { timeout: 20_000 },
   );
   await page.evaluate(() => document.fonts.ready);
+  // lazy covers below the fold never load in a headless page, so load them all now
+  await page.evaluate(() => document.querySelectorAll('img[loading="lazy"]').forEach((i) => (i.loading = 'eager')));
   await page.waitForFunction(() => [...document.images].every((i) => i.complete));
   await page.waitForTimeout(600);
 }
