@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import request from 'supertest';
 import { makeBackup } from './support/fake-backup';
 import { KINDLE_SESSIONS, KINDLE_TITLES, MY_CLIPPINGS, makeKoboDb } from './support/fake-kobo';
+import { makeKoreaderDb } from './support/fake-koreader';
 import { TOKEN, TestDashboard, fileExists, waitFor } from './support/test-dashboard';
 
 interface BookRow {
@@ -266,5 +267,60 @@ describe('imports', () => {
       'kindle_clippings',
     ]);
     expect(list.body.kindle_titles).toBe(1);
+  });
+
+  it('merge a KOReader statistics database with Moon+', async () => {
+    dash = await withData();
+    const d = dash;
+    makeKoreaderDb(join(tmp, 'statistics.sqlite3'));
+    const before = await metaTime(d);
+    await new Promise((r) => setTimeout(r, 1100));
+    const res = await request(d.server)
+      .put('/api/admin/imports?name=statistics.sqlite3')
+      .set('X-Upload-Token', TOKEN)
+      .type('application/octet-stream')
+      .send(await readFile(join(tmp, 'statistics.sqlite3')))
+      .expect(200);
+    expect(res.body).toMatchObject({ source: 'koreader', books: 3, days: 6, rebuilding: true });
+    expect(await waitFor(async () => (await metaTime(d)) !== before)).toBe(true);
+
+    const books = await d.json<BookRow[]>('data', 'books.json');
+    expect(books.filter((b) => b.title === 'Alpha')).toHaveLength(1);
+    expect(books.find((b) => b.id === 'alpha')?.source).toBeUndefined();
+    expect(books.find((b) => b.title === 'KOReader Only Book')).toMatchObject({
+      author: 'Kit Reader & Kay Coauthor',
+      status: 'finished',
+      source: 'koreader',
+    });
+    expect(books.find((b) => b.title === 'Gamma')).toMatchObject({
+      status: 'in_progress',
+      source: 'koreader',
+    });
+    const reads = await d.json<ReadRow[]>('data', 'reads.json');
+    expect(
+      reads.filter((r) => r.book_id === 'gamma').map((r) => [r.start, r.end, r.finished]),
+    ).toEqual([
+      ['2024-01-10', '2024-01-10', false],
+      ['2026-02-01', '2026-02-02', false],
+    ]);
+    // Moon+ already has Alpha's 2 March, so its day stands
+    const daily = await d.json<{ book_id: string; date: string; minutes: number }[]>(
+      'data',
+      'daily.json',
+    );
+    expect(daily.filter((r) => r.book_id === 'alpha').map((r) => r.date)).toEqual([
+      '2026-03-01',
+      '2026-03-02',
+      '2026-03-03',
+    ]);
+    expect(daily.find((r) => r.book_id === 'alpha' && r.date === '2026-03-02')?.minutes).toBe(20);
+
+    const list = await request(d.server)
+      .get('/api/admin/imports')
+      .set('X-Upload-Token', TOKEN)
+      .expect(200);
+    expect(list.body.imports).toEqual([
+      expect.objectContaining({ source: 'koreader', name: 'KOReader', books: 3, days: 6 }),
+    ]);
   });
 });

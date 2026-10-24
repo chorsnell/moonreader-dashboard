@@ -5,7 +5,7 @@
 (() => {
   const { D, el, fmt, svgIn, showTip, hideTip, tipLines, axis, gColor, link, links, refLine, grow, chip, fDay, pDate, MARK } = rh;
   const ok = (id) => { const r = D(id); return r.status === 'ok' ? r.data : []; };
-  const SOURCES = { goodreads: 'Goodreads', storygraph: 'StoryGraph', kobo: 'Kobo', kindle: 'Kindle', kindle_clippings: 'Kindle' };
+  const SOURCES = { goodreads: 'Goodreads', storygraph: 'StoryGraph', kobo: 'Kobo', kindle: 'Kindle', kindle_clippings: 'Kindle', koreader: 'KOReader' };
   const SHAPES = {
     devoured: ['Devoured', 'var(--series-2)'], slow_burn: ['Slow burn', 'var(--series-3)'],
     stop_start: ['Stop-start', 'var(--series-5)'], rescued: ['Rescued', 'var(--series-1)'],

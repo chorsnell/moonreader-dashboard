@@ -325,7 +325,7 @@ dash.calc('anomalies', {
     });
     const sameWork = d3.rollup(books.filter((b) => b.work_id), (v) => v.length, (b) => b.work_id);
     books.forEach((b) => {
-      if (b.genre === 'Untagged') add('untagged', b, b.last_read, b.source ? `Only in your ${{ storygraph: 'StoryGraph', kobo: 'Kobo', kindle: 'Kindle', kindle_clippings: 'Kindle' }[b.source] || 'Goodreads'} data, so it has no genre. Give it one in Admin → Catalogue.` : 'Not in catalogue.json, so it has no genre, series or tidy title.');
+      if (b.genre === 'Untagged') add('untagged', b, b.last_read, b.source ? `Only in your ${{ storygraph: 'StoryGraph', kobo: 'Kobo', kindle: 'Kindle', kindle_clippings: 'Kindle', koreader: 'KOReader' }[b.source] || 'Goodreads'} data, so it has no genre. Give it one in Admin → Catalogue.` : 'Not in catalogue.json, so it has no genre, series or tidy title.');
       if (b.status === 'unknown' && b.times_read && !b.source) add('noprog', b, b.last_read, "Read, but Moon+ never recorded how far you got, and the words logged don't cover the book's page count (or it has none). If you finished it, set Finished to Yes in Admin → Catalogue.");
       if (b.work_id && sameWork.get(b.work_id) > 1) add('samework', b, b.last_read, `Shares the work id ${b.work_id} with another book. If they're editions of one book, give their catalogue.json entries the same "work_id" to merge them.`);
       if (!b.isbn13) add('noisbn', b, b.last_read, 'No ISBN yet. Add "isbn" to its catalogue.json entry so it can be matched with other sources.');

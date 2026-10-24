@@ -11,8 +11,9 @@ import {
   SESSION_START,
 } from './kindle';
 import { readKobo, SQLITE_MAGIC } from './kobo';
+import { isKoreaderDb, readKoreader } from './koreader';
 
-/** Text exports are small; a Kobo database can be large. */
+/** Text exports are small; a Kobo or KOReader database can be large. */
 export const MAX_TEXT_BYTES = 20 * 1024 * 1024;
 
 export type Detected =
@@ -20,11 +21,11 @@ export type Detected =
   | { kind: 'titles'; titles: Map<string, { title: string; author: string }> };
 
 const UNKNOWN =
-  "That file isn't one the dashboard can import. It takes a Goodreads or StoryGraph export (.csv), a Kobo's KoboReader.sqlite, a Kindle's My Clippings.txt, or Amazon's Kindle reading sessions (.csv).";
+  "That file isn't one the dashboard can import. It takes a Goodreads or StoryGraph export (.csv), a Kobo's KoboReader.sqlite, KOReader's statistics.sqlite3, a Kindle's My Clippings.txt, or Amazon's Kindle reading sessions (.csv).";
 
 /**
  * Works out what an uploaded file is from its contents, not its name, and reads it:
- * a Kobo database, Kindle clippings, Kindle reading sessions or a list of Kindle titles,
+ * a Kobo or KOReader database, Kindle clippings, Kindle reading sessions or a list of Kindle titles,
  * or a Goodreads / StoryGraph export.
  */
 export async function detectUpload(
@@ -39,6 +40,9 @@ export async function detectUpload(
     await fh.close();
   }
   if (head.toString('latin1') === SQLITE_MAGIC) {
+    if (isKoreaderDb(path)) {
+      return { kind: 'books', source: 'koreader', books: readKoreader(path) };
+    }
     return { kind: 'books', source: 'kobo', books: readKobo(path) };
   }
   const buf = await readFile(path);

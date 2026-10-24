@@ -2,7 +2,7 @@
 // and books read outside Moon+; a Kobo database or Kindle files add days, reads and
 // highlights; finished reads can go back to Goodreads as a CSV.
 (() => {
-  const NAMES = { goodreads: 'Goodreads', storygraph: 'StoryGraph', kobo: 'your Kobo', kindle: 'Kindle reading sessions', kindle_clippings: 'My Clippings' };
+  const NAMES = { goodreads: 'Goodreads', storygraph: 'StoryGraph', kobo: 'your Kobo', kindle: 'Kindle reading sessions', kindle_clippings: 'My Clippings', koreader: 'KOReader' };
   rh.adminSection({ id: 'imports', title: 'Imports', order: 15, draw(box, a) {
     const { h } = a;
     const list = h('div', {}, h('p', { class: 'note' }, 'Loading…'));
@@ -32,7 +32,7 @@
       if (!r.has_backup && r.imports.length) list.append(h('p', { class: 'up-note' }, 'No Moon+ backup yet, so the dashboard is built from these imports alone.'));
     }
 
-    const file = h('input', { type: 'file', accept: '.csv,.txt,.sqlite,text/csv,text/plain', id: 'ad-import-file' });
+    const file = h('input', { type: 'file', accept: '.csv,.txt,.sqlite,.sqlite3,text/csv,text/plain', id: 'ad-import-file' });
     const msg = a.msg();
     const go = h('button', { class: 'up-primary ad-auto', type: 'button', onclick: async () => {
       const f = file.files[0];
@@ -57,6 +57,7 @@
           h('li', {}, h('b', {}, 'Goodreads'), ': My Books → Import and export → Export library. Adds ratings, shelves and books read on paper.'),
           h('li', {}, h('b', {}, 'StoryGraph'), ': Manage account → Export StoryGraph library.'),
           h('li', {}, h('b', {}, 'Kobo'), ': connect the e-reader by USB and upload .kobo/KoboReader.sqlite. Adds progress, time spent, highlights, and days if the device still has them.'),
+          h('li', {}, h('b', {}, 'KOReader'), ': koreader/settings/statistics.sqlite3 on the device (over USB). Adds time and progress for every day read.'),
           h('li', {}, h('b', {}, 'Kindle highlights'), ': documents/My Clippings.txt on the Kindle.'),
           h('li', {}, h('b', {}, 'Kindle reading sessions'), ': Amazon → Request your data → Kindle; upload Kindle.Devices.ReadingSession.csv. It names books only by ASIN: upload a CSV with ASIN and Title columns (such as your digital orders) to name them, or name them in Catalogue.')),
         h('label', { for: 'ad-import-file' }, 'File'), file, h('div', { class: 'ad-actions' }, go), msg),
