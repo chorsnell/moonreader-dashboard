@@ -210,7 +210,7 @@ Add a lower-case file name to `"exclude"` to hide something that isn't a book. P
 
 **Covers.** Covers from a Moon+ backup are saved to `library/covers/`; the rest are looked up on [Open Library](https://openlibrary.org) in the background, about one a second, and misses are retried after 30 days. To fix one, save your own image as `library/covers/<book id>.jpg` (the id is the title in lower case with dashes, such as `project-hail-mary`) or use the **Covers** section. `COVER_LOOKUP=off` stops the lookups.
 
-**Publication years, pages and authors.** Each book is looked up on Open Library (by ISBN, else title and author) for its first publication year, page count and an ISBN, and each author on [Wikidata](https://www.wikidata.org) for their country and gender. Results are stored in `library/metadata.json` (delete an entry to look it up again); misses are retried after 30 days. The book's Open Library subjects, for suggested genres, are kept in `library/.metadata-subjects.json`; books looked up before subjects were kept get theirs 100 at a time after each rebuild, untagged ones first. `METADATA_LOOKUP=off` stops the lookups. Which other sources were considered is in [docs/integrations.md](docs/integrations.md).
+**Publication years, pages and authors.** Each book is looked up on Open Library (by ISBN, else title and author) for its first publication year, page count and an ISBN, and each author on [Wikidata](https://www.wikidata.org) for their country and gender. Results are stored in `library/metadata.json` (delete an entry to look it up again); misses are retried after 30 days. The book's Open Library subjects, for suggested genres, are kept in `library/.metadata-subjects.json`; books looked up before subjects were kept get theirs 100 at a time after each rebuild, untagged ones first. `METADATA_LOOKUP=off` stops the lookups. After them, each author's other books and the rest of your series are looked up too, for `data/bibliography.json` (`BIBLIOGRAPHY_LOOKUP=off` stops that alone). Which other sources were considered is in [docs/integrations.md](docs/integrations.md).
 
 ## What your books cost
 
@@ -521,10 +521,12 @@ All optional environment variables, set in `docker-compose.yml`. `UPLOAD_TOKEN` 
 | `FEDERATION_REFRESH_MINUTES` | `60` | How often to refresh friends' reading from the dashboards you follow (`0`: only when you press **Refresh**) |
 | `COVER_LOOKUP` | `on` | `off` stops looking up missing covers on Open Library |
 | `METADATA_LOOKUP` | `on` | `off` stops looking up publication years, pages, subjects (for suggested genres) and authors on Open Library and Wikidata |
+| `BIBLIOGRAPHY_LOOKUP` | `on` | `off` stops looking up your authors' other books and the rest of your series on Open Library and Wikidata (always off when `METADATA_LOOKUP` is); see [docs/integrations.md](docs/integrations.md#bibliography-lookup-boo-103) |
 | `COVER_PAUSE` | `1` | Seconds between Open Library and Wikidata requests |
 | `OPENLIBRARY_URL` | `https://openlibrary.org` | Open Library's address (for a mirror or tests) |
 | `OPENLIBRARY_COVERS_URL` | `https://covers.openlibrary.org` | Open Library's cover server |
 | `WIKIDATA_URL` | `https://www.wikidata.org` | Wikidata's address |
+| `WIKIDATA_SPARQL_URL` | `https://query.wikidata.org` | Wikidata's SPARQL endpoint, for the bibliography lookup |
 | `WEATHER_LOOKUP` | `on` | `off` stops fetching the weather for "Reading and the weather" from Open-Meteo |
 | `WEATHER_ARCHIVE_URL` | `https://archive-api.open-meteo.com` | Open-Meteo's historical weather API |
 | `WEATHER_GEOCODING_URL` | `https://geocoding-api.open-meteo.com` | Open-Meteo's place-name search |

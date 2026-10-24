@@ -8,6 +8,6 @@ import { WikidataClient } from './wikidata.client';
 @Module({
   imports: [LibraryModule, CoversModule],
   providers: [MetadataStore, MetadataLookupService, WikidataClient],
-  exports: [MetadataStore, MetadataLookupService],
+  exports: [MetadataStore, MetadataLookupService, WikidataClient],
 })
 export class MetadataModule {}

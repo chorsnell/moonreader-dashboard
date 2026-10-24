@@ -22,6 +22,24 @@ export interface WorkDoc {
   subject?: string[];
 }
 
+/** A work in an author's list, with the fields the bibliography lookup asks for. */
+export interface AuthorWorkDoc {
+  key?: string;
+  title?: string;
+  first_publish_year?: number;
+  edition_count?: number;
+  /** The languages of its editions (three-letter MARC codes: eng, fre, ger…). */
+  language?: string[];
+  isbn?: string[];
+}
+
+/** An author as Open Library's author search returns them. */
+export interface AuthorDoc {
+  key?: string;
+  name?: string;
+  work_count?: number;
+}
+
 const WORK_FIELDS =
   'key,title,author_name,author_key,first_publish_year,number_of_pages_median,isbn,subject';
 
@@ -132,6 +150,35 @@ export class OpenLibraryClient {
     return Array.isArray(subjects)
       ? subjects.filter((s): s is string => typeof s === 'string')
       : [];
+  }
+
+  /**
+   * An author's works, those with the most editions first (at most 100): for the
+   * bibliography lookup. Empty when the key isn't an author key.
+   */
+  async authorWorks(authorKey: string, signal?: AbortSignal): Promise<AuthorWorkDoc[]> {
+    const key = authorKey.replace(/^\/?authors\//, '');
+    if (!/^OL\d+A$/.test(key)) return [];
+    const query = new URLSearchParams({
+      author_key: key,
+      fields: 'key,title,first_publish_year,edition_count,language,isbn',
+      sort: 'editions',
+      limit: '100',
+    });
+    const body = await this.get(`${this.config.openLibraryUrl}/search.json?${query}`, signal);
+    const docs = (JSON.parse(body.toString('utf8')) as { docs?: unknown }).docs;
+    return Array.isArray(docs) ? (docs as AuthorWorkDoc[]) : [];
+  }
+
+  /** Authors whose name matches, Open Library's best guess first (at most 5). */
+  async searchAuthors(name: string, signal?: AbortSignal): Promise<AuthorDoc[]> {
+    const query = new URLSearchParams({ q: name, limit: '5' });
+    const body = await this.get(
+      `${this.config.openLibraryUrl}/search/authors.json?${query}`,
+      signal,
+    );
+    const docs = (JSON.parse(body.toString('utf8')) as { docs?: unknown }).docs;
+    return Array.isArray(docs) ? (docs as AuthorDoc[]) : [];
   }
 
   /** The medium-size image for a cover id. */

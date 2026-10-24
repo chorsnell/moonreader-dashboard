@@ -6,6 +6,8 @@
  * followers' installations pull (src/friends).
  */
 
+import { firstAuthor, seriesNameKey } from '../common/book-match';
+
 export type DateGranularity = 'day' | 'week' | 'month';
 export type ViewerRole = 'public' | 'reader' | 'friends';
 export const VIEWER_ROLES: ViewerRole[] = ['public', 'reader', 'friends'];
@@ -173,6 +175,8 @@ export function hiddenCategories(p: Policy): Category[] {
 /** A book the way the filter needs it (a row of books.json). */
 export interface BookFacts {
   id: string;
+  author?: string | null;
+  series?: string | null;
   genre?: string | null;
   subgenre?: string | null;
   status?: string | null;
@@ -195,6 +199,28 @@ export interface FilterContext {
   privateGenres?: Set<string>;
   /** Anonymise (true) or leave out (false) private books. */
   anonymise?: boolean;
+  /**
+   * Authors (lower-case first author) and series (seriesNameKey) whose every book is
+   * private: bibliography.json leaves their rows out, as they'd give the books away.
+   */
+  privateAuthors?: Set<string>;
+  privateSeries?: Set<string>;
+}
+
+/** The keys (from `key`) every one of whose books is private. */
+function onlyPrivate(
+  books: BookFacts[],
+  isPrivate: (id: string) => boolean,
+  key: (b: BookFacts) => string,
+): Set<string> {
+  const open = new Set<string>();
+  const closed = new Set<string>();
+  for (const b of books) {
+    const k = key(b);
+    if (!k) continue;
+    (isPrivate(b.id) ? closed : open).add(k);
+  }
+  return new Set([...closed].filter((k) => !open.has(k)));
 }
 
 /** Books opened in this many days before the data was built count as being read now. */
@@ -231,7 +257,17 @@ export function buildContext(
       .filter((b) => b.status === 'in_progress' && (b.last_read ?? '') >= recentFrom)
       .map((b) => b.id),
   );
-  return { policy, private: priv, current, recentFrom, privateGenres: genres, anonymise };
+  const isPrivate = (id: string) => priv.has(id);
+  return {
+    policy,
+    private: priv,
+    current,
+    recentFrom,
+    privateGenres: genres,
+    anonymise,
+    privateAuthors: onlyPrivate(books, isPrivate, (b) => firstAuthor(b.author).toLowerCase()),
+    privateSeries: onlyPrivate(books, isPrivate, (b) => (b.series ? seriesNameKey(b.series) : '')),
+  };
 }
 
 /** A YYYY-MM-DD date (with or without a time) as the first day of its week (Monday) or month. */
@@ -299,6 +335,7 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   if (DIARY_FILES.has(name) && !p.diary) return [];
   // daily weather at home only means something with exact days, and narrows down where you live
   if (name === 'weather.json' && (!p.diary || p.dates !== 'day')) return [];
+  if (name === BIBLIOGRAPHY_FILE) return filterBibliography(data, ctx);
   const dates = effectiveDates(name, p);
   const isBooks = name === 'books.json';
 
@@ -356,6 +393,26 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
     return mergeDays(filtered as Record<string, unknown>[]);
   }
   return filtered;
+}
+
+/** Books by your authors and in your series that you don't have (BOO-103). */
+const BIBLIOGRAPHY_FILE = 'bibliography.json';
+
+/**
+ * bibliography.json names no book of yours, but its rows could give one away: rows by an
+ * author all of whose books are private, or in a series all of whose books are, are left out.
+ */
+function filterBibliography(data: unknown, ctx: FilterContext): unknown {
+  if (!Array.isArray(data)) return [];
+  const authors = ctx.privateAuthors ?? new Set<string>();
+  const series = ctx.privateSeries ?? new Set<string>();
+  return data.filter((row: unknown) => {
+    if (!row || typeof row !== 'object') return false;
+    const r = row as Record<string, unknown>;
+    const author = typeof r.author === 'string' ? firstAuthor(r.author).toLowerCase() : '';
+    if (author && authors.has(author)) return false;
+    return !(typeof r.series === 'string' && r.series && series.has(seriesNameKey(r.series)));
+  });
 }
 
 const inPrivateGenre = (o: Record<string, unknown>, ctx: FilterContext) =>

@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { BackupImportModule } from '../backup-import/backup-import.module';
+import { BibliographyModule } from '../bibliography/bibliography.module';
 import { CoversModule } from '../covers/covers.module';
 import { LibraryModule } from '../library/library.module';
 import { MetadataModule } from '../metadata/metadata.module';
 import { RebuildService } from './rebuild.service';
 
 @Module({
-  imports: [LibraryModule, BackupImportModule, CoversModule, MetadataModule],
+  imports: [LibraryModule, BackupImportModule, CoversModule, MetadataModule, BibliographyModule],
   providers: [RebuildService],
   exports: [RebuildService],
 })

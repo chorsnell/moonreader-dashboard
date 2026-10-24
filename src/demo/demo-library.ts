@@ -20,6 +20,7 @@ import { demoKobo } from './demo-kobo';
 import { demoLifeEvents } from './demo-life-events';
 import { anniversaryHighlight, simulateHighlights } from './demo-highlights';
 import { demoMediaCatalogue, simulateAudiobookshelf, simulateNetflix } from './demo-media';
+import { demoBibliography } from './demo-bibliography';
 import { demoMetadata } from './demo-metadata';
 import { demoPrices } from './demo-prices';
 import { DemoModule } from './demo.module';
@@ -84,6 +85,8 @@ export async function buildDemoLibrary(
   await writeFile(join(lib, 'catalogue.json'), JSON.stringify(catalogue), 'utf8');
   // what the metadata lookup would find, so the demo needs no network for it
   await writeFile(join(lib, 'metadata.json'), JSON.stringify(demoMetadata()), 'utf8');
+  // and what the bibliography lookup would find: the build turns it into data/bibliography.json
+  await writeFile(join(lib, 'bibliography.json'), JSON.stringify(demoBibliography(today)), 'utf8');
   const backup = join(lib, 'demo-library.mrpro');
   await writeDemoBackup(backup, log, firstDay, highlights, lastDay);
   // a Kobo's database, as if uploaded on the admin page: two books read on the Kobo

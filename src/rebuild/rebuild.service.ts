@@ -5,6 +5,7 @@ import { Inject, Injectable, OnApplicationBootstrap, OnApplicationShutdown } fro
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { appConfig, type AppConfigType } from '../config/app.config';
+import { BibliographyLookupService } from '../bibliography/bibliography-lookup.service';
 import { BackupImportService } from '../backup-import/backup-import.service';
 import { CoverLookupService } from '../covers/cover-lookup.service';
 import { ActivityLogService } from '../library/activity-log.service';
@@ -39,6 +40,7 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     private readonly importer: BackupImportService,
     private readonly covers: CoverLookupService,
     private readonly metadata: MetadataLookupService,
+    private readonly bibliography: BibliographyLookupService,
     private readonly status: StatusService,
     private readonly activity: ActivityLogService,
     private readonly scheduler: SchedulerRegistry,
@@ -79,9 +81,15 @@ export class RebuildService implements OnApplicationBootstrap, OnApplicationShut
     return this.running;
   }
 
-  /** Looks up missing covers, then missing metadata, in the background, one service at a time. */
+  /**
+   * Looks up missing covers, then missing metadata, then authors' bibliographies (which need
+   * the metadata's author ids), in the background, one at a time.
+   */
   private lookUp(trigger: string): void {
-    void this.covers.run(trigger).then(() => this.metadata.run(trigger));
+    void this.covers
+      .run(trigger)
+      .then(() => this.metadata.run(trigger))
+      .then(() => this.bibliography.run(trigger));
   }
 
   /**

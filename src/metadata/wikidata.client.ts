@@ -61,6 +61,63 @@ const iso2 = (e: Entity | undefined) => {
   return (v as string | undefined) ?? null;
 };
 
+/** A work Wikidata credits to an author (P50), with its series (P179) when it has one. */
+export interface WikidataWork {
+  /** The item, e.g. "Q170583". */
+  id: string;
+  /** Its English label. */
+  title: string;
+  /** The year of its earliest publication date (P577), or null. */
+  year: number | null;
+  /** The English label of the series it's part of, or null. */
+  series: string | null;
+  /** Its place in the series (the P1545 "series ordinal" qualifier) as a number, or null. */
+  series_no: number | null;
+}
+
+interface SparqlBinding {
+  [name: string]: { value?: string } | undefined;
+}
+
+/** A series ordinal ("3", "2.5") as a number; anything else ("III", "prequel") is null. */
+const ordinal = (s: string | undefined) => {
+  const t = (s ?? '').trim();
+  return /^\d+(\.\d+)?$/.test(t) ? Number(t) : null;
+};
+
+/**
+ * The works in a SPARQL answer, one per item: its earliest year, and a series with an
+ * ordinal when it has one. Items without an English label (the label service then gives
+ * the Q id) are left out.
+ */
+export function parseAuthorWorks(body: unknown): WikidataWork[] {
+  const rows = (body as { results?: { bindings?: unknown } } | null)?.results?.bindings;
+  if (!Array.isArray(rows)) return [];
+  const byId = new Map<string, WikidataWork>();
+  for (const row of rows as SparqlBinding[]) {
+    const id = /Q\d+$/.exec(row.work?.value ?? '')?.[0];
+    const title = (row.workLabel?.value ?? '').trim();
+    if (!id || !title || /^Q\d+$/.test(title)) continue;
+    const y = /^([+-]?\d{1,4})-/.exec(row.date?.value ?? '')?.[1];
+    const year = y ? Number(y) : null;
+    const seriesLabel = (row.seriesLabel?.value ?? '').trim();
+    const series = seriesLabel && !/^Q\d+$/.test(seriesLabel) ? seriesLabel : null;
+    const no = ordinal(row.ordinal?.value);
+    const had = byId.get(id);
+    if (!had) {
+      byId.set(id, { id, title, year, series, series_no: series ? no : null });
+      continue;
+    }
+    if (year !== null && (had.year === null || year < had.year)) had.year = year;
+    // a series with a number beats one without
+    if (series && (!had.series || (had.series_no === null && no !== null))) {
+      had.series = series;
+      had.series_no = no;
+    }
+  }
+  return [...byId.values()];
+}
+
 export interface AuthorFacts {
   gender: Gender | null;
   country: string | null;
@@ -117,6 +174,27 @@ export class WikidataClient {
     return { gender, country };
   }
 
+  /**
+   * The works Wikidata credits to an author (P50), with series, ordinal and publication date,
+   * from its SPARQL endpoint. Editions (P629) and scholarly articles are left out.
+   */
+  async authorWorks(id: string, signal?: AbortSignal): Promise<WikidataWork[]> {
+    if (!/^Q\d+$/.test(id)) return [];
+    const query = `SELECT ?work ?workLabel ?seriesLabel ?ordinal ?date WHERE {
+  ?work wdt:P50 wd:${id} .
+  FILTER NOT EXISTS { ?work wdt:P629 ?edition_of }
+  FILTER NOT EXISTS { ?work wdt:P31 wd:Q13442814 }
+  OPTIONAL { ?work p:P179 ?statement . ?statement ps:P179 ?series .
+    OPTIONAL { ?statement pq:P1545 ?ordinal } }
+  OPTIONAL { ?work wdt:P577 ?date }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+} LIMIT 1000`;
+    const q = new URLSearchParams({ query, format: 'json' });
+    await this.pace(signal);
+    const body = await httpGet(`${this.config.wikidataSparqlUrl}/sparql?${q}`, signal);
+    return parseAuthorWorks(JSON.parse(body.toString('utf8')));
+  }
+
   /** Items by id, with their statements. */
   async entities(ids: string[], signal?: AbortSignal): Promise<Record<string, Entity>> {
     if (!ids.length) return {};
@@ -129,11 +207,16 @@ export class WikidataClient {
     return ((await this.api(q, signal)) as { entities?: Record<string, Entity> }).entities ?? {};
   }
 
-  /** Requests are spaced COVER_PAUSE apart, to be polite. */
-  private async api(q: URLSearchParams, signal?: AbortSignal): Promise<unknown> {
+  /** Waits until COVER_PAUSE has passed since the last request. */
+  private async pace(signal?: AbortSignal): Promise<void> {
     const wait = this.last + this.config.coverPauseMs - Date.now();
     if (wait > 0) await sleep(wait, undefined, { signal });
     this.last = Date.now();
+  }
+
+  /** Requests are spaced COVER_PAUSE apart, to be polite. */
+  private async api(q: URLSearchParams, signal?: AbortSignal): Promise<unknown> {
+    await this.pace(signal);
     const body = await httpGet(`${this.config.wikidataUrl}/w/api.php?${q}`, signal);
     return JSON.parse(body.toString('utf8'));
   }
