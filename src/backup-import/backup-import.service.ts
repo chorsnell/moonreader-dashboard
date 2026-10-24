@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Injectable } from '@nestjs/common';
+import { BibliographyStore } from '../bibliography/bibliography-store.service';
+import { buildBibliography } from '../bibliography/build';
 import { findFiles, mtimeMs } from '../common/files';
 import { localDate, localDateTime, round1 } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
@@ -61,6 +63,7 @@ export class BackupImportService {
     private readonly covers: CoverStore,
     private readonly metadata: MetadataStore,
     private readonly imports: ImportsStore,
+    private readonly bibliography: BibliographyStore,
   ) {}
 
   /** Builds from a backup, or from the imports alone (Kobo, Kindle…) when backup is null. */
@@ -303,6 +306,11 @@ export class BackupImportService {
     await this.dump('highlights.json', highlights);
     // books waiting to be read that the library doesn't otherwise have
     await this.dump('to_read.json', toRead);
+    // books by your authors and in your series that you don't have (BOO-103)
+    await this.dump(
+      'bibliography.json',
+      buildBibliography(booksRows, toRead, await this.bibliography.read()),
+    );
     await this.dump(
       'reading_history.json',
       {

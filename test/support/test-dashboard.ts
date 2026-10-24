@@ -30,6 +30,7 @@ export class TestDashboard {
       pollSeconds: 5,
       coverLookup: false,
       metadataLookup: false,
+      bibliographyLookup: false,
       weatherLookup: false,
       ...overrides,
     };

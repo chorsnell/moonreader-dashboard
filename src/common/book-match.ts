@@ -134,3 +134,32 @@ export function sameAuthorLoose(a: string, b: string): boolean {
 /** An ISBN as digits (and X) only, for comparing. */
 export const isbnDigits = (s: string | null | undefined) =>
   (s ?? '').replace(/[^0-9Xx]/g, '').toUpperCase();
+
+/**
+ * The first of several authors, as books.json spells it: "King, Stephen & Straub, Peter" ->
+ * "King, Stephen". Splits on "&", ";" and " and ", like firstSurname.
+ */
+export const firstAuthor = (author: string | null | undefined) =>
+  (author ?? '')
+    .split(/\s*(?:&|;| and )\s*/)[0]
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/** Words a series name may end in that don't change which series it is. */
+const SERIES_WORDS = /\s+(series|saga|trilogy|cycle|chronicles)$/;
+
+/**
+ * A series name as a match key, more forgiving than seriesKey: case, accents, a leading "The"
+ * and a trailing "series", "saga", "trilogy", "cycle" or "chronicles" are ignored, so "The
+ * Wheel of Time" and "Wheel of Time series" agree. A name that is only such a word ("The
+ * Chronicles") is kept as it is.
+ */
+export function seriesNameKey(name: string | null | undefined): string {
+  const words = plain(name ?? '')
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  const noThe = words.replace(/^the\s+/, '') || words;
+  const core = noThe.replace(SERIES_WORDS, '') || noThe;
+  return core.replace(/\s+/g, '');
+}

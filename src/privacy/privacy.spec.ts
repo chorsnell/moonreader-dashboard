@@ -470,3 +470,66 @@ describe('filterDataFile', () => {
     });
   });
 });
+
+describe('bibliography.json', () => {
+  const row = (title: string, author: string, series: string | null = null) => ({
+    work_id: null,
+    title,
+    author,
+    published_year: 1900,
+    editions: 2,
+    series,
+    series_no: series ? 2 : null,
+    isbn13: null,
+    why: series ? ['author', 'series'] : ['author'],
+    on_pile: false,
+  });
+  const rows = [
+    row('Persuasion', 'Jane Austen'),
+    row('Dune Messiah', 'Frank Herbert', 'Dune'),
+    row('Children of Dune', 'Someone Else', 'The Dune Saga'),
+    row('My Other Diary', 'Me'),
+  ];
+  const titles = (out: unknown) => (out as { title: string }[]).map((r) => r.title);
+
+  it('passes through when nothing is private', () => {
+    expect(filterDataFile('bibliography.json', rows, ctxFor(PRESETS.everything))).toEqual(rows);
+  });
+
+  it('leaves out authors and series whose books are all private', () => {
+    const ctx = ctxFor(PRESETS.everything, { private_books: ['dune', 'diary'] });
+    expect(titles(filterDataFile('bibliography.json', rows, ctx))).toEqual(['Persuasion']);
+    // anonymising the books still hides the rows that would name them
+    const anon = ctxFor(PRESETS.everything, {
+      private_books: ['dune', 'diary'],
+      private_mode: 'anonymise',
+    });
+    expect(titles(filterDataFile('bibliography.json', rows, anon))).toEqual(['Persuasion']);
+  });
+
+  it('does so for private genres and subgenres too', () => {
+    const ctx = ctxFor(PRESETS.taste, { private_genres: ['personal', 'Romance'] });
+    expect(titles(filterDataFile('bibliography.json', rows, ctx))).toEqual([
+      'Dune Messiah',
+      'Children of Dune',
+    ]);
+  });
+
+  it('keeps an author with a public book as well as a private one', () => {
+    const more = [
+      ...books,
+      { id: 'persuasion', title: 'Persuasion', author: 'Jane Austen', genre: 'Classics' },
+    ];
+    const policy = PRESETS.everything;
+    const s = settings(policy, { private_books: ['emma'] });
+    const ctx = buildContext(policy, s, more, '2026-03-31');
+    expect(titles(filterDataFile('bibliography.json', rows, ctx))).toContain('Persuasion');
+    expect(titles(filterDataFile('bibliography.json', rows, ctxFor(policy, s)))).not.toContain(
+      'Persuasion',
+    );
+  });
+
+  it('copes with a file that is not a list', () => {
+    expect(filterDataFile('bibliography.json', { x: 1 }, ctxFor(PRESETS.everything))).toEqual([]);
+  });
+});

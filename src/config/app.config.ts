@@ -29,6 +29,13 @@ export interface AppConfig {
   /** Whether to look up publication years, page counts and authors on Open Library and Wikidata. */
   metadataLookup: boolean;
   wikidataUrl: string;
+  /**
+   * Whether to look up the other books by the authors you read, and the rest of their series,
+   * on Open Library and Wikidata. Always off when metadataLookup is.
+   */
+  bibliographyLookup: boolean;
+  /** Wikidata's SPARQL endpoint (the address before /sparql). */
+  wikidataSparqlUrl: string;
   /** Pause between Open Library lookups, to be polite. */
   coverPauseMs: number;
   /** TMDB, for TV and film posters, genres and runtimes; the admin can also set the key on the page. */
@@ -112,6 +119,8 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     openLibraryCoversUrl: url(env, 'OPENLIBRARY_COVERS_URL', 'https://covers.openlibrary.org'),
     metadataLookup: onOff(env, 'METADATA_LOOKUP'),
     wikidataUrl: url(env, 'WIKIDATA_URL', 'https://www.wikidata.org'),
+    bibliographyLookup: onOff(env, 'METADATA_LOOKUP') && onOff(env, 'BIBLIOGRAPHY_LOOKUP'),
+    wikidataSparqlUrl: url(env, 'WIKIDATA_SPARQL_URL', 'https://query.wikidata.org'),
     coverPauseMs: decimal(env, 'COVER_PAUSE', 1) * 1000,
     tmdbApiKey: (env.TMDB_API_KEY ?? '').trim(),
     tmdbUrl: url(env, 'TMDB_URL', 'https://api.themoviedb.org/3'),

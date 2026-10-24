@@ -31,6 +31,8 @@ export class LibraryService implements OnModuleInit {
   readonly catalogue: string;
   /** What the metadata lookup found; an input to the build, like catalogue.json. */
   readonly metadata: string;
+  /** What the bibliography lookup found (BOO-103); an input to the build too. */
+  readonly bibliography: string;
 
   constructor(
     @Inject(appConfig.KEY) private readonly config: AppConfigType,
@@ -45,6 +47,7 @@ export class LibraryService implements OnModuleInit {
     this.covers = join(this.root, 'covers');
     this.catalogue = join(this.root, 'catalogue.json');
     this.metadata = join(this.root, 'metadata.json');
+    this.bibliography = join(this.root, 'bibliography.json');
   }
 
   /** Creates the folders and a starting catalogue.json on first run. */
@@ -74,8 +77,8 @@ export class LibraryService implements OnModuleInit {
   }
 
   /**
-   * The newest backup, if it, catalogue.json, metadata.json, an import or a synced position
-   * is newer than the data. With no backup but imports (Kobo, Kindle…), IMPORTS_ONLY.
+   * The newest backup, if it, catalogue.json, metadata.json, bibliography.json, an import or a
+   * synced position is newer than the data. With no backup but imports (Kobo, Kindle…), IMPORTS_ONLY.
    */
   async needsBuild(): Promise<string | null> {
     const [newest] = await this.backups();
@@ -87,6 +90,7 @@ export class LibraryService implements OnModuleInit {
         imports,
         await mtimeMs(this.catalogue),
         await mtimeMs(this.metadata),
+        await mtimeMs(this.bibliography),
       );
       return changed > built ? IMPORTS_ONLY : null;
     }
@@ -95,6 +99,7 @@ export class LibraryService implements OnModuleInit {
       await mtimeMs(newest),
       await mtimeMs(this.catalogue),
       await mtimeMs(this.metadata),
+      await mtimeMs(this.bibliography),
       await this.imports.newest(),
       ...syncs,
     );
