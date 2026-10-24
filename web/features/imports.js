@@ -1,5 +1,5 @@
 // Admin → Imports (BOO-53, BOO-57): a Goodreads or StoryGraph export adds ratings, shelves
-// and books read elsewhere; a Kobo database or Kindle files add days, reads and
+// and books read elsewhere; a Kobo or KOReader database or Kindle files add days, reads and
 // highlights; finished reads can go back to Goodreads as a CSV.
 (() => {
   const NAMES = { goodreads: 'Goodreads', storygraph: 'StoryGraph', kobo: 'your Kobo', kindle: 'Kindle reading sessions', kindle_clippings: 'My Clippings', koreader: 'KOReader' };

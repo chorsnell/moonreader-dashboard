@@ -81,7 +81,7 @@
     ['Moon+ Reader', 'a backup (.mrpro), in Admin → Data'],
     ['Kobo', '.kobo/KoboReader.sqlite from the e-reader, in Admin → Imports'],
     ['Kindle', 'My Clippings.txt or the reading sessions CSV from Amazon\'s data export, in Admin → Imports'],
-    ['KOReader', 'statistics.sqlite3, in Admin → Imports'],
+    ['KOReader', 'koreader/settings/statistics.sqlite3 from the device, in Admin → Imports'],
     ['Goodreads or StoryGraph', 'a library export (CSV), in Admin → Imports'],
   ];
   const sourceList = () => h('ul', { class: 'note' }, SOURCES.map(([app, what]) => h('li', {}, h('b', {}, app), ': ' + what)));

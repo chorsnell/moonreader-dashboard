@@ -211,7 +211,7 @@
           h('li', {}, h('b', {}, 'Moon+ Reader'), ': a backup (.mrpro), below. It can also sync over WebDAV.'),
           h('li', {}, h('b', {}, 'Kobo'), ': .kobo/KoboReader.sqlite from the e-reader, in ', importsLink(), '.'),
           h('li', {}, h('b', {}, 'Kindle'), ': My Clippings.txt, or the reading sessions CSV from Amazon\'s data export, in ', importsLink(), '.'),
-          h('li', {}, h('b', {}, 'KOReader'), ': statistics.sqlite3, in ', importsLink(), '.'),
+          h('li', {}, h('b', {}, 'KOReader'), ': koreader/settings/statistics.sqlite3 from the device, in ', importsLink(), '.'),
           h('li', {}, h('b', {}, 'Goodreads or StoryGraph'), ': a library export (CSV), in ', importsLink(), '.'))),
       a.block('Upload a Moon+ backup', 'In Moon+ Reader, go to Options → Backup & Restore → Backup, then choose the .mrpro file here. The stats rebuild in a few seconds.',
         h('label', { for: 'ad-file' }, 'Backup file'), file, h('div', { class: 'ad-actions' }, go), bar, msg),
