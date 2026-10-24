@@ -83,6 +83,15 @@ doesn't turn the page. Slides sit on a coloured background with white text, so u
 is left out (and logged), and Wrapped carries on. Anything the slide needs should come from
 a calc (read with `dash.data(id)`), so it's worked out once and respects privacy.
 
+## Where the data came from
+
+The dashboard is built from any mix of a Moon+ backup and imports (Kobo, Kindle, KOReader,
+Goodreads, StoryGraph), so don't assume Moon+ in a note. `dash.meta()` is the last build's
+`meta.json` (`backup_file` is set when there's a Moon+ backup; `imports` lists the rest) and
+`dash.hasMoonplus()` says whether there's a Moon+ backup. Use it for wording that is only
+true of Moon+ ("Moon+ logs minutes from 2019"). In `index.html`, give such a sentence the
+`data-moonplus` attribute and `hidden`; it shows when there's a Moon+ backup.
+
 ## Calcs run on the server too
 
 The server loads these same scripts in Node (`src/stats/`) and works out every calc for each

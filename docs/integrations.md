@@ -1,8 +1,8 @@
 # Integrations: what the dashboard talks to, and what it won't
 
 Every outside service the dashboard uses is optional and fails soft: without it, the
-dashboard works from your Moon+ data alone. This page records which services were
-considered, which were built, and why some were not.
+dashboard works from your reading data alone (a Moon+ backup, your imports, or both). This
+page records which services were considered, which were built, and why some were not.
 
 | Service | Used for | How | Status |
 | --- | --- | --- | --- |
