@@ -5,6 +5,29 @@
 .tr-list li[data-link]{cursor:pointer}
 .tr-list .meta{white-space:nowrap;font-variant-numeric:tabular-nums}
 .tr-more{margin-top:var(--cds-gap-sm)}
-#ch-toread-kpis,#ch-toread-list,#ch-toread-friends{min-height:0}
+#ch-toread-kpis,#ch-toread-list,#ch-toread-friends,#ch-toread-want{min-height:0}
 @media (max-width:640px){.tr-list .meta{white-space:normal;text-align:right}}
 #toread.rh-page:not([hidden]){display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,26rem),1fr));align-items:start;gap:var(--cds-gap-lg)}
+/* your own want-to-read list (BOO-102): the admin's card, and Keep / Hide on the pile */
+.tr-btn{font:inherit;font-size:12px;padding:3px 8px;border:1px solid var(--color-border-line);border-radius:6px;background:var(--color-bg);color:var(--color-fg);cursor:pointer;white-space:nowrap}
+.tr-btn:hover:not(:disabled){border-color:var(--color-fg-muted)}
+.tr-btn:disabled{opacity:.6;cursor:default}
+.tr-acts{display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:4px;margin-left:var(--cds-gap-sm)}
+.tr-list .meta .tr-acts{vertical-align:middle}
+.tr-want input,.tr-want textarea{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg);color:var(--color-fg);min-width:0}
+.tr-search{display:flex;gap:var(--cds-gap-sm)}
+.tr-search input{flex:1}
+.tr-results{margin-top:var(--cds-gap-sm)}
+.tr-results .cv img{width:100%;height:100%;object-fit:cover}
+.tr-typed{margin:var(--cds-gap-md) 0}
+.tr-typed summary,.tr-hidden summary{font-size:13px;color:var(--color-fg-muted);cursor:pointer}
+.tr-fields{display:grid;grid-template-columns:2fr 2fr 2fr 1fr auto;gap:var(--cds-gap-sm);align-items:end;margin-top:var(--cds-gap-sm)}
+.tr-fields label{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--color-fg-muted)}
+.tr-h{margin:var(--cds-gap-md) 0 var(--cds-gap-sm);font-size:var(--cds-font-size-body);font-weight:600}
+.tr-note{margin:4px 0 0;font-size:13px;color:var(--color-fg-muted);white-space:pre-wrap}
+.tr-note-edit{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.tr-note-edit textarea{flex:1 1 100%}
+.tr-hidden{margin-top:var(--cds-gap-md)}
+.tr-want .rh-list li{align-items:center}
+.tr-mine .meta{display:flex;align-self:center}
+@media (max-width:640px){.tr-fields{grid-template-columns:1fr 1fr}.tr-fields button{grid-column:1/-1}.tr-list .meta .tr-acts{display:flex;margin:4px 0 0}}

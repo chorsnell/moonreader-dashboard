@@ -4,6 +4,10 @@
 // started, prices.json the ones you bought and never opened. How big the pile is, how long
 // it has waited, how long it would take at your pace, and whether it grows faster than you
 // read. Friends' favourites are suggestions, so they're listed but not counted.
+//
+// The owner's own want-to-read list (BOO-102) is a source of the pile too ("On your list"):
+// library/want_to_read.json, edited here by the admin (search Open Library or type a book in,
+// keep or hide shelf books). rh.wantToRead lets other views add a book to it.
 (() => {
   const { el, fmt, plural, pDate, fDay } = rh;
   const DAY = 864e5, t = (s) => Date.parse(String(s).slice(0, 10) + 'T00:00:00Z');
@@ -11,14 +15,14 @@
   const FLOW_MONTHS = 24;
   // a day with believable timing (as rh.okDay)
   const okDay = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
-  const SOURCES = { goodreads: 'Goodreads to-read', storygraph: 'StoryGraph to-read', moonplus: 'In Moon+, not started', bought: 'Bought, never opened' };
+  const SOURCES = { mine: 'On your list', goodreads: 'Goodreads to-read', storygraph: 'StoryGraph to-read', moonplus: 'In Moon+, not started', bought: 'Bought, never opened' };
 
   dash.file('to_read', 'data/to_read.json', { optional: true });
 
   dash.calc('to_read_pile', {
     inputs: ['books', 'to_read', 'prices'],
     title: 'To-read pile',
-    description: 'Every book waiting to be read: to-read shelves from Goodreads or StoryGraph, books in your reading app never opened or not started, and priced books never opened, one row per book (matched by ISBN, then title and author), with when it was added and its estimated length in words.',
+    description: 'Every book waiting to be read: your own want-to-read list, to-read shelves from Goodreads or StoryGraph, books in your reading app never opened or not started, and priced books never opened, one row per book (matched by ISBN, then title and author), with when it was added and its estimated length in words.',
     fn: (books, toRead, prices) => {
       const { matcher } = dash.sameBook;
       // a typical length: the median finished book's words per read
@@ -32,6 +36,7 @@
           same.sources = [...new Set([...same.sources, ...r.sources])];
           if (r.added && (!same.added || r.added < same.added)) same.added = r.added;
           if (same.price == null && r.price != null) same.price = r.price;
+          if (!same.want_id && r.want_id) { same.want_id = r.want_id; same.note = r.note; }
           return;
         }
         out.push(r);
@@ -44,6 +49,8 @@
           genre: o.genre || 'Untagged', subgenre: o.subgenre || 'Untagged', isbn13: o.isbn13 || null,
           added: o.added || null, sources: o.sources, shelves: o.shelves || [], price: o.price ?? null,
           in_library: !!o.in_library, words: words || null, estimated: !(o.words > 0),
+          // on your own list: its id there, and your note (the admin's view only)
+          want_id: o.want_id || null, note: o.note || '',
         };
       };
       // books opened but not started (no progress yet): from a Moon+ backup
@@ -121,11 +128,11 @@
   const kpi = (lbl, val, sub) => { const n = el('div', 'rh-kpi'); n.append(el('div', 'lbl', lbl), el('div', 'val', val)); if (sub) n.append(el('div', 'sub', sub)); return n; };
   const ago = (days) => (days == null ? 'when unknown' : days < 45 ? plural(days, 'day') : days < 548 ? plural(Math.round(days / 30.4), 'month') : `${fmt(Math.round(days / 36.5) / 10)} years`);
   const kWords = (w) => (w >= 1e6 ? `${fmt(Math.round(w / 1e5) / 10)}M` : `${fmt(Math.round(w / 1000))}k`);
-  const empty = (box) => box.replaceChildren(el('div', 'dy-empty', 'Nothing waiting. Import a Goodreads or StoryGraph export with a to-read shelf, add books to your reading app or price books you bought, and they’ll show here.'));
+  const empty = (box) => box.replaceChildren(el('div', 'dy-empty', 'Nothing waiting. Import a Goodreads or StoryGraph export with a to-read shelf, add books to your reading app or your want-to-read list, or price books you bought, and they’ll show here.'));
 
   card({
     id: 'toread-kpis', title: 'Your to-read pile', calc: 'to_read_stats',
-    note: 'Books you have but haven’t started: to-read shelves, books in your reading app you haven’t opened, and books you bought and never opened. Time to read it all uses your words a minute and minutes a day over the last year, if you read nothing else.',
+    note: 'Books you have but haven’t started: your want-to-read list, to-read shelves, books in your reading app you haven’t opened, and books you bought and never opened. Time to read it all uses your words a minute and minutes a day over the last year, if you read nothing else.',
     draw(box, rows) {
       const s = rows[0];
       if (!s || !s.books) { empty(box); return; }
@@ -209,8 +216,12 @@
         li.append(rh.cover(r.in_library ? r.book_id : null, r.title, r.genre));
         const where = r.sources.map((s) => (SOURCES[s] || s).replace(/ to-read$/, '').replace(/, not started$/, '').replace(/, never opened$/, '')).join(' · ');
         ttl.append(document.createTextNode(r.title), rh.byline('small', null, r, ['author', 'series'], where));
-        const age = r.added && end ? ago(Math.round((t(end) - t(r.added)) / DAY)) : null;
-        li.append(ttl, el('div', 'meta', [age, r.words ? `${r.estimated ? '≈ ' : ''}${kWords(r.words)} words` : null].filter(Boolean).join(' · ')));
+        // a book added after the last day of reading has waited no time yet
+        const age = r.added && end ? ago(Math.max(0, Math.round((t(end) - t(r.added)) / DAY))) : null;
+        const meta = el('div', 'meta', [age, r.words ? `${r.estimated ? '≈ ' : ''}${kWords(r.words)} words` : null].filter(Boolean).join(' · '));
+        const acts = pileActions(r);
+        if (acts) meta.append(acts);
+        li.append(ttl, meta);
         ul.append(li);
       });
       box.replaceChildren(ul);
@@ -221,6 +232,224 @@
         box.append(b);
       }
       parts.note.textContent = `${plural(rows.length, 'book')}, oldest first. Lengths marked ≈ are estimated from the page count or your typical book.`;
+    },
+  });
+
+  // ---------- your own want-to-read list (BOO-102): admin only ----------
+  // Drawn only for the admin's own view: not for visitors, not while the admin previews as
+  // one, and never on the static demo (no admin there).
+  let isAdmin = false, list = null, listError = '', results = null, searching = false;
+  const hiddenTitles = new Map(); // titles of rows hidden this session, for "Show again"
+  async function call(method, url, body) {
+    const r = await fetch(url, { method, cache: 'no-store', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    let j = {}; try { j = await r.json(); } catch (e) { /* not JSON */ }
+    if (!r.ok) { const err = new Error(j.error || `HTTP ${r.status}`); err.status = r.status; throw err; }
+    return j;
+  }
+  const loadList = () => call('GET', 'api/admin/want').then((f) => { list = f; listError = ''; }).catch((e) => { listError = e.message; }).finally(() => rh.redraw());
+  window.addEventListener('dash:config', (e) => {
+    const c = e.detail || {};
+    isAdmin = c.role === 'admin' && !c.preview && !c.demo;
+    if (isAdmin) loadList(); else list = null;
+  });
+
+  // after a change the server rebuilds; reload the dashboard's data once it has
+  let waiting = null;
+  function afterChange() {
+    loadList();
+    if (waiting) return;
+    waiting = (async () => {
+      const gen = async () => { try { const s = await call('GET', 'api/admin/status'); return s; } catch (e) { return null; } };
+      const before = ((await gen()) || {}).meta?.generated;
+      for (let i = 0; i < 80; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const s = await gen();
+        if (!s || s.building) continue;
+        if (s.meta && s.meta.generated && s.meta.generated !== before) break;
+      }
+      waiting = null;
+      await window.dash.reload();
+    })();
+  }
+
+  // the same book: by ISBN, then title and author
+  const keysOf = (b) => (dash.sameBook ? dash.sameBook.keys(b).filter((k) => !k.startsWith('work:')) : []);
+  function has(row) {
+    if (!row) return false;
+    const want = new Set(keysOf(row));
+    const pile = dash.data('to_read_pile').data || [];
+    return [...((list && list.books) || []), ...pile].some((b) => keysOf(b).some((k) => want.has(k)));
+  }
+  const FIELDS = ['title', 'author', 'series', 'series_no', 'isbn13', 'pages', 'published_year', 'work_id', 'genre', 'subgenre', 'added', 'from'];
+  async function add(row) {
+    const body = {};
+    FIELDS.forEach((k) => { if (row[k] != null && row[k] !== '') body[k] = row[k]; });
+    if (body.genre === 'Private') { delete body.genre; delete body.subgenre; }
+    const r = await call('POST', 'api/admin/want', body);
+    afterChange();
+    return r.book;
+  }
+  // a small button for other views (author, series, genre lists); null for anyone but the admin
+  function button(row, from) {
+    if (!isAdmin || !row || !row.title) return null;
+    const b = el('button', 'tr-btn', 'Want to read');
+    b.type = 'button';
+    const done = () => { b.textContent = 'On your list'; b.disabled = true; };
+    if (has(row)) { done(); return b; }
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      b.disabled = true; b.textContent = 'Adding…';
+      try { await add({ ...row, from: row.from || from || 'manual' }); done(); }
+      catch (err) { if (err.status === 409) done(); else { b.disabled = false; b.textContent = 'Want to read'; b.title = err.message; } }
+    });
+    return b;
+  }
+  rh.wantToRead = { enabled: () => isAdmin, has, add, button };
+
+  // Keep and Hide on the pile's shelf rows and unopened Moon+ files
+  function pileActions(r) {
+    // a book on your list says so in its byline, and is changed in the card above
+    if (!isAdmin || r.want_id) return null;
+    const from = ['goodreads', 'storygraph', 'moonplus'].find((s) => r.sources.includes(s));
+    // books Moon+ opened (books.json) and bought ones are added on the page, so can't be hidden
+    if (!from || r.in_library) return null;
+    const box = el('span', 'tr-acts');
+    const keep = el('button', 'tr-btn', 'Keep'), hide = el('button', 'tr-btn', 'Hide');
+    keep.type = hide.type = 'button';
+    keep.title = 'Copy it to your own list, so it stays when the shelf changes';
+    hide.title = 'Leave it off the pile';
+    const busy = (b, text) => { keep.disabled = hide.disabled = true; b.textContent = text; };
+    keep.addEventListener('click', async () => {
+      busy(keep, 'Keeping…');
+      try { await add({ ...r, from: from === 'moonplus' ? 'moonplus' : from }); keep.textContent = 'Kept'; }
+      catch (e) { keep.textContent = e.status === 409 ? 'Kept' : 'Keep'; keep.title = e.message; keep.disabled = hide.disabled = e.status === 409; }
+    });
+    hide.addEventListener('click', async () => {
+      busy(hide, 'Hiding…');
+      try { await call('POST', 'api/admin/want/hide', { key: r.book_id }); hiddenTitles.set(r.book_id, r.title); hide.textContent = 'Hidden'; afterChange(); }
+      catch (e) { hide.textContent = 'Hide'; hide.title = e.message; keep.disabled = hide.disabled = false; }
+    });
+    box.append(keep, hide);
+    return box;
+  }
+
+  // the card itself: built on its first draw (only the admin's page ever gets here), and only
+  // once, so a redraw doesn't lose what's typed
+  let ui = null;
+  const buildUi = () => {
+    const root = el('div', 'tr-want');
+    const q = el('input'); q.type = 'search'; q.id = 'tr-want-q'; q.placeholder = 'Title or author'; q.setAttribute('aria-label', 'Search Open Library');
+    const go = el('button', 'up-copy', 'Search'); go.type = 'submit';
+    const form = el('form', 'tr-search'); form.append(q, go);
+    const msg = el('p', 'up-msg'); msg.setAttribute('role', 'status');
+    const found = el('ul', 'rh-list tr-list tr-results');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = q.value.trim();
+      if (text.length < 2) { msg.textContent = 'Type a title or an author.'; return; }
+      searching = true; msg.textContent = 'Searching Open Library…'; results = null; drawResults();
+      try { results = (await call('GET', 'api/admin/want/search?q=' + encodeURIComponent(text))).results; msg.textContent = results.length ? '' : 'Nothing found. Try fewer words, or type it in below.'; }
+      catch (err) { msg.textContent = err.message; }
+      searching = false; drawResults();
+    });
+    function drawResults() {
+      found.replaceChildren(...(results || []).map((c) => {
+        const li = el('li'), ttl = el('div', 'ttl');
+        const cv = rh.cover(null, c.title, null, 'sm');
+        if (c.cover_id) { const img = new Image(); img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer'; img.onerror = () => img.remove(); img.src = `https://covers.openlibrary.org/b/id/${c.cover_id}-S.jpg`; cv.replaceChildren(img); }
+        ttl.append(document.createTextNode(c.title), rh.byline('small', null, c, ['author'], [c.published_year, c.pages ? `${fmt(c.pages)} pages` : null].filter(Boolean).join(' · ')));
+        const meta = el('div', 'meta');
+        meta.append(button({ ...c, from: 'search' }) || '');
+        li.append(cv, ttl, meta);
+        return li;
+      }));
+    }
+
+    // type it in
+    const typed = el('details', 'tr-typed');
+    const sum = el('summary', null, 'Not there? Type it in');
+    const field = (label, id, type = 'text') => { const l = el('label', null, label), i = el('input'); i.type = type; i.id = id; l.append(i); return [l, i]; };
+    const [lt, title] = field('Title', 'tr-want-title'), [la, author] = field('Author', 'tr-want-author');
+    const [ls, series] = field('Series', 'tr-want-series'), [ln, no] = field('Number', 'tr-want-no', 'number');
+    no.min = '0'; no.step = 'any'; title.required = true; title.maxLength = 300; author.maxLength = 200; series.maxLength = 200;
+    const addBtn = el('button', 'up-copy', 'Add to your list'); addBtn.type = 'submit';
+    const tmsg = el('p', 'up-msg'); tmsg.setAttribute('role', 'status');
+    const tform = el('form', 'tr-fields'); tform.append(lt, la, ls, ln, addBtn);
+    tform.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      addBtn.disabled = true; tmsg.textContent = 'Adding…';
+      try {
+        const b = await add({ title: title.value, author: author.value, series: series.value, series_no: no.value === '' ? null : Number(no.value), from: 'manual' });
+        tmsg.textContent = `Added “${b.title}”.`; title.value = author.value = series.value = no.value = '';
+      } catch (err) { tmsg.textContent = err.message; }
+      addBtn.disabled = false;
+    });
+    typed.append(sum, tform, tmsg);
+
+    // the list
+    const head = el('h3', 'tr-h');
+    const books = el('ul', 'rh-list tr-list tr-mine');
+    const hiddenBox = el('div', 'tr-hidden');
+    function drawList() {
+      if (listError) { head.textContent = 'Your list'; books.replaceChildren(el('li', 'up-msg', listError)); hiddenBox.replaceChildren(); return; }
+      if (!list) { head.textContent = 'Your list'; books.replaceChildren(el('li', 'note', 'Loading…')); return; }
+      head.textContent = list.books.length ? `On your list: ${plural(list.books.length, 'book')}` : 'Your list is empty';
+      books.replaceChildren(...list.books.slice().sort((a, b) => b.added.localeCompare(a.added) || a.title.localeCompare(b.title)).map((b) => {
+        const li = el('li'), ttl = el('div', 'ttl');
+        ttl.append(document.createTextNode(b.title), rh.byline('small', null, b, ['author', 'series'], b.added ? `added ${fDay(pDate(b.added))}` : null));
+        const noteEl = el('p', 'tr-note', b.note || ''); noteEl.hidden = !b.note;
+        ttl.append(noteEl);
+        const meta = el('div', 'meta tr-acts');
+        const edit = el('button', 'tr-btn', b.note ? 'Edit note' : 'Add note'), del = el('button', 'tr-btn', 'Remove');
+        edit.type = del.type = 'button';
+        edit.addEventListener('click', () => {
+          if (ttl.querySelector('form')) return;
+          const f = el('form', 'tr-note-edit'), area = el('textarea'); area.value = b.note || ''; area.maxLength = 2000; area.rows = 2; area.setAttribute('aria-label', 'Note');
+          const save = el('button', 'tr-btn', 'Save'), cancel = el('button', 'tr-btn', 'Cancel'); save.type = 'submit'; cancel.type = 'button';
+          cancel.addEventListener('click', () => f.remove());
+          f.addEventListener('submit', async (e) => {
+            e.preventDefault(); save.disabled = true;
+            try { await call('PUT', 'api/admin/want/' + encodeURIComponent(b.id), { note: area.value }); afterChange(); }
+            catch (err) { save.disabled = false; save.title = err.message; }
+          });
+          f.append(area, save, cancel); ttl.append(f); area.focus();
+        });
+        del.addEventListener('click', async () => {
+          del.disabled = true; del.textContent = 'Removing…';
+          try { await call('DELETE', 'api/admin/want/' + encodeURIComponent(b.id)); afterChange(); }
+          catch (err) { del.disabled = false; del.textContent = 'Remove'; del.title = err.message; }
+        });
+        meta.append(edit, del);
+        li.append(rh.cover(null, b.title, b.genre, 'sm'), ttl, meta);
+        return li;
+      }));
+      if (!list.hidden.length) { hiddenBox.replaceChildren(); return; }
+      const d = el('details'), s2 = el('summary', null, `Hidden from the pile: ${plural(list.hidden.length, 'book')}`), ul = el('ul', 'rh-list tr-list');
+      list.hidden.forEach((k) => {
+        const li = el('li'), again = el('button', 'tr-btn', 'Show again'); again.type = 'button';
+        again.addEventListener('click', async () => {
+          again.disabled = true;
+          try { await call('DELETE', 'api/admin/want/hide/' + encodeURIComponent(k)); afterChange(); } catch (err) { again.disabled = false; again.title = err.message; }
+        });
+        const m = el('div', 'meta'); m.append(again);
+        li.append(el('div', 'ttl', hiddenTitles.get(k) || k), m);
+        ul.append(li);
+      });
+      d.append(s2, ul);
+      hiddenBox.replaceChildren(d);
+    }
+    root.append(form, msg, found, typed, head, books, hiddenBox);
+    return { root, draw: () => { drawList(); if (!searching) drawResults(); } };
+  };
+
+  card({
+    id: 'toread-want', title: 'Your want-to-read list', calc: 'to_read_pile', after: 'card-toread-kpis',
+    note: 'Only you see this card. Search Open Library or type a book in to put it on your pile; on the pile, Keep copies a shelf’s book here so it stays, and Hide leaves one off. Visitors see the books, never your notes.',
+    hidden: () => !isAdmin,
+    draw(box) {
+      ui ??= buildUi();
+      if (ui.root.parentNode !== box) box.replaceChildren(ui.root);
+      ui.draw();
     },
   });
 

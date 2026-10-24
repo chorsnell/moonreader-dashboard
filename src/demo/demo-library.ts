@@ -24,6 +24,7 @@ import { demoBibliography } from './demo-bibliography';
 import { demoMetadata } from './demo-metadata';
 import { demoPrices } from './demo-prices';
 import { DemoModule } from './demo.module';
+import { demoWant } from './demo-want';
 import { demoWeather } from './demo-weather';
 import { Random } from './random';
 import { simulate, type DemoDay } from './simulate';
@@ -105,6 +106,8 @@ export async function buildDemoLibrary(
     }),
     'utf8',
   );
+  // the owner's own want-to-read list, as if made on the To read tab (BOO-102)
+  await writeFile(join(lib, 'want_to_read.json'), JSON.stringify(demoWant(lastDay)), 'utf8');
   await writeDemoMedia(lib, seed, log, firstDay, days);
   const summary = await importInto(lib, backup, { lookUpCovers, media: true });
   // what the server writes from library/prices.json

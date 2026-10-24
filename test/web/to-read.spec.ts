@@ -146,3 +146,35 @@ describe('the to-read pile', () => {
     ]);
   });
 });
+
+describe('your own want-to-read list (BOO-102)', () => {
+  const mine = [
+    ...toRead,
+    {
+      book_id: 'mine:lorna-doone',
+      title: 'Lorna Doone',
+      author: 'R. D. Blackmore',
+      added: '2026-06-01',
+      sources: ['mine'],
+      pages: 640,
+      want_id: 'mine:lorna-doone',
+      note: 'second-hand',
+    },
+  ];
+
+  it('is on the pile, keeps its list id and note, and counts as its own source', () => {
+    const pile = run<Pile & { want_id: string | null; note: string }>('to_read_pile', {
+      ...data,
+      to_read: mine,
+    });
+    expect(pile.find((r) => r.title === 'Lorna Doone')).toMatchObject({
+      sources: ['mine'],
+      want_id: 'mine:lorna-doone',
+      note: 'second-hand',
+      words: 176_000,
+    });
+    expect(pile.find((r) => r.title === 'Kim')).toMatchObject({ want_id: null, note: '' });
+    const [s] = run<Stats>('to_read_stats', { ...data, to_read: mine });
+    expect(s.sources[0]).toEqual({ source: 'mine', label: 'On your list', books: 1 });
+  });
+});
