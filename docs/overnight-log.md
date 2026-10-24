@@ -11,7 +11,7 @@ You asked for three things: a reading dashboard rather than a Moon+ one, a want-
 - **Check the genre → subject mapping** in Admin → Discovery against your own genres (the defaults are in BOO-105's decisions below).
 - **Try a real KOReader `statistics.sqlite3`** if you move to KOReader (or Kobo with KOReader): it was built to the schema, not tested on a device's file.
 - **Renaming the repo** (for example to `reading-dashboard`) is your call. The package, Docker image, container and repo names were left alone because your deploy workflow and compose file use them. GitHub redirects a renamed repo, but `chorsnell/workflows` and the Traefik route would still need the new name.
-- **Screenshots** were retaken for the To read tab and an author page (see BOO-106).
+- **Commit the new screenshots.** The `screenshots` workflow had never succeeded: it waited for every image to load, and covers below the fold are lazy, so with covers it always timed out. That's fixed (BOO-106), and [run 40052591286](https://github.com/chorsnell/moonreader-dashboard/actions/runs/40052591286) took a full set with covers, including the new To read and Highlights tabs (`toread*.png`, `highlights*.png`). Its artifact couldn't be downloaded from the build machine, so download it (it's kept for 7 days), look it over and commit `docs/screenshots/`; then add To read and Highlights tiles to the README's screenshot table.
 
 ### Decisions by ticket
 
@@ -25,7 +25,8 @@ You asked for three things: a reading dashboard rather than a Moon+ one, a want-
 ### Coordinator
 
 - Merged each PR only after its CI was green and, where main had moved, after running lint, tsc and the unit tests on the merge locally.
-- Checked by hand: every want-to-read endpoint is admin-only at the controller; the Moon+ scoping reads `meta` that both `/api/config` and the static demo provide; the Wikidata query skips editions and articles and drops works with no English label.
+- BOO-106 (this PR): the decision log, plus two fixes to the screenshots workflow: lazy covers are loaded before waiting for images, and a failed run repeats its last lines as annotations so the cause shows on the run page.
+- Checked by hand: every want-to-read and Discovery endpoint is admin-only at the controller; the Moon+ scoping reads `meta` that both `/api/config` and the static demo provide; the Wikidata query skips editions and articles and drops works with no English label.
 
 ---
 
