@@ -138,6 +138,23 @@ books from `prices`) says so with `copesWithout: 'prices'` and stays. Draw
 functions should cope with empty rows. `dash.dates` is `'week'` or `'month'` when dates
 are rounded, and `rh.fDay` then shows the week or month.
 
+## Want to read
+
+`to-read.js` keeps the owner's own want-to-read list (`library/want_to_read.json`, see
+`docs/api.md`) and shares it with other views as `rh.wantToRead`:
+
+```js
+const w = rh.wantToRead;
+w.enabled();           // true only for the admin's own view (not visitors, not previews, not the demo)
+w.has(row);            // the book is on the pile or the list already (by isbn13, then title and author)
+await w.add({ title, author, series, series_no, isbn13, from: 'author' }); // resolves with the new entry
+box.append(w.button({ ...row, from: 'series' }) || ''); // "Want to read", "On your list" (disabled), or null
+```
+
+`add` rejects with an `Error` (its `status` is `409` when the book is on the list already).
+After a change the server rebuilds, and the page reloads its data when that's done. Load
+`rh.wantToRead` when drawing, not when the script loads, as `to-read.js` may come later.
+
 ## Analytics
 
 `analytics.js` sends page views and clicks to Mixpanel when `MIXPANEL_TOKEN` is set. It

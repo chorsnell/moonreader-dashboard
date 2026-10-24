@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { appConfig, type AppConfigType } from '../config/app.config';
+import { firstIsbn } from '../metadata/isbn';
 
 const AGENT = 'moonreader-dashboard (+https://github.com/chorsnell/moonreader-dashboard)';
 const TIMEOUT_MS = 20_000;
@@ -38,6 +39,21 @@ export interface AuthorDoc {
   key?: string;
   name?: string;
   work_count?: number;
+}
+
+/** A book as the admin's want-to-read search shows it (BOO-102). */
+export interface BookCandidate {
+  title: string;
+  author: string;
+  published_year: number | null;
+  work_id: string | null;
+  isbn13: string | null;
+  pages: number | null;
+  cover_id: number | null;
+}
+
+interface CandidateDoc extends WorkDoc {
+  cover_i?: number;
 }
 
 const WORK_FIELDS =
@@ -120,6 +136,33 @@ export class OpenLibraryClient {
     }
     const docs = await this.search<WorkDoc>({ title: short }, WORK_FIELDS, signal);
     return docs.find((d) => d.key && normaliseTitle(d.title) === normaliseTitle(short)) ?? null;
+  }
+
+  /**
+   * Books matching what the admin typed (title, author, or both), best first: up to `limit`
+   * works, each with its first ISBN-13 when it has one. Throws when Open Library can't be
+   * reached.
+   */
+  async searchBooks(q: string, limit = 10, signal?: AbortSignal): Promise<BookCandidate[]> {
+    const query = new URLSearchParams({
+      q,
+      fields: 'key,title,author_name,first_publish_year,number_of_pages_median,isbn,cover_i',
+      limit: String(limit),
+    });
+    const body = await this.get(`${this.config.openLibraryUrl}/search.json?${query}`, signal);
+    const docs = (JSON.parse(body.toString('utf8')) as { docs?: CandidateDoc[] }).docs ?? [];
+    return docs
+      .filter((d) => d.title)
+      .slice(0, limit)
+      .map((d) => ({
+        title: d.title!,
+        author: (d.author_name ?? []).slice(0, 3).join(' & '),
+        published_year: d.first_publish_year ?? null,
+        work_id: d.key?.replace(/^\/works\//, '') || null,
+        isbn13: firstIsbn(d.isbn)?.isbn13 ?? null,
+        pages: d.number_of_pages_median ?? null,
+        cover_id: d.cover_i ?? null,
+      }));
   }
 
   /** The Wikidata item an Open Library author record links to, or null. */

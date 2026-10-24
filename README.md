@@ -33,7 +33,7 @@ It matches the same book across them, keeps the history even for books whose fil
 - **Diary:** a day-by-day log for any period: which books, minutes, words and progress, with starts and finishes.
 - **Library:** every book and every re-read, searchable and sortable, and where you give up.
 - **TV & film:** hours watched, what's on screen now, dropped seasons, season completion, binge fingerprints, when you watch, genre drift, films, the cost per hour of each subscription, whether TV crowds out reading, and book-to-screen adaptations. It appears once there's something watched.
-- **To read:** your to-read pile, gathered from Goodreads and StoryGraph to-read shelves, books in your reading app you haven't started, and books you bought but never opened: how big it is, how long books have waited, how long it would take at your pace, whether you add books faster than you finish them, friends' favourites as suggestions, and **what to read next**: the pile ranked by your own habits, each pick saying why.
+- **To read:** your to-read pile, gathered from your own want-to-read list, Goodreads and StoryGraph to-read shelves, books in your reading app you haven't started, and books you bought but never opened: how big it is, how long books have waited, how long it would take at your pace, whether you add books faster than you finish them, friends' favourites as suggestions, and **what to read next**: the pile ranked by your own habits, each pick saying why. Signed in as the admin, you keep the want-to-read list on this tab: search Open Library or type a book in, add a private note, and keep a shelf's book (so it stays when the shelf changes) or hide one from the pile. It's kept in `library/want_to_read.json`, which no import touches.
 - **Money:** spending by month and year, a budget, how you got your books, value for money, an hour of streaming against an hour of books, the cost to finish a series, whether a subscription paid off, money left on the shelf, and what your reading time is worth at a rate you choose.
 - **Highlights:** every highlight and note across all your books in one place: full-text search (all words must match; "quoted phrases"; case and accents don't matter), filters by book, author, genre, year and notes, the most-highlighted books, highlights per year, and passages you highlighted more than once. It follows the highlights privacy setting and leaves out private books.
 - **Friends:** friends' reading next to yours: a taste match, overlaid heatmaps, opt-in leaderboards, their favourites you haven't read, and book clubs. On a book's page, a buddy-read race against every friend who read it.
@@ -120,6 +120,7 @@ library/
   metadata.json    publication years, pages and authors looked up online
   genre-suggestions.json  genre suggestions you turned down
   prices.json      what you paid
+  want_to_read.json  your own want-to-read list
   goodreads.json, storygraph.json, kobo.json, kindle*.json, koreader.json   imports
   media/           TV, film and audiobook history and its catalogue.json
   friends/         friends' reading, from share files or followed dashboards

@@ -319,6 +319,30 @@ who don't get the diary, get it empty.
 | `PUT /api/admin/weather/location` | `{place}`: a town (Open-Meteo geocoding, first match) or `"lat, lon"`; `''` removes it. A new location clears the cached days and fetches its weather. `400` with `error` if the place isn't found. Returns `{added, error, …}` as GET |
 | `POST /api/admin/weather/refresh` | Fetches the days not cached yet. A failure (offline) keeps the cache and is reported in `error` |
 
+## Want-to-read list (admin)
+
+The owner's own list of books to read (BOO-102), kept in `library/want_to_read.json` and
+never written by an import: `{schema_version: 1, books: [{id, title, author, series,
+series_no, isbn13, pages, published_year, work_id, genre, subgenre, note, added, from}],
+hidden: [book_id…]}`. `id` is `mine:<slug of the title>` (`-2`, `-3`… when titles clash);
+`from` is one of `search`, `goodreads`, `storygraph`, `moonplus`, `author`, `series`,
+`genre`, `manual`. The build adds the books to `data/to_read.json` with the source `mine`,
+merged with the same book from a shelf (ISBN, then title and author); such rows carry
+`want_id`, `note`, `work_id` and `published_year`. `hidden` holds pile rows' `book_id`s
+(`goodreads:123`, a Moon+ file's slug) to leave off the pile, unless the book is on the list
+too. Visitors get the books with the usual privacy rules, but never `note`. Admin only;
+anyone else gets `403`. Every change rebuilds.
+
+| Method and path | Does |
+| --- | --- |
+| `GET /api/admin/want` | The file |
+| `POST /api/admin/want` | Adds a book: `{title, author?, series?, series_no?, isbn13?, pages?, published_year?, work_id?, genre?, subgenre?, note?, added?, from?}`. The title is required (300 characters at most; a note 2000). `added` is today unless an earlier day is given (a book kept from a shelf keeps its day). `{ok, book}`; `400` for a bad field; `409` (with the existing `id`) when the list has the same book by ISBN or title and author |
+| `PUT /api/admin/want/<id>` | Changes the fields sent (the same ones; not `id`, `added` or `from`). `404` if it isn't there; `409` if it would copy another entry |
+| `DELETE /api/admin/want/<id>` | Removes it |
+| `POST /api/admin/want/hide` | `{key}`: a pile row's `book_id` to leave off the pile (not a `mine:` one) |
+| `DELETE /api/admin/want/hide/<key>` | Shows it again; `404` if it wasn't hidden |
+| `GET /api/admin/want/search?q=` | Open Library search: `{results: [{title, author, published_year, work_id, isbn13, pages, cover_id}]}`, 10 at most. `400` for under 2 characters; `502` with `error` when Open Library can't be reached |
+
 ## Genre suggestions (admin)
 
 Suggested genres for untagged books, and starter-catalogue genres their Open Library
