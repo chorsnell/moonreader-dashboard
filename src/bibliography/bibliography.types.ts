@@ -35,6 +35,47 @@ export interface BibliographyAuthor {
  */
 export interface BibliographyFile {
   authors: Record<string, BibliographyAuthor>;
+  /**
+   * Open Library subjects for your genres (BOO-105), keyed by subject slug ("fantasy").
+   * Missing from files written before it.
+   */
+  subjects?: Record<string, BibliographySubject>;
+}
+
+/** One work in an Open Library subject, in Open Library's order (BOO-105). */
+export interface SubjectWork {
+  /** Open Library work id, e.g. "OL27448W", or null. */
+  work_id: string | null;
+  title: string;
+  /** The first author's name as Open Library gives it, or ''. */
+  author: string;
+  year: number | null;
+  editions: number | null;
+}
+
+/** What the lookup found for one Open Library subject. */
+export interface BibliographySubject {
+  /** The day it was looked up (YYYY-MM-DD); looked up again after REFRESH_DAYS. */
+  looked_up: string;
+  /** The subject's works, most popular first, as Open Library lists them. */
+  works: SubjectWork[];
+}
+
+/** One row of data/genre_picks.json: a popular book in one of your genres you haven't got. */
+export interface GenrePickRow {
+  genre: string;
+  /** The subgenre for a subgenre's picks; null for the genre's own. */
+  subgenre: string | null;
+  work_id: string | null;
+  title: string;
+  /** The first author as Open Library spells them. */
+  author: string;
+  published_year: number | null;
+  editions: number | null;
+  /** Its place in the subject on Open Library, 1 the most popular. */
+  rank: number;
+  /** It's on your to-read pile (data/to_read.json). */
+  on_pile: boolean;
 }
 
 /**
@@ -43,6 +84,8 @@ export interface BibliographyFile {
  */
 export interface BibliographyMisses {
   authors: Record<string, string>;
+  /** The day a subject came back with no works (BOO-105). */
+  subjects?: Record<string, string>;
 }
 
 /** Why a work is shown: it's by an author you read, in a series you read, or both. */

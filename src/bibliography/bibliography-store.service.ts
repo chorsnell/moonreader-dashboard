@@ -27,7 +27,10 @@ export class BibliographyStore {
   constructor(private readonly library: LibraryService) {}
 
   read(): Promise<BibliographyFile> {
-    return readJson<BibliographyFile>(this.library.bibliography, { authors: {} });
+    return readJson<BibliographyFile>(this.library.bibliography, {
+      authors: {},
+      subjects: {},
+    });
   }
 
   write(file: BibliographyFile): Promise<void> {

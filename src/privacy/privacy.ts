@@ -339,6 +339,7 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   // daily weather at home only means something with exact days, and narrows down where you live
   if (name === 'weather.json' && (!p.diary || p.dates !== 'day')) return [];
   if (name === BIBLIOGRAPHY_FILE) return filterBibliography(data, ctx);
+  if (name === GENRE_PICKS_FILE) return filterGenrePicks(data, ctx);
   const dates = effectiveDates(name, p);
   const isBooks = name === 'books.json';
   const ownKeys = ADMIN_ONLY_KEYS[name];
@@ -418,6 +419,23 @@ function filterBibliography(data: unknown, ctx: FilterContext): unknown {
     if (author && authors.has(author)) return false;
     return !(typeof r.series === 'string' && r.series && series.has(seriesNameKey(r.series)));
   });
+}
+
+/** Popular books in your genres that you haven't read (BOO-105). */
+const GENRE_PICKS_FILE = 'genre_picks.json';
+
+/**
+ * genre_picks.json names no book of yours, but a genre's picks show you read that genre:
+ * rows for a private genre or subgenre (or a subgenre of a private genre) are left out.
+ */
+function filterGenrePicks(data: unknown, ctx: FilterContext): unknown {
+  if (!Array.isArray(data)) return [];
+  return data.filter(
+    (row: unknown) =>
+      !!row &&
+      typeof row === 'object' &&
+      !(ctx.privateGenres?.size && inPrivateGenre(row as Record<string, unknown>, ctx)),
+  );
 }
 
 const inPrivateGenre = (o: Record<string, unknown>, ctx: FilterContext) =>

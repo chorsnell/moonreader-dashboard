@@ -13,6 +13,8 @@ import { WikidataClient } from '../metadata/wikidata.client';
 import { BibliographyStore } from './bibliography-store.service';
 import type { BibliographyAuthor } from './bibliography.types';
 import { authorId, bibliographyAuthors, type LibraryBook } from './build';
+import { DiscoverySettings } from './discovery-settings.service';
+import { discoveryTargets, subjectsToLookUp, subjectWorks, type PickBook } from './genre-picks';
 import { keepWorks, mergeWikidata } from './works';
 
 /** Authors are looked up again, and misses retried, after this many days. */
@@ -106,6 +108,7 @@ export class BibliographyLookupService implements OnApplicationShutdown {
     private readonly openLibrary: OpenLibraryClient,
     private readonly wikidata: WikidataClient,
     private readonly activity: ActivityLogService,
+    private readonly discovery: DiscoverySettings,
   ) {}
 
   /** Looks up what's due; resolves when done (or joins a lookup already running). */
@@ -140,7 +143,6 @@ export class BibliographyLookupService implements OnApplicationShutdown {
   }
 
   private async lookUp(trigger: string): Promise<void> {
-    const started = Date.now();
     let books: LibraryBook[];
     try {
       books = JSON.parse(
@@ -150,6 +152,86 @@ export class BibliographyLookupService implements OnApplicationShutdown {
     } catch {
       return; // no data yet
     }
+    await this.lookUpAuthors(books, trigger);
+    if (!this.stop.signal.aborted) await this.lookUpSubjects(books, trigger);
+  }
+
+  /**
+   * The Open Library subjects of your genres and subgenres (BOO-105), for
+   * data/genre_picks.json: each subject that's due (never looked up, or REFRESH_DAYS ago),
+   * one request each. A subject with no works is a miss, retried after REFRESH_DAYS.
+   */
+  private async lookUpSubjects(books: readonly PickBook[], trigger: string): Promise<void> {
+    const started = Date.now();
+    const overrides = await this.discovery.overrides();
+    const file = await this.store.read();
+    const misses = await this.store.readMisses();
+    const subjects = (file.subjects ??= {});
+    const missed = (misses.subjects ??= {});
+    const today = localDate();
+    const refreshFrom = localDate(new Date(Date.now() - REFRESH_DAYS * 86_400_000));
+    const todo = subjectsToLookUp(discoveryTargets(books, overrides)).filter(
+      (s) => (subjects[s]?.looked_up ?? '') < refreshFrom && (missed[s] ?? '') < refreshFrom,
+    );
+    if (!todo.length) return;
+
+    const signal = this.stop.signal;
+    let failures = 0;
+    let unreachable = '';
+    let found = 0;
+    let empty = 0;
+    let changed = false;
+    this.activity.log(`  Looking up ${todo.length} Open Library subject(s) for your genres`);
+    for (const slug of todo) {
+      if (signal.aborted) break;
+      try {
+        await this.paceOpenLibrary();
+        const works = subjectWorks(await this.openLibrary.subjectWorks(slug, signal));
+        failures = 0;
+        if (!works.length) {
+          missed[slug] = today;
+          empty++;
+          continue;
+        }
+        subjects[slug] = { looked_up: today, works };
+        delete missed[slug];
+        changed = true;
+        found++;
+      } catch (e) {
+        if (signal.aborted) break;
+        if (++failures >= MAX_FAILURES) {
+          unreachable = (e as Error).message;
+          break;
+        }
+      }
+    }
+
+    await this.store.writeMisses(misses);
+    // like the authors: a new bibliography.json rebuilds, which writes data/genre_picks.json
+    if (changed) {
+      await this.store.write(file);
+      this.library.changed('bibliography');
+    }
+    if (signal.aborted) return;
+    this.activity.record({
+      type: 'metadata',
+      message: unreachable
+        ? `Genre picks lookup stopped early: Open Library could not be reached. Found ${found} of ${todo.length} subject(s) first; the rest will be tried after the next rebuild`
+        : `Found popular books for ${found} of ${todo.length} genre subject(s) on Open Library; the rest are retried after ${REFRESH_DAYS} days`,
+      outcome: unreachable ? 'failed' : 'ok',
+      error: unreachable || undefined,
+      trigger,
+      duration_ms: Date.now() - started,
+      details: {
+        subjects_tried: todo.length,
+        subjects_found: found,
+        subjects_empty: empty,
+      },
+    });
+  }
+
+  private async lookUpAuthors(books: LibraryBook[], trigger: string): Promise<void> {
+    const started = Date.now();
     const metadata = await this.metadata.read();
     const file = await this.store.read();
     const misses = await this.store.readMisses();
