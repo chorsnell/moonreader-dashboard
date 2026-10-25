@@ -13,7 +13,11 @@ export function configureApp(app: NestExpressApplication): NestExpressApplicatio
   const config = app.get<AppConfigType>(appConfig.KEY);
   app.disable('x-powered-by');
   app.use(basePathMiddleware(config.basePath));
-  app.use('/api', json({ limit: '4kb', type: 'application/json' }));
+  const smallJson = json({ limit: '4kb', type: 'application/json' });
+  app.use('/api', (req: Request, res: Response, next: NextFunction) =>
+    // the KOReader plugin's bodies are large; its controller reads them after checking the token
+    req.path.startsWith('/koreader/') ? next() : smallJson(req, res, next),
+  );
   app.use((_req: Request, res: Response, next: NextFunction) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     next();

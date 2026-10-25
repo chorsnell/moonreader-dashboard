@@ -6,6 +6,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { appConfig, type AppConfigType } from '../config/app.config';
 import { publicPrefix } from '../common/http/public-prefix';
 import { RequestBodyError, saveRequestBody } from '../common/http/request-body';
+import { KoreaderSyncError, KoreaderSyncService } from '../koreader-sync/koreader-sync.service';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LibraryService } from '../library/library.service';
 import { StatusService } from '../library/status.service';
@@ -46,6 +47,7 @@ export class DavService {
     private readonly library: LibraryService,
     private readonly status: StatusService,
     private readonly activity: ActivityLogService,
+    private readonly koreader: KoreaderSyncService,
   ) {}
 
   /** `path` is the request path, decoded, starting with /dav. */
@@ -103,7 +105,7 @@ export class DavService {
     const st = await statOrNull(full);
     if (st?.isDirectory()) return text(200, 'Reading dashboard WebDAV folder.\n');
     if (!st?.isFile()) return text(404, 'Not found');
-    return { status: 200, file: full };
+    return { status: 200, headers: { ETag: etagOf(st) }, file: full };
   }
 
   private async put(req: IncomingMessage, full: string): Promise<DavResponse> {
@@ -111,6 +113,16 @@ export class DavService {
     if (st?.isDirectory()) {
       req.resume();
       return text(409, 'That is a folder.');
+    }
+    // KOReader's statistics sync sends the ETag it downloaded, so two devices can't overwrite
+    // each other's merge (RFC 7232; a weak validator is compared by its value)
+    const ifMatch = req.headers['if-match'];
+    if (typeof ifMatch === 'string' && ifMatch.trim() !== '*') {
+      const want = ifMatch.split(',').map((t) => t.trim().replace(/^W\//i, ''));
+      if (!st || !want.includes(etagOf(st))) {
+        req.resume();
+        return text(412, 'The file has changed since you read it.');
+      }
     }
     await mkdir(dirname(full), { recursive: true });
     try {
@@ -223,6 +235,14 @@ export class DavService {
           details: { kind: 'backup', file: rel, device },
         });
       }
+    } else if (basename(lower) === 'statistics.sqlite3') {
+      // KOReader's Reading statistics → Synchronize, pointed at a folder here
+      try {
+        await this.koreader.saveStats(full, 'webdav', { file: rel, device });
+      } catch (e) {
+        if (!(e instanceof KoreaderSyncError)) throw e;
+        // already logged by the sync service; the file stays, so KOReader's merge still works
+      }
     } else if (lower.endsWith('.po')) {
       this.status.positionSynced();
       this.activity.record({
@@ -236,6 +256,11 @@ export class DavService {
       this.activity.log(`WebDAV: stored ${rel}`);
     }
   }
+}
+
+/** A strong ETag from the file's size and modification time. */
+export function etagOf(st: Stats): string {
+  return `"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
 }
 
 /** The client's User-Agent, which names the app (and sometimes the device) that synced. */

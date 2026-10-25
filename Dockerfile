@@ -26,6 +26,8 @@ COPY --from=build /app/node_modules/ node_modules/
 COPY --from=build /app/dist/ dist/
 COPY web/ web/
 COPY seed/ seed/
+# the KOReader plugin, served as a zip from Admin → Imports (src/koreader-sync)
+COPY koreader/readingdashboard.koplugin/ koreader/readingdashboard.koplugin/
 
 # starts as root only to hand /library to PUID:PGID, then drops to that user
 VOLUME ["/library"]
