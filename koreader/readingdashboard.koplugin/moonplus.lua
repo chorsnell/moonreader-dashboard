@@ -137,7 +137,7 @@ function MoonPlus.applyHistoryToOpenBook(plugin, match)
     local db_path = plugin:statsDBPath()
     local store, err = History.openDB(db_path)
     if not store then return nil, err end
-    History.backupOnce(db_path)
+    History.backupOnce(db_path, store)
     local ok, inserted, used, rows = pcall(History.applyDays, store, id_book, match.days)
     store:close()
     if not ok then return nil, inserted end

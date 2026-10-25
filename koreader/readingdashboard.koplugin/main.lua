@@ -106,8 +106,15 @@ function ReadingDashboard:statsDBPath()
     return DataStorage:getSettingsDir() .. "/statistics.sqlite3"
 end
 
+--- The server keeps one statistics database per device name, so two devices of the same
+-- model must not share one: add the start of KOReader's per-install device_id (reader.lua).
 function ReadingDashboard:deviceName()
-    return Device.model or "KOReader"
+    local name = Device.model or "KOReader"
+    local id = G_reader_settings and G_reader_settings:readSetting("device_id")
+    if type(id) == "string" and id ~= "" then
+        name = name .. " (" .. id:sub(1, 8) .. ")"
+    end
+    return name
 end
 
 function ReadingDashboard:getClient()
@@ -149,8 +156,10 @@ function ReadingDashboard:onReadSettings(config)
     local summary = config:readSetting("summary")
     local status = summary and summary.status
     self.had_status = status == "reading" or status == "complete" or status == "abandoned"
-    local percent = tonumber(config:readSetting("percent_finished")) or 0
-    self.had_position = config:has("last_xpointer") or config:has("last_page") or percent > 0.005
+    -- Not percent_finished/last_percent: applyToDeviceBooks writes those into unopened books'
+    -- sidecars, and ReaderPaging (PDF, DjVu, CBZ) ignores them, so those books must still jump.
+    -- Rolling documents already open at last_percent, so progressTarget finds nothing to do.
+    self.had_position = config:has("last_xpointer") or config:has("last_page")
 end
 
 function ReadingDashboard:onReaderReady()
@@ -183,7 +192,19 @@ function ReadingDashboard:onCloseDocument()
     UIManager:scheduleIn(1, function() self:sync(false) end)
 end
 
+-- On Kobo (and the other devices using Device:onPowerEvent) Wi-Fi is turned off *before* the
+-- Suspend event is broadcast, so the last chance to sync before sleep is NetworkDisconnecting
+-- (the hook KOSync uses too). onSuspend still covers devices that keep Wi-Fi up (Kindle,
+-- PocketBook). When both run, the second sync finds nothing changed and sends nothing.
+function ReadingDashboard:onNetworkDisconnecting()
+    self:syncBeforeSleep()
+end
+
 function ReadingDashboard:onSuspend()
+    self:syncBeforeSleep()
+end
+
+function ReadingDashboard:syncBeforeSleep()
     -- Never bring Wi-Fi up here: only sync if we're already online.
     if not (self:isConfigured() and self.settings.auto_sync) then return end
     if not NetworkMgr:isOnline() then return end
@@ -266,12 +287,10 @@ end
 
 --- Checkpoints the WAL (if any) so the uploaded file holds the latest sessions.
 local function checkpointStats(db_path)
-    pcall(function()
-        local SQ3 = require("lua-ljsqlite3/init")
-        local conn = SQ3.open(db_path)
-        conn:exec("PRAGMA wal_checkpoint(PASSIVE);")
-        conn:close()
-    end)
+    local ok, conn = pcall(function() return require("lua-ljsqlite3/init").open(db_path) end)
+    if not ok or not conn then return end
+    pcall(conn.exec, conn, "PRAGMA wal_checkpoint(PASSIVE);")
+    pcall(conn.close, conn)
 end
 
 function ReadingDashboard:doSync()
@@ -421,7 +440,7 @@ function ReadingDashboard:importOtherBooks()
             local db_path = self:statsDBPath()
             local store, err = History.openDB(db_path)
             if not store then return showMessage(err) end
-            History.backupOnce(db_path)
+            History.backupOnce(db_path, store)
             local okc, books, days = pcall(History.importOthers, store, others)
             store:close()
             if okc then
@@ -668,7 +687,9 @@ function ReadingDashboard:showFeelMenu()
             { text = _("Go to"), callback = send("ShowGotoDialog") },
         },
         {
-            { text = _("Font & layout"), callback = action(function() self.ui.config:onShowConfigMenu() end) },
+            -- ReaderUI only registers ReaderConfig for configurable documents (not images/CBZ)
+            { text = _("Font & layout"), enabled = self.ui.config ~= nil,
+              callback = action(function() if self.ui.config then self.ui.config:onShowConfigMenu() end end) },
             { text = _("Brightness"), enabled = Device:hasFrontlight(), callback = send("ShowFlDialog") },
         },
         {

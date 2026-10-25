@@ -161,10 +161,16 @@ function History.openDB(db_path)
     return setmetatable({ conn = conn, path = db_path }, DBStore)
 end
 
-function History.backupOnce(db_path)
+-- @param store optional open DBStore: the statistics DB is in WAL mode on most devices, so
+-- recent sessions live in statistics.sqlite3-wal until a checkpoint; copying the main file
+-- alone would back up a database missing them.
+function History.backupOnce(db_path, store)
     local lfs = require("libs/libkoreader-lfs")
     local bak = db_path .. ".readingdashboard.bak"
     if lfs.attributes(bak, "mode") ~= "file" then
+        if store and store.conn then
+            pcall(store.conn.exec, store.conn, "PRAGMA wal_checkpoint(TRUNCATE);")
+        end
         require("ffi/util").copyFile(db_path, bak)
         return bak
     end

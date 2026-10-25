@@ -120,11 +120,16 @@ export class BackupImportService {
       // highlights from Kobo, Kindle and KOReader, numbered after Moon+'s. A passage the book
       // already has is the same highlight come back (the KOReader plugin copies Moon+'s in).
       let nextId = highlights.reduce((m, h) => Math.max(m, h.id), 0);
-      const seen = new Set(highlights.map((h) => `${h.book_id}\0${normaliseText(h.text)}`));
+      // Bookmarks are left alone: Kobo and Kindle give every text-less one the text "Bookmark".
+      const keyOf = (h: { book_id: string; text: string; kind: string }) =>
+        h.kind === 'bookmark' || !h.text ? null : `${h.book_id}\0${normaliseText(h.text)}`;
+      const seen = new Set(highlights.map(keyOf).filter((k) => k !== null));
       for (const h of imported?.highlights ?? []) {
-        const key = `${h.book_id}\0${normaliseText(h.text)}`;
-        if (h.text && seen.has(key)) continue;
-        seen.add(key);
+        const key = keyOf(h);
+        if (key !== null) {
+          if (seen.has(key)) continue;
+          seen.add(key);
+        }
         highlights.push({
           id: ++nextId,
           book_id: h.book_id,

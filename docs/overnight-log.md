@@ -1,5 +1,27 @@
 # Overnight log
 
+## Run 4: EP-20, the KOReader plugin (25 Oct 2026)
+
+A KOReader plugin (`koreader/readingdashboard.koplugin`) and the dashboard endpoints it uses (`src/koreader-sync`, contract in `koreader/API.md`), for BOO-108 to BOO-113. One PR. An independent review against KOReader's source fixed seven bugs before it went up.
+
+### Things for you
+
+- **Try it on the device.** It was built against KOReader master and tested with stubs (55 Lua tests, luacheck clean), never inside KOReader. Download it from Admin → Imports → KOReader plugin once this is deployed, then try Sync now, opening a Moon+ book, and Apply Moon+ feel. KOReader's crash log is `crash.log` in its folder if anything goes wrong.
+- **lua-ljsqlite3 wasn't readable here** (a submodule of koreader-base); the plugin uses it exactly as the statistics plugin does.
+- **Red text on black** isn't possible on e-ink: Moon+ feel uses night mode. Font size isn't copied (Moon+'s units don't map to KOReader's).
+- **Collections by genre** stand in for Moon+ shelves, which the backup import doesn't read. Turn it off in the plugin's menu if you'd rather not.
+
+### Decisions
+
+- **One statistics database per device**, merged at import the way KOReader's own sync merges (book = title + authors + md5; entry = book + page + start time), so two devices add up and KOReader's WebDAV-merged files count nothing twice. Device names carry part of KOReader's install id so two Kobos of the same model don't overwrite each other.
+- **No marker on Moon+ history copied into KOReader**: imported days on dates a book already has are ignored by the merge, and `moonplus:` rows (books not on the device) are dropped from the import. Device files are remembered against the dashboard book they matched (`library/koreader/links.json`), so the merge finds them even when KOReader's metadata spells the title differently.
+- **Highlights** coming back from KOReader are deduped by normalised text per book (bookmarks excepted: Kobo and Kindle call them all "Bookmark").
+- **Bodies are read after the token check**: `/api/koreader/*` skips the app's 4 kB JSON parser, and its POSTs must be `application/json` so another site can't post with the admin's cookie.
+- **WebDAV** now sends ETags and honours `If-Match`, which KOReader's statistics sync relies on to avoid two devices overwriting each other's merge.
+- **Plugin download** adds `defaults.lua` with the dashboard's address (and the password with `?token=1`), so nothing is typed on the e-reader.
+
+---
+
 ## Run 3: EP-18 and EP-19 (24 Oct 2026)
 
 You asked for three things: a reading dashboard rather than a Moon+ one, a want-to-read list of your own (partly from Goodreads), and the books you haven't read by your authors, series and genres. They became two epics on the [BOO board](https://tasks.kiss.cat/BOO): **EP-18** (A reading dashboard, not a Moon+ one) and **EP-19** (Want to read & what to discover). Parallel agents built one PR per ticket; each was reviewed, checked on top of main and **merged once CI was green**, in this order: #112, #113, #114, #115, #116, #117, then this log (#118).

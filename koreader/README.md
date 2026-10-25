@@ -57,7 +57,8 @@ A sync:
 With **Sync automatically** on (the default):
 
 - when Wi-Fi connects (at most every 15 minutes);
-- when you close a book, or the device goes to sleep, **only if already online**. The plugin never
+- when you close a book, or the device goes to sleep (just before KOReader turns Wi-Fi off),
+  **only if already online**. The plugin never
   turns Wi-Fi on by itself for an automatic sync;
 - when you open a book while online, the plugin asks the dashboard about that book (see below).
 
