@@ -1,0 +1,35 @@
+name: koreader-plugin
+on:
+  push:
+    branches: [main]
+    paths:
+      - "koreader/**"
+      - ".github/workflows/koreader.yml"
+  pull_request:
+    paths:
+      - "koreader/**"
+      - ".github/workflows/koreader.yml"
+jobs:
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install LuaJIT and LuaRocks
+        run: sudo apt-get update && sudo apt-get install -y luajit luarocks zip
+      - name: Install luacheck
+        run: sudo luarocks install luacheck
+      - name: Lint
+        working-directory: koreader
+        run: luacheck readingdashboard.koplugin spec
+      - name: Syntax check
+        run: for f in koreader/readingdashboard.koplugin/*.lua koreader/spec/*.lua; do luajit -bl "$f" > /dev/null; done
+      - name: Unit tests
+        run: luajit koreader/spec/run.lua
+      - name: Package
+        working-directory: koreader
+        # The archive holds the folder itself, so it unzips straight into koreader/plugins/.
+        run: zip -r ../readingdashboard.koplugin.zip readingdashboard.koplugin -x "readingdashboard.koplugin/defaults.lua"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: readingdashboard.koplugin
+          path: readingdashboard.koplugin.zip
