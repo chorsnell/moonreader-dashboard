@@ -5,7 +5,10 @@ services:
       args:
         # shown in the page's footer: GIT_COMMIT=$(git rev-parse HEAD) docker compose build
         GIT_COMMIT: ${GIT_COMMIT:-}
-    image: moonreader-dashboard
+    # Builds locally by default. To run the published image instead, set in .env:
+    #   IMAGE=ghcr.io/chorsnell/moonreader-dashboard:latest
+    # then `docker compose pull && docker compose up -d`.
+    image: ${IMAGE:-moonreader-dashboard}
     container_name: moonreader-dashboard
     restart: unless-stopped
     ports:
