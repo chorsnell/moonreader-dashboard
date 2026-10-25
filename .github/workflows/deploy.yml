@@ -25,5 +25,5 @@ jobs:
       packages: write
     uses: chorsnell/workflows/.github/workflows/deploy.yml@main
     with:
-      app: moonreader-dashboard
+      app: reading-dashboard  # the app folder on docker-host
     secrets: inherit
