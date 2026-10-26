@@ -6,6 +6,7 @@ import { LibraryModule } from '../library/library.module';
 import { ImportsController } from '../imports/imports.controller';
 import { KoreaderSyncModule } from '../koreader-sync/koreader-sync.module';
 import { MetadataModule } from '../metadata/metadata.module';
+import { SearchLinksController } from '../search-links/search-links.controller';
 import { RebuildModule } from '../rebuild/rebuild.module';
 import { AdminController } from './admin.controller';
 import { CatalogueService } from './catalogue.service';
@@ -23,7 +24,7 @@ import { GenreSuggestionsService } from './genre-suggestions.service';
     BibliographyModule,
     KoreaderSyncModule,
   ],
-  controllers: [AdminController, ImportsController, DiscoveryController],
+  controllers: [AdminController, ImportsController, DiscoveryController, SearchLinksController],
   providers: [CatalogueService, GenreSuggestionsService],
 })
 export class AdminModule {}

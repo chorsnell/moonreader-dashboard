@@ -47,6 +47,11 @@ export interface WantFile {
   books: WantBook[];
   /** book_ids of pile rows to leave off the pile ("goodreads:123", a Moon+ file's slug). */
   hidden: string[];
+  /**
+   * The owner's "Up next" order: pile book_ids (any source) to read first, in this order.
+   * What to read next lists them before the ranked rest.
+   */
+  order: string[];
 }
 
 /** What the admin sent was wrong: a 400 with this message. */
@@ -54,11 +59,17 @@ export class WantError extends Error {}
 
 export const MAX_BOOKS = 5000;
 export const MAX_HIDDEN = 5000;
+export const MAX_ORDER = 200;
 const LIMITS = { title: 300, author: 200, series: 200, genre: 100, note: 2000 } as const;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const UNTAGGED = 'Untagged';
 
-export const emptyWant = (): WantFile => ({ schema_version: 1, books: [], hidden: [] });
+export const emptyWant = (): WantFile => ({
+  schema_version: 1,
+  books: [],
+  hidden: [],
+  order: [],
+});
 
 export const wantSlug = (title: string) =>
   title
@@ -204,11 +215,34 @@ export function toHiddenKey(raw: unknown): string {
   return key;
 }
 
+/** A pile row's key for `order` (any source, your own list's books too). */
+export function toOrderKey(raw: unknown): string {
+  const key = typeof raw === 'string' ? raw.trim() : '';
+  // eslint-disable-next-line no-control-regex
+  if (!key || key.length > 300 || /[\u0000-\u001f]/.test(key)) {
+    throw new WantError('Say which book to move.');
+  }
+  return key;
+}
+
+/**
+ * The order with `key` moved to position `to` (0 = first; past the end = last), or taken
+ * out when `to` is null.
+ */
+export function moveInOrder(order: string[], key: string, to: number | null): string[] {
+  const rest = order.filter((k) => k !== key);
+  if (to === null) return rest;
+  if (!Number.isInteger(to) || to < 0) throw new WantError('Say where to move it.');
+  if (rest.length >= MAX_ORDER) throw new WantError(`Up next holds ${MAX_ORDER} books at most.`);
+  const at = Math.min(to, rest.length);
+  return [...rest.slice(0, at), key, ...rest.slice(at)];
+}
+
 /** Reads the file leniently: anything malformed is dropped rather than failing the build. */
 export function normaliseWant(raw: unknown): WantFile {
   const file = emptyWant();
   if (!raw || typeof raw !== 'object') return file;
-  const r = raw as { books?: unknown; hidden?: unknown };
+  const r = raw as { books?: unknown; hidden?: unknown; order?: unknown };
   const ids = new Set<string>();
   for (const b of Array.isArray(r.books) ? r.books : []) {
     if (!b || typeof b !== 'object') continue;
@@ -239,5 +273,8 @@ export function normaliseWant(raw: unknown): WantFile {
   file.hidden = [
     ...new Set((Array.isArray(r.hidden) ? r.hidden : []).filter((k) => typeof k === 'string')),
   ];
+  file.order = [
+    ...new Set((Array.isArray(r.order) ? r.order : []).filter((k) => typeof k === 'string')),
+  ].slice(0, MAX_ORDER);
   return file;
 }

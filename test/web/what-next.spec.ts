@@ -166,4 +166,25 @@ describe('what to read next', () => {
   it('is empty with nothing on the pile', () => {
     expect(run('next_reads', { ...data, to_read: [], books: [] })).toEqual([]);
   });
+
+  it('puts your Up next books first, in your order, still scored', () => {
+    const ordered = pile.map((p) =>
+      p.book_id === 'goodreads:4'
+        ? { ...p, up_next: 1 }
+        : p.book_id === 'goodreads:3'
+          ? { ...p, up_next: 2 }
+          : p,
+    );
+    const mine = run<Pick & { up_next: number | null }>('next_reads', {
+      ...data,
+      to_read: ordered,
+    });
+    expect(mine.map((x) => x.title)).toEqual([
+      'Bleak House',
+      'Carmilla',
+      ...rows.map((x) => x.title).filter((t) => t !== 'Bleak House' && t !== 'Carmilla'),
+    ]);
+    expect(mine.map((x) => x.up_next)).toEqual([1, 2, null, null]);
+    expect(mine[0].score).toBe(r['Bleak House'].score);
+  });
 });

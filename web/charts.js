@@ -1101,6 +1101,9 @@
       a.title = b.goodreads_id ? 'Open this book on Goodreads' : 'Find this book on Goodreads';
       info.append(a);
     }
+    // the admin's search links (web/features/search-links.js)
+    const search = rh.searchLinks && rh.searchLinks(b);
+    if (search) info.append(search);
     head.replaceChildren(cover(b.id, b.title, b.genre, 'lg'), info);
 
     // headline figures

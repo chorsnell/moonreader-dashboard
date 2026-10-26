@@ -1,4 +1,6 @@
 // What should I read next? (BOO-79): the to-read pile (to-read.js) ranked by your own patterns,
+// after the books you've put in your own order ("Up next", saved in want_to_read.json and
+// marked up_next on the pile), which the admin drags, or moves with the arrow buttons,
 // each pick with the reasons it scored. The scoring is one pure calc, next_reads, so the
 // server works it out too; friends' opinions are page-only data, so on the server they're
 // an empty input (next_friend_votes) and the page works the ranking out again with them.
@@ -31,7 +33,7 @@
   dash.calc('next_reads', {
     inputs: ['to_read_pile', 'books', 'reads', 'as_of', 'next_friend_votes'],
     title: 'What to read next',
-    description: 'The to-read pile ranked 0–100 from your own patterns: series pull (30), genre fit (20: how much, how fast and how often you finish it), friends’ opinions weighted by taste match (20), a palate cleanser after a long read (15), seasonal habits (10) and how long it has waited (5); with the reasons each book scored.',
+    description: 'Your Up next books first, in your order; then the rest of the to-read pile ranked 0–100 from your own patterns: series pull (30), genre fit (20: how much, how fast and how often you finish it), friends’ opinions weighted by taste match (20), a palate cleanser after a long read (15), seasonal habits (10) and how long it has waited (5); with the reasons each book scored.',
     fn: (pile, books, reads, asOf, votes) => {
       if (!pile.length) return [];
       const end = (asOf[0] && asOf[0].date) || new Date().toISOString().slice(0, 10), now = t(end);
@@ -164,10 +166,10 @@
         const score = Math.round(Object.entries(WEIGHTS).reduce((s, [k, w]) => s + w * (parts[k] || 0), 0));
         return {
           book_id: p.book_id, title: p.title, author: p.author, series: p.series, series_no: p.series_no, genre: p.genre, subgenre: p.subgenre,
-          in_library: p.in_library, words: p.words, added: p.added, sources: p.sources,
+          in_library: p.in_library, words: p.words, added: p.added, sources: p.sources, up_next: p.up_next ?? null, isbn13: p.isbn13 || null, want_id: p.want_id || null,
           score: Math.max(0, score), parts, reasons: why.filter((r) => r.points >= 2 || r.points < 0).sort((a, b) => b.points - a.points),
         };
-      }).sort((a, b) => b.score - a.score || (a.added || '9999').localeCompare(b.added || '9999') || a.title.localeCompare(b.title));
+      }).sort((a, b) => (a.up_next ?? Infinity) - (b.up_next ?? Infinity) || b.score - a.score || (a.added || '9999').localeCompare(b.added || '9999') || a.title.localeCompare(b.title));
     },
   });
 
@@ -200,9 +202,10 @@
   // ---------- the card ----------
   const LABEL = { series: 'Series', genre: 'Genre', friends: 'Friends', cleanser: 'Cleanser', season: 'Season', waiting: 'Waiting' };
   const SHOW = 6;
+  let showAll = false;
   rh.card({
     tab: 'toread', id: 'what-next', title: 'What to read next', calc: 'next_reads', after: 'card-toread-kpis', copesWithout: 'prices',
-    note: 'Your pile ranked by your own habits, out of 100: series pull (30), how much, how fast and how reliably you read the genre (20), friends who loved it, weighted by taste match (20), something short and different after a long read (15), what you read at this time of year (10) and how long it has waited (5).',
+    note: 'Up next first: the books you’ve put in your own order (signed in, drag them or use the arrows). Then the rest of your pile ranked by your own habits, out of 100: series pull (30), how much, how fast and how reliably you read the genre (20), friends who loved it, weighted by taste match (20), something short and different after a long read (15), what you read at this time of year (10) and how long it has waited (5).',
     draw(box, rows) {
       if (!rows.length) { box.replaceChildren(el('div', 'dy-empty', 'Nothing on your pile to choose from yet.')); return; }
       // with friends, the same ranking again with their opinions in it
@@ -212,26 +215,113 @@
         const mine = (k) => dash.data(k).data || [];
         try { rows = dash.calcWith('next_reads', { to_read_pile: pile, books: mine('books'), reads: mine('reads'), as_of: mine('as_of'), next_friend_votes: votes }); } catch (e) { console.error('next_reads', e); }
       }
-      const ol = el('ol', 'wn-list');
-      rows.slice(0, SHOW).forEach((r, i) => {
-        const li = el('li', 'wn-item'), head = el('div', 'wn-head'), ttl = el('div', 'ttl');
+      // signed in, the live order (moves show at once); otherwise the order in the data
+      const want = rh.wantToRead, order = want && want.order ? want.order() : null;
+      const placeOf = (r) => (order ? want.inOrder(r, order) : r.up_next != null ? r.up_next - 1 : null);
+      const next = rows.filter((r) => placeOf(r) != null).sort((x, y) => placeOf(x) - placeOf(y));
+      const ranked = rows.filter((r) => placeOf(r) == null);
+      const canMove = !!order;
+      const shownRanked = showAll ? ranked : ranked.slice(0, Math.max(0, SHOW - next.length));
+
+      // dragging (mouse) and arrow buttons (keyboard and touch) both end in want.move
+      let dragged = null;
+      const dropAt = (target, to) => {
+        target.addEventListener('dragover', (e) => { if (dragged) { e.preventDefault(); target.classList.add('wn-drop'); } });
+        target.addEventListener('dragleave', () => target.classList.remove('wn-drop'));
+        target.addEventListener('drop', (e) => {
+          e.preventDefault(); target.classList.remove('wn-drop');
+          const r = dragged; dragged = null;
+          if (r) want.move(r, to);
+        });
+      };
+      const btn = (text, label, onClick, disabled) => {
+        const b = el('button', 'wn-btn', text);
+        b.type = 'button'; b.title = label; b.setAttribute('aria-label', label); b.disabled = !!disabled;
+        b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
+        return b;
+      };
+
+      const item = (r, rank, place) => {
+        const li = el('li', 'wn-item' + (place != null ? ' wn-pinned' : '')), head = el('div', 'wn-head'), ttl = el('div', 'ttl');
         if (r.in_library) rh.linkBook(li, r.book_id);
         ttl.append(el('b', 'wn-title', r.title), rh.byline('small', null, r, ['author', 'series']));
-        const sc = el('div', 'wn-score'), bar = el('div', 'wn-bar'), fill = el('i');
-        fill.style.width = r.score + '%'; bar.append(fill);
-        sc.append(el('span', 'wn-n', fmt(r.score)), bar);
-        head.append(el('span', 'wn-rank', String(i + 1)), rh.cover(r.in_library ? r.book_id : null, r.title, r.genre), ttl, sc);
-        const why = el('ul', 'wn-why');
-        (r.reasons.length ? r.reasons.slice(0, 3) : [{ kind: 'waiting', text: 'nothing stands out: a wildcard' }]).forEach((x) => {
-          const w = el('li', x.points < 0 ? 'neg' : null);
-          w.append(el('span', 'wn-kind', LABEL[x.kind]), ' ', x.text);
-          why.append(w);
-        });
-        li.append(head, why);
-        ol.append(li);
-      });
-      box.replaceChildren(ol);
-      if (rows.length > SHOW) box.append(el('p', 'note wn-more', `${plural(rows.length - SHOW, 'more book')} further down; the full list is below.`));
+        const sc = el('div', 'wn-score');
+        if (place != null) sc.append(el('span', 'wn-mine', 'Up next'));
+        else {
+          const bar = el('div', 'wn-bar'), fill = el('i');
+          fill.style.width = r.score + '%'; bar.append(fill);
+          sc.append(el('span', 'wn-n', fmt(r.score)), bar);
+        }
+        head.append(el('span', 'wn-rank', String(rank)), rh.cover(r.in_library ? r.book_id : null, r.title, r.genre), ttl, sc);
+        li.append(head);
+        if (place == null || r.reasons.length) {
+          const why = el('ul', 'wn-why');
+          (r.reasons.length ? r.reasons.slice(0, place != null ? 2 : 3) : [{ kind: 'waiting', text: 'nothing stands out: a wildcard' }]).forEach((x) => {
+            const w = el('li', x.points < 0 ? 'neg' : null);
+            w.append(el('span', 'wn-kind', LABEL[x.kind]), ' ', x.text);
+            why.append(w);
+          });
+          li.append(why);
+        }
+        const foot = el('div', 'wn-foot');
+        if (canMove) {
+          const acts = el('span', 'wn-acts');
+          if (place != null) {
+            acts.append(
+              btn('↑', `Move ${r.title} up`, () => want.move(r, place - 1), place === 0),
+              btn('↓', `Move ${r.title} down`, () => want.move(r, place + 1), place === next.length - 1),
+              btn('✕', `Take ${r.title} out of Up next`, () => want.move(r, null)));
+          } else {
+            acts.append(btn('↑ Up next', `Put ${r.title} at the end of Up next`, () => want.move(r, next.length)));
+          }
+          foot.append(acts);
+          li.draggable = true;
+          li.classList.add('wn-drag');
+          li.addEventListener('dragstart', (e) => { dragged = r; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', r.title); } catch (err) { /* old browsers */ } li.classList.add('wn-dragging'); });
+          li.addEventListener('dragend', () => { dragged = null; li.classList.remove('wn-dragging'); });
+          // dropping on a book in Up next puts the dragged one in its place; on a ranked one, takes it out
+          // (moving down, it lands just after that book; moving up, just before it)
+          dropAt(li, place);
+        }
+        const links = rh.searchLinks && rh.searchLinks(r, 'small');
+        if (links) foot.append(links);
+        if (foot.childNodes.length) li.append(foot);
+        return li;
+      };
+
+      const parts = [];
+      if (next.length || canMove) {
+        const head = el('div', 'wn-section');
+        head.append(el('b', null, 'Up next'), el('span', 'note', next.length ? ' your order' : (canMove ? ' drag a book here, or press ↑ Up next, to read it before the ranking' : '')));
+        if (canMove && next.length) head.append(btn('Clear', 'Clear your Up next order', () => { if (window.confirm('Clear your Up next order? The books stay on your pile.')) want.resetOrder(); }));
+        if (canMove) dropAt(head, next.length);
+        parts.push(head);
+        if (next.length) {
+          const ol = el('ol', 'wn-list');
+          next.forEach((r, i) => ol.append(item(r, i + 1, i)));
+          parts.push(ol);
+        }
+      }
+      if (shownRanked.length) {
+        if (next.length || canMove) {
+          const h2 = el('div', 'wn-section');
+          h2.append(el('b', null, 'Ranked for you'), el('span', 'note', ' by your habits, out of 100'));
+          if (canMove) dropAt(h2, null);
+          parts.push(h2);
+        }
+        const ol = el('ol', 'wn-list');
+        ol.start = next.length + 1;
+        shownRanked.forEach((r, i) => ol.append(item(r, next.length + i + 1, null)));
+        parts.push(ol);
+      }
+      box.replaceChildren(...parts);
+      const hiddenCount = ranked.length - shownRanked.length;
+      if (hiddenCount > 0 || showAll) {
+        const more = el('button', 'up-link wn-more', showAll ? 'Show fewer' : `Show ${plural(hiddenCount, 'more book')}`);
+        more.type = 'button';
+        more.addEventListener('click', () => { showAll = !showAll; rh.redraw(); });
+        box.append(more);
+      }
     },
   });
 })();

@@ -419,3 +419,11 @@ request and response bodies, is in [koreader/API.md](../koreader/API.md).
 
 A `statistics.sqlite3` written anywhere under `/dav/` (KOReader's own statistics sync) is
 imported the same way. WebDAV `GET` sends an `ETag` and `PUT` honours `If-Match`.
+
+## Up next and search links (admin)
+
+| Method and path | What it does |
+|---|---|
+| `POST /api/admin/want/order` | `{ "key": "<pile book_id>", "to": 0 }` moves a pile book to that place in Up next (past the end: last); `"to": null` takes it out; `{ "reset": true }` clears it. Returns `{ order }`. The rebuild marks the books `up_next` (1 = first) in `data/to_read.json`, and `next_reads` lists them first. |
+| `GET` / `PUT /api/admin/search-links` | `{ "links": [{ "name", "url", "visitors" }] }`: up to 12, each an http(s) address with `{query}`, `{title}`, `{author}` or `{isbn}`. `/api/config` sends each viewer theirs as `search_links` (visitors only get those with `visitors: true`). |
+

@@ -18,6 +18,7 @@ interface PileRow {
   sources: string[];
   note?: string;
   want_id?: string;
+  up_next?: number;
 }
 
 const GOODREADS = [
@@ -91,6 +92,7 @@ describe('the want-to-read list', () => {
       schema_version: 1,
       books: [],
       hidden: [],
+      order: [],
     });
 
     await a.post('/api/admin/want', { title: '' }).expect(400);
@@ -155,6 +157,54 @@ describe('the want-to-read list', () => {
     const file = await d.json<{ books: { id: string }[] }>('want_to_read.json');
     expect(file.books.map((b) => b.id)).toEqual(['mine:lorna-doone']);
     expect(await fileExists(d.path('want_to_read.json.part'))()).toBe(false);
+  });
+
+  it('keeps an Up next order of any pile books, which the rebuild marks', async () => {
+    dash = await withData();
+    const d = dash;
+    const api = admin(d);
+    await request(d.server).post('/api/admin/want/order').send({ key: 'x', to: 0 }).expect(403);
+    await request(d.server)
+      .put('/api/admin/imports?name=goodreads.csv')
+      .set('X-Upload-Token', TOKEN)
+      .type('application/octet-stream')
+      .send(Buffer.from(GOODREADS))
+      .expect(200);
+    const kim = (
+      await api.post('/api/admin/want', { title: 'Kim', author: 'Rudyard Kipling' }).expect(200)
+    ).body.book;
+    expect(
+      await pileWhen(d, (rows) =>
+        ['Kim', 'Wishlist', 'Second Wish'].every((t) => rows.some((x) => x.title === t)),
+      ),
+    ).toBe(true);
+
+    let r = await api.post('/api/admin/want/order', { key: 'goodreads:14', to: 0 }).expect(200);
+    r = await api.post('/api/admin/want/order', { key: kim.id, to: 0 }).expect(200);
+    expect(r.body.order).toEqual([kim.id, 'goodreads:14']);
+    // past the end goes last; a bad place or key is refused
+    r = await api.post('/api/admin/want/order', { key: 'goodreads:13', to: 99 }).expect(200);
+    expect(r.body.order).toEqual([kim.id, 'goodreads:14', 'goodreads:13']);
+    await api.post('/api/admin/want/order', { key: 'goodreads:13', to: -1 }).expect(400);
+    await api.post('/api/admin/want/order', { key: '', to: 0 }).expect(400);
+    r = await api.post('/api/admin/want/order', { key: 'goodreads:13', to: null }).expect(200);
+    expect(r.body.order).toEqual([kim.id, 'goodreads:14']);
+    expect((await api.get('/api/admin/want').expect(200)).body.order).toEqual([
+      kim.id,
+      'goodreads:14',
+    ]);
+
+    const placed = (rows: PileRow[]) =>
+      Object.fromEntries(rows.filter((x) => x.up_next).map((x) => [x.title, x.up_next]));
+    expect(
+      await pileWhen(
+        d,
+        (rows) => JSON.stringify(placed(rows)) === JSON.stringify({ 'Second Wish': 2, Kim: 1 }),
+      ),
+    ).toBe(true);
+
+    await api.post('/api/admin/want/order', { reset: true }).expect(200);
+    expect(await pileWhen(d, (rows) => rows.every((x) => !x.up_next))).toBe(true);
   });
 
   it('keeps and hides books from a to-read shelf', async () => {
