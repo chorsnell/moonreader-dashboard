@@ -168,9 +168,18 @@ The same **Imports** section takes e-reader data; files are recognised by their 
 - **Kobo:** `.kobo/KoboReader.sqlite` from the device (over USB): progress, time spent, start, last-read and finish dates, highlights and notes.
 - **Kindle highlights:** `documents/My Clippings.txt`: highlights, notes and bookmarks with their dates.
 - **Kindle reading sessions:** `Kindle.Devices.ReadingSession.csv` from Amazon's "Request your data" export: minutes per day for each book. It names books only by ASIN, so upload any CSV with `ASIN` and `Title` columns (your digital orders) or name them in **Catalogue** (`kindle:<ASIN>`).
-- **KOReader:** `koreader/settings/statistics.sqlite3` from the device: minutes and progress for every day read, from its page statistics, and reads split where a book was left for a year. A single page entry over four hours (the device left on) is ignored.
+- **KOReader:** `koreader/settings/statistics.sqlite3` from the device (or [the plugin](#the-koreader-plugin), which syncs it): minutes and progress for every day read, from its page statistics, and reads split where a book was left for a year. A single page entry over four hours (the device left on) is ignored.
 
 For a day Moon+ already has, Moon+'s figures stand; imports fill in the other days. With no Moon+ backup at all, the dashboard is built from the imports alone.
+
+### The KOReader plugin
+
+For KOReader (on a Kobo, a jailbroken Kindle, Android…), a plugin keeps the dashboard up to date without a USB cable, and can bring your Moon+ reading into KOReader. Download it from **Admin → Imports → KOReader plugin** (it comes with this dashboard's address filled in, and optionally the admin password), unzip it into the device's `koreader/plugins/` folder and restart KOReader. It's under **Tools → Reading dashboard**. More in [koreader/README.md](koreader/README.md); the API it uses is [koreader/API.md](koreader/API.md).
+
+- **Sync:** whenever the device connects to Wi-Fi (at most every 15 minutes), on closing a book or going to sleep when it's already online, or from **Sync now** (which can be bound to a gesture). It sends the reading statistics and, from each book's sidecar, progress, finished or abandoned status and highlights. Each device's statistics are kept apart and merged, so two devices add up and a book read on both isn't counted twice.
+- **Moon+ into KOReader:** opening a book brings in what the dashboard knows about it: where you'd got to, whether you finished it, its Moon+ days (so KOReader's own statistics and calendar include them) and its highlights, placed by finding their text in the book. Menu actions do the same for every book on the device, and add the history of Moon+ books that aren't on it. Nothing goes round twice: days and highlights the dashboard already has are ignored when they come back.
+- **Moon+ feel:** one tap makes KOReader behave like Moon+ (tap the top half for the previous page and the bottom half for the next, tap the middle for one combined menu, status-bar taps for book information and bookmarks, small margins, no page animation, night mode), and another puts your previous settings back.
+- KOReader's own **Reading statistics → Synchronize** also works without the plugin: point it at a WebDAV folder under this dashboard's `/dav/` address (any username, `UPLOAD_TOKEN` as the password).
 
 ### Netflix
 
@@ -559,6 +568,7 @@ The demo build and the screenshot script read `DEMO_TODAY` (the demo's "today", 
 - `/api/admin/life-events` (admin only): holidays and life events; see [docs/api.md](docs/api.md#life-events-admin).
 - `/api/admin/weather` (admin only): the home location for the weather; see [docs/api.md](docs/api.md#weather-admin).
 - `/api/admin/catalogue/suggestions` (admin only): suggested genres to accept or reject; see [docs/api.md](docs/api.md#genre-suggestions-admin).
+- `/api/koreader/…` (admin only): the KOReader plugin's sync; see [docs/api.md](docs/api.md#koreader-plugin-admin) and [koreader/API.md](koreader/API.md).
 - `/data/friends.json`, `/api/clubs` and the federation endpoints (`/api/federation/…`) that followed dashboards use: see [docs/friends.md](docs/friends.md).
 
 ## How the numbers are worked out
@@ -621,6 +631,7 @@ src/review/          the daily highlight review and its morning send
 src/arr/             requests to the admin's own *arr book manager
 src/rebuild/         watches for new backups, edits and syncs, and rebuilds
 src/upload/, src/admin/, src/dav/, src/status/   uploads, the admin API, WebDAV, /healthz and /api/config
+src/koreader-sync/   the KOReader plugin's sync (koreader/ holds the plugin itself)
 src/stats/           runs the page's calcs on the server per viewer, in a worker thread; /api/stats
 src/web/             serves the page, its data, feature scripts and covers
 src/share/           link previews: the Open Graph tags and the cover collage

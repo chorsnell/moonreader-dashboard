@@ -13,6 +13,7 @@ import { CoverStore } from '../covers/cover-store.service';
 import { ImportsStore } from '../imports/imports.store';
 import { mergeImports, type MergeResult } from '../imports/merge';
 import { buildToRead, type ToReadRow } from '../imports/to-read';
+import { normaliseText } from '../koreader-sync/koreader-books';
 import { LibraryService } from '../library/library.service';
 import { bookFacts } from '../metadata/merge';
 import { MetadataStore } from '../metadata/metadata-store.service';
@@ -116,9 +117,19 @@ export class BackupImportService {
       );
 
       const { highlights } = buildHighlights(result.books, notes);
-      // highlights from Kobo and Kindle, numbered after Moon+'s
+      // highlights from Kobo, Kindle and KOReader, numbered after Moon+'s. A passage the book
+      // already has is the same highlight come back (the KOReader plugin copies Moon+'s in).
       let nextId = highlights.reduce((m, h) => Math.max(m, h.id), 0);
+      // Bookmarks are left alone: Kobo and Kindle give every text-less one the text "Bookmark".
+      const keyOf = (h: { book_id: string; text: string; kind: string }) =>
+        h.kind === 'bookmark' || !h.text ? null : `${h.book_id}\0${normaliseText(h.text)}`;
+      const seen = new Set(highlights.map(keyOf).filter((k) => k !== null));
       for (const h of imported?.highlights ?? []) {
+        const key = keyOf(h);
+        if (key !== null) {
+          if (seen.has(key)) continue;
+          seen.add(key);
+        }
         highlights.push({
           id: ++nextId,
           book_id: h.book_id,

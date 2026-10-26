@@ -404,3 +404,18 @@ lookup). Rejected ones are kept in `library/genre-suggestions.json`, by book id,
 | `GET /api/admin/catalogue/suggestions` | `{lookup, untagged, untagged_without, review}`. `untagged` and `review` are `[{id, title, author, series, genre, subgenre, suggestion, from_subjects, subjects}]`: `genre`/`subgenre` are the book's now; `suggestion` is `{genre, subgenre, basis: "series" \| "author" \| "subjects", confidence: "high" \| "medium" \| "low", subjects, like}` (`subjects`: the ones that led to it; `like`: up to three tagged books it follows); `from_subjects` is what the subjects alone say when that differs; `subjects` is every subject the book has (`null` before the lookup). `untagged_without` counts untagged books with no suggestion. `review` holds tagged books whose subjects point, with medium or high confidence, at another genre |
 | `POST /api/admin/catalogue/suggestions/accept` | `{items: [{id, genre, subgenre}]}` (up to 1000; the genre and subgenre may be changed from the suggestion): saves them to the books' `catalogue.json` entries in one write and rebuilds. `{ok, saved}`; `400` if none of the books exist |
 | `POST /api/admin/catalogue/suggestions/reject` | `{items: [{id, genre, subgenre}]}`: remembers them as turned down. For `review` rows this is "keep mine" |
+
+## KOReader plugin (admin)
+
+The KOReader plugin's endpoints, all admin only (`X-Upload-Token`). The full contract, with
+request and response bodies, is in [koreader/API.md](../koreader/API.md).
+
+| Method and path | What it does |
+|---|---|
+| `PUT /api/koreader/stats?device=<name>` | A device's `statistics.sqlite3` as the body. Kept per device and merged with the others. |
+| `POST /api/koreader/books` | Progress, status and highlights from the device's book sidecars (JSON), upserted by md5. |
+| `POST /api/koreader/match` | What the dashboard knows about the device's books (JSON), minus what came from KOReader. |
+| `GET /api/koreader/plugin.zip` | The plugin, with this dashboard's address in `defaults.lua` (and the admin password with `?token=1`). |
+
+A `statistics.sqlite3` written anywhere under `/dav/` (KOReader's own statistics sync) is
+imported the same way. WebDAV `GET` sends an `ETag` and `PUT` honours `If-Match`.

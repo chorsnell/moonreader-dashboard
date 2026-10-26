@@ -12,6 +12,7 @@ import { FederationModule } from './federation/federation.module';
 import { FeedsModule } from './feeds/feeds.module';
 import { FriendsModule } from './friends/friends.module';
 import { HighlightsModule } from './highlights/highlights.module';
+import { KoreaderSyncModule } from './koreader-sync/koreader-sync.module';
 import { LifeEventsModule } from './life-events/life-events.module';
 import { MediaModule } from './media/media.module';
 import { NotifyModule } from './notify/notify.module';
@@ -52,6 +53,7 @@ import { WebModule } from './web/web.module';
     FeedsModule,
     HighlightsModule,
     WantToReadModule,
+    KoreaderSyncModule,
     // last: its catch-all route for the page's files must come after every other route
     WebModule,
   ],

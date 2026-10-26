@@ -19,6 +19,7 @@ import type { Request, Response } from 'express';
 import { AdminOnly } from '../access/admin.guard';
 import { RequestBodyError, saveRequestBody } from '../common/http/request-body';
 import { localDateTime } from '../common/time';
+import { KoreaderSyncService } from '../koreader-sync/koreader-sync.service';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LibraryService } from '../library/library.service';
 import { RebuildService } from '../rebuild/rebuild.service';
@@ -60,6 +61,7 @@ export class ImportsController {
     private readonly library: LibraryService,
     private readonly rebuild: RebuildService,
     private readonly activity: ActivityLogService,
+    private readonly koreader: KoreaderSyncService,
   ) {}
 
   @Get()
@@ -140,6 +142,20 @@ export class ImportsController {
       }
       const { source, books } = found;
       if (!books.length) throw refuse('That file has no books in it.');
+      if (source === 'koreader') {
+        // kept with what the KOReader plugin syncs, so the two add up instead of replacing
+        // each other (src/koreader-sync)
+        const counts = await this.koreader.saveStats(path, 'admin', { file });
+        return {
+          ok: true,
+          source,
+          books: counts.books,
+          rated: 0,
+          days: counts.days,
+          highlights: counts.highlights,
+          rebuilding: counts.books > 0,
+        };
+      }
       await this.store.save({
         schema_version: 1,
         source,
@@ -192,6 +208,8 @@ export class ImportsController {
     }
     const s = source as ImportSource;
     if (!(await this.store.remove(s))) throw new NotFoundException({ error: 'No such import.' });
+    // or the next sync would bring it all back
+    if (s === 'koreader') await this.koreader.forget();
     this.activity.record({
       type: 'import',
       message: `Removed the ${SOURCE_NAMES[s]} import`,
