@@ -16,3 +16,18 @@
 .wn-why li.neg{opacity:.8}
 .wn-kind{display:inline-block;min-width:4.6em;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--color-fg)}
 .wn-more{margin-top:var(--cds-gap-sm)}
+/* Up next: your own order before the ranking */
+.wn-section{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin:var(--cds-gap-sm) 0 6px;padding:4px 6px;border-radius:6px}
+.wn-section:first-child{margin-top:0}
+.wn-section .note{flex:1;min-width:10rem}
+.wn-pinned{box-shadow:inset 3px 0 0 var(--series-1)}
+.wn-mine{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--series-1);font-weight:600;white-space:nowrap}
+.wn-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--cds-gap-sm);flex-wrap:wrap}
+.wn-acts{display:inline-flex;gap:4px}
+.wn-btn{font:inherit;font-size:var(--cds-font-size-caption);min-width:2rem;min-height:2rem;padding:2px 8px;border:1px solid var(--color-border-line);border-radius:6px;background:var(--color-panel);color:var(--color-fg);cursor:pointer}
+.wn-btn:hover:not(:disabled){border-color:var(--color-fg-muted)}
+.wn-btn:disabled{opacity:.35;cursor:default}
+.wn-btn:focus-visible{outline:2px solid var(--series-1);outline-offset:1px}
+.wn-drag{cursor:grab}
+.wn-dragging{opacity:.5}
+.wn-drop{outline:2px dashed var(--series-1);outline-offset:2px}

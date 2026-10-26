@@ -34,6 +34,8 @@ export interface ToReadRow {
   note?: string;
   work_id?: string | null;
   published_year?: number | null;
+  /** Its place in the owner's "Up next" order (1 = first), when it has one. */
+  up_next?: number;
 }
 
 const slug = (title: string) =>
@@ -149,6 +151,14 @@ export function buildToRead(
       work_id: w.work_id,
       published_year: w.published_year,
     });
+  }
+  // the owner's Up next order: a row takes the best place of any id merged into it
+  const place = new Map((want?.order ?? []).map((k, i) => [k, i + 1]));
+  for (const r of out) {
+    const places = [...merged.get(r)!, r.want_id ?? '']
+      .map((id) => place.get(id))
+      .filter((n): n is number => n !== undefined);
+    if (places.length) r.up_next = Math.min(...places);
   }
   return out
     .filter((r) => r.want_id || !merged.get(r)!.some((id) => hidden.has(id)))
