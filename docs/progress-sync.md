@@ -53,3 +53,16 @@ turn one into the other. Moon+'s chapter is taken to be the EPUB's spine item (D
 of the same number, counted from 0; Moon+ sometimes splits a chapter at table-of-contents
 entries, in which case it runs ahead. KOReader shows the percentage on its prompt, so a jump
 that looks wrong can be refused.
+
+## KOReader into Moon+ Reader
+
+Each position a KOReader device sends is also written into the book's `.po` file in the
+WebDAV folder, so Moon+ opens the book there the next time it syncs. When Moon+ hasn't synced
+the book yet, a new `.po` file is started next to Moon+'s others, named after the file the
+KOReader plugin reported (so Moon+ finds it only when its copy has the same file name).
+Nothing is written for PDFs and other paged documents, or before Moon+ has synced any book.
+
+Without the plugin's page layout, the position written is the start of KOReader's chapter
+with KOReader's percentage. The positions the dashboard writes are remembered in
+`library/progress-sync/moonplus-written.json`, so they aren't taken for Moon+'s own when a
+KOReader device asks next.
