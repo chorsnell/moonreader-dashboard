@@ -31,6 +31,7 @@ local T = require("ffi/util").template
 local Client = require("client")
 local Feel = require("feel")
 local History = require("history")
+local Layout = require("layout")
 local MoonPlus = require("moonplus")
 local Sidecars = require("sidecars")
 
@@ -171,6 +172,7 @@ function ReadingDashboard:onReaderReady()
         UIManager:scheduleIn(2, function()
             if self.ui and self.ui.document then
                 self:matchCurrentBook(false)
+                self:sendLayout()
             end
         end)
     end
@@ -391,6 +393,33 @@ function ReadingDashboard:matchCurrentBook(interactive)
         if state.applied_basics then state.history_pending = true end
     end
     MoonPlus.applyToOpenBook(self, match, interactive)
+end
+
+-- Reading position sync: the open book's page layout ------------------------
+
+--- Sends where each page of the open book starts (layout.lua), so the dashboard can turn
+-- Moon+ positions into KOReader pages and back exactly. Only when the pages have changed
+-- since it was last sent (a new book, or another font size).
+function ReadingDashboard:sendLayout()
+    local ui = self.ui
+    local doc = ui and ui.document
+    if not doc or (doc.info and doc.info.has_pages) then return end
+    local md5 = ui.doc_settings:readSetting("partial_md5_checksum") or util.partialMD5(doc.file)
+    local signature = Layout.signature(doc)
+    if not md5 or not signature then return end
+    local sent = self.settings.layouts or {}
+    if sent[md5] == signature then return end
+    local pages = Layout.build(doc)
+    if not pages then return end
+    local _, file = util.splitFilePathName(doc.file)
+    local ok, res = self:getClient():postJSON("/api/koreader/layout", { md5 = md5, file = file, pages = pages })
+    if not ok then
+        logger.warn("ReadingDashboard: layout not sent:", res)
+        return
+    end
+    sent[md5] = signature
+    self.settings.layouts = sent
+    self:saveSettings()
 end
 
 -- Moon+ → KOReader: books not on the device ---------------------------------

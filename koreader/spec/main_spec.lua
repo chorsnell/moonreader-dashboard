@@ -69,6 +69,7 @@ local stubs = {
             return c
         end,
         tableSize = function(t) local n = 0 for _ in pairs(t) do n = n + 1 end return n end,
+        splitFilePathName = function(path) return path:match("^(.*/)([^/]*)$") end,
     },
     ["ffi/util"] = {
         template = function(s, ...)
@@ -234,6 +235,36 @@ describe("main", function()
         local p = newPlugin(tmpdir .. "/none", ui)
         assert_nil(p:onNetworkDisconnecting())
         assert_nil(p:onSuspend())
+    end)
+
+    it("sends the open book's layout once per page count", function()
+        local ui = newReaderUI()
+        ui.doc_settings = fakeSettings({ partial_md5_checksum = "0123456789abcdef0123456789abcdef" })
+        local pages = 2
+        ui.document.info = { has_pages = false }
+        function ui.document:getPageCount() return pages end
+        function ui.document:getPageXPointer(page) return "/body/DocFragment[1]/body/p[" .. page .. "]" end
+        function ui.document:getTextFromXPointers() return "abc" end
+        local p = newPlugin(tmpdir .. "/none", ui)
+        local posted = {}
+        p.getClient = function()
+            return { postJSON = function(_, path, body) table.insert(posted, { path, body }) return true, {} end }
+        end
+        p:sendLayout()
+        p:sendLayout()
+        assert_eq(#posted, 1)
+        assert_eq(posted[1][1], "/api/koreader/layout")
+        assert_eq(posted[1][2].file, "x.epub")
+        assert_eq(#posted[1][2].pages, 2)
+        assert_eq(posted[1][2].pages[2].offset, 6)
+        pages = 3 -- another font size
+        p:sendLayout()
+        assert_eq(#posted, 2)
+        -- PDFs aren't measured
+        ui.document.info.has_pages = true
+        pages = 4
+        p:sendLayout()
+        assert_eq(#posted, 2)
     end)
 
     it("asks for configuration before a manual sync", function()

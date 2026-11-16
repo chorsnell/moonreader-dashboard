@@ -4,6 +4,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { findFiles, mtimeMs } from '../common/files';
 import { KoreaderSyncService } from '../koreader-sync/koreader-sync.service';
 import { LibraryService } from '../library/library.service';
+import { type Layout, moonToXpointer, xpointerOffset } from './layout';
+import { LayoutStore } from './layout-store';
 import { type DocumentHint, isReflowable, type PoFile, poForDocument } from './moonplus-files';
 import {
   chapterOfFragment,
@@ -59,12 +61,19 @@ export function parseUpdate(body: unknown): ProgressUpdate {
 }
 
 /**
- * A Moon+ position as KOSync progress: the start of its chapter (the spine item it names),
- * with Moon+'s own percentage. `arrivedMs` is when the .po file reached the server.
+ * A Moon+ position as KOSync progress, with Moon+'s own percentage: its page, from the book's
+ * layout when the plugin sent one, otherwise the start of its chapter (the spine item it
+ * names). `arrivedMs` is when the .po file reached the server.
  */
-export function moonToKosync(position: MoonPosition, arrivedMs: number): KosyncProgress {
+export function moonToKosync(
+  position: MoonPosition,
+  arrivedMs: number,
+  layout: Layout | null = null,
+): KosyncProgress {
   return {
-    progress: fragmentStart(fragmentOfChapter(position.chapter)),
+    progress:
+      (layout && moonToXpointer(layout, position)) ??
+      fragmentStart(fragmentOfChapter(position.chapter)),
     percentage: toFraction(position.percent),
     device: MOONPLUS_DEVICE,
     device_id: MOONPLUS_DEVICE_ID,
@@ -76,13 +85,15 @@ export function moonToKosync(position: MoonPosition, arrivedMs: number): KosyncP
 const isPageNumber = (progress: string) => /^\d+$/.test(progress.trim());
 
 /**
- * A KOReader position as Moon+'s: the chapter its spine item is, from its start (KOReader
- * doesn't say how many characters in), with KOReader's percentage.
+ * A KOReader position as Moon+'s: the chapter its spine item is, with KOReader's percentage.
+ * How many characters into the chapter comes from the book's layout, when the plugin sent
+ * one; without it, the start of the chapter.
  */
 export function kosyncToMoon(
   progress: string,
   percentage: number,
   nowMs: number,
+  layout: Layout | null = null,
 ): MoonPosition | null {
   const fragment = xpointerFragment(progress);
   if (fragment === null) return null;
@@ -90,7 +101,7 @@ export function kosyncToMoon(
     time: nowMs,
     chapter: chapterOfFragment(fragment),
     split: 0,
-    offset: 0,
+    offset: layout ? xpointerOffset(layout, progress, percentage) : 0,
     percent: toPercent(percentage),
   };
 }
@@ -109,6 +120,7 @@ export class ProgressSyncService {
     private readonly store: ProgressStore,
     private readonly library: LibraryService,
     private readonly koreader: KoreaderSyncService,
+    private readonly layouts: LayoutStore,
   ) {}
 
   /** Saves a device's position. Returns the server's timestamp for it, in seconds. */
@@ -131,7 +143,12 @@ export class ProgressSyncService {
    */
   private async writeForMoonplus(update: ProgressUpdate): Promise<void> {
     if (isPageNumber(update.progress)) return;
-    const position = kosyncToMoon(update.progress, update.percentage, Date.now());
+    const position = kosyncToMoon(
+      update.progress,
+      update.percentage,
+      Date.now(),
+      await this.layouts.get(update.document),
+    );
     if (!position) return;
     const files = await this.poFiles();
     const hint = await this.hint(update.document);
@@ -151,7 +168,8 @@ export class ProgressSyncService {
     if (kosync && isPageNumber(kosync.progress)) return kosync;
     const moon = await this.moonFor(document);
     if (!moon) return kosync;
-    const converted = moonToKosync(moon.position, moon.po.mtimeMs);
+    const layout = await this.layouts.get(document);
+    const converted = moonToKosync(moon.position, moon.po.mtimeMs, layout);
     return !kosync || converted.timestamp > kosync.timestamp ? converted : kosync;
   }
 
@@ -169,7 +187,9 @@ export class ProgressSyncService {
   /** What the KOReader plugin told the dashboard about this document's file. */
   private async hint(document: string): Promise<DocumentHint | null> {
     const sidecar = (await this.koreader.sidecars())[document];
-    return sidecar ? { file: sidecar.file, title: sidecar.title } : null;
+    if (sidecar) return { file: sidecar.file, title: sidecar.title };
+    const layout = await this.layouts.get(document);
+    return layout?.file ? { file: layout.file } : null;
   }
 
   /** Every .po file in the WebDAV folder. */
