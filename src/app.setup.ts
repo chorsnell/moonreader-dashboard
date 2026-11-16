@@ -18,6 +18,8 @@ export function configureApp(app: NestExpressApplication): NestExpressApplicatio
     // the KOReader plugin's bodies are large; its controller reads them after checking the token
     req.path.startsWith('/koreader/') ? next() : smallJson(req, res, next),
   );
+  // KOReader's progress sync: small JSON bodies, checked against the password by its guard
+  app.use('/kosync', json({ limit: '4kb', type: ['application/json', 'application/*+json'] }));
   app.use((_req: Request, res: Response, next: NextFunction) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     next();

@@ -18,6 +18,7 @@ import { MediaModule } from './media/media.module';
 import { NotifyModule } from './notify/notify.module';
 import { OutboundModule } from './outbound/outbound.module';
 import { PricesModule } from './prices/prices.module';
+import { ProgressSyncModule } from './progress-sync/progress-sync.module';
 import { RebuildModule } from './rebuild/rebuild.module';
 import { ReviewModule } from './review/review.module';
 import { StatsModule } from './stats/stats.module';
@@ -54,6 +55,7 @@ import { WebModule } from './web/web.module';
     HighlightsModule,
     WantToReadModule,
     KoreaderSyncModule,
+    ProgressSyncModule,
     // last: its catch-all route for the page's files must come after every other route
     WebModule,
   ],
