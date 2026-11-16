@@ -99,6 +99,15 @@ apart from collections.
 **Undo Moon+ history** removes every reading day this plugin added: the separate books and the
 days added to your own books.
 
+## Reading position with Moon+
+
+Positions themselves sync through KOReader's own **Progress sync**, pointed at the dashboard
+(see [docs/progress-sync.md](../docs/progress-sync.md)). This plugin helps it be exact: when
+you open a book (online, with **Sync automatically** on) it sends where each page starts,
+so the dashboard can turn Moon+'s "characters into chapter N" into a KOReader page, and back.
+It's sent again only when the book's page count changes (another font size, say). Books over
+8000 pages, PDFs and comics aren't measured.
+
 ## Moon+ feel
 
 **Apply Moon+ feel** remembers your current settings and then changes these:

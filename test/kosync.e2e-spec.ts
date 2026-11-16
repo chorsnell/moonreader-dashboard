@@ -230,3 +230,58 @@ describe('KOReader positions for Moon+', () => {
     expect(await readFile(dash.path(...CACHE, 'Dune.epub.po'), 'utf8')).toBe('1*2@0#50:10%');
   });
 });
+
+describe("the plugin's page layout", () => {
+  const CACHE = ['dav', 'Apps', 'Books', '.Moon+', 'Cache'];
+  const PARTIAL = '0123456789abcdef0123456789abcdef';
+  const pages = [
+    { xp: '/body/DocFragment[1]/body/h1/text().0', offset: 0, pct: 0 },
+    { xp: '/body/DocFragment[2]/body/p[1]/text().0', offset: 0, pct: 0.2 },
+    { xp: '/body/DocFragment[2]/body/p[9]/text().12', offset: 1500, pct: 0.3 },
+    { xp: '/body/DocFragment[3]/body/p[1]/text().0', offset: 0, pct: 0.6 },
+  ];
+
+  it('makes positions exact both ways', async () => {
+    dash = await TestDashboard.start();
+    await request(dash.server)
+      .post('/api/koreader/layout')
+      .set('X-Upload-Token', TOKEN)
+      .send({ md5: PARTIAL, file: 'Dune.epub', pages })
+      .expect(200, { ok: true, pages: 4 });
+    await request(dash.server)
+      .post('/api/koreader/layout')
+      .send({ md5: PARTIAL, pages })
+      .expect(403);
+
+    // Moon+ is 1700 characters into chapter 1: KOReader opens the page holding them, whether
+    // it names the book by its partial MD5 or by its file name
+    const res = await request(dash.server)
+      .put('/dav/Apps/Books/.Moon+/Cache/Dune.epub.po')
+      .set('Authorization', DAV_AUTH)
+      .send('1*1@0#1700:31.5%');
+    expect(res.status).toBe(201);
+    for (const document of [PARTIAL, md5('Dune.epub')]) {
+      const got = await request(dash.server)
+        .get(`/kosync/syncs/progress/${document}`)
+        .set(KOSYNC)
+        .expect(200);
+      expect(got.body.progress).toBe('/body/DocFragment[2]/body/p[9]/text().12');
+    }
+
+    // and KOReader's page top becomes Moon+'s character count
+    await request(dash.server)
+      .put('/kosync/syncs/progress')
+      .set(KOSYNC)
+      .send({
+        document: PARTIAL,
+        progress: pages[2].xp,
+        percentage: 0.3,
+        device: 'Kobo',
+        device_id: 'K1',
+      })
+      .expect(200);
+    expect(await readFile(dash.path(...CACHE, 'Dune.epub.po'), 'utf8')).toMatch(
+      /\*1@0#1500:30\.0%$/,
+    );
+  });
+});
