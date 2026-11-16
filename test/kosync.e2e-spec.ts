@@ -3,7 +3,7 @@
  * push a position from one device and get it on another.
  */
 import { createHash } from 'node:crypto';
-import { utimes } from 'node:fs/promises';
+import { readFile, utimes } from 'node:fs/promises';
 import request from 'supertest';
 import { DAV_AUTH, TOKEN, TestDashboard } from './support/test-dashboard';
 
@@ -165,5 +165,68 @@ describe('Moon+ positions for KOReader', () => {
       .set(KOSYNC)
       .expect(200);
     expect(got.body).toMatchObject({ device: 'Moon+ Reader', progress: '/body/DocFragment[3]' });
+  });
+});
+
+describe('KOReader positions for Moon+', () => {
+  const CACHE = ['dav', 'Apps', 'Books', '.Moon+', 'Cache'];
+
+  async function moonplusHasSynced(d: TestDashboard, bookFile: string, text: string) {
+    const res = await request(d.server)
+      .put(`/dav/Apps/Books/.Moon+/Cache/${encodeURIComponent(bookFile)}.po`)
+      .set('Authorization', DAV_AUTH)
+      .send(text);
+    expect([201, 204]).toContain(res.status);
+  }
+
+  const push = (d: TestDashboard, document: string, progress: string, percentage: number) =>
+    request(d.server)
+      .put('/kosync/syncs/progress')
+      .set(KOSYNC)
+      .send({ document, progress, percentage, device: 'Kobo', device_id: 'K1' })
+      .expect(200);
+
+  it("writes KOReader's position into the book's .po file, and doesn't echo it back", async () => {
+    dash = await TestDashboard.start();
+    await moonplusHasSynced(dash, 'Dune.epub', '1700000000000*2@0#50:10%');
+    await push(dash, md5('Dune.epub'), '/body/DocFragment[7]/body/p[3]/text().0', 0.5);
+
+    const text = await readFile(dash.path(...CACHE, 'Dune.epub.po'), 'utf8');
+    expect(text).toMatch(/^\d{13}\*6@0#0:50\.0%$/);
+
+    // the .po file is newer now, but it's the dashboard's own: KOReader keeps its xpointer
+    const got = await request(dash.server)
+      .get(`/kosync/syncs/progress/${md5('Dune.epub')}`)
+      .set(KOSYNC)
+      .expect(200);
+    expect(got.body).toMatchObject({
+      device: 'Kobo',
+      progress: '/body/DocFragment[7]/body/p[3]/text().0',
+    });
+  });
+
+  it('starts a .po file for a book Moon+ has not synced, named as the plugin reported', async () => {
+    dash = await TestDashboard.start();
+    await moonplusHasSynced(dash, 'Dune.epub', '1*2@0#50:10%');
+    await request(dash.server)
+      .post('/api/koreader/books')
+      .set('X-Upload-Token', TOKEN)
+      .send({
+        device: 'Kobo',
+        books: [{ md5: 'fnd', file: 'Foundation.epub', title: 'Foundation' }],
+      })
+      .expect(200);
+    await push(dash, 'fnd', '/body/DocFragment[2]/body/p[1]/text().0', 0.08);
+    expect(await readFile(dash.path(...CACHE, 'Foundation.epub.po'), 'utf8')).toMatch(
+      /\*1@0#0:8\.0%$/,
+    );
+  });
+
+  it('leaves Moon+ alone for page numbers and unknown books', async () => {
+    dash = await TestDashboard.start();
+    await moonplusHasSynced(dash, 'Dune.epub', '1*2@0#50:10%');
+    await push(dash, md5('Dune.epub'), '42', 0.5);
+    await push(dash, 'unknown', '/body/DocFragment[2]', 0.1);
+    expect(await readFile(dash.path(...CACHE, 'Dune.epub.po'), 'utf8')).toBe('1*2@0#50:10%');
   });
 });

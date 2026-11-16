@@ -1,16 +1,20 @@
-import { readFile } from 'node:fs/promises';
-import { basename } from 'node:path';
-import { Injectable } from '@nestjs/common';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
+import { Injectable, Logger } from '@nestjs/common';
 import { findFiles, mtimeMs } from '../common/files';
 import { KoreaderSyncService } from '../koreader-sync/koreader-sync.service';
 import { LibraryService } from '../library/library.service';
-import { type DocumentHint, type PoFile, poForDocument } from './moonplus-files';
+import { type DocumentHint, isReflowable, type PoFile, poForDocument } from './moonplus-files';
 import {
+  chapterOfFragment,
+  formatMoonPosition,
   fragmentOfChapter,
   fragmentStart,
   type MoonPosition,
   parseMoonPosition,
   toFraction,
+  toPercent,
+  xpointerFragment,
 } from './positions';
 import { type KosyncProgress, ProgressStore } from './progress-store';
 
@@ -72,12 +76,35 @@ export function moonToKosync(position: MoonPosition, arrivedMs: number): KosyncP
 const isPageNumber = (progress: string) => /^\d+$/.test(progress.trim());
 
 /**
+ * A KOReader position as Moon+'s: the chapter its spine item is, from its start (KOReader
+ * doesn't say how many characters in), with KOReader's percentage.
+ */
+export function kosyncToMoon(
+  progress: string,
+  percentage: number,
+  nowMs: number,
+): MoonPosition | null {
+  const fragment = xpointerFragment(progress);
+  if (fragment === null) return null;
+  return {
+    time: nowMs,
+    chapter: chapterOfFragment(fragment),
+    split: 0,
+    offset: 0,
+    percent: toPercent(percentage),
+  };
+}
+
+/**
  * Reading positions for KOReader's progress sync (KOSync). What KOReader devices send is kept
  * as it came. A device asking for a book gets the newest position from KOReader or from the
- * .po file Moon+ synced for it over WebDAV, whichever reached the server last.
+ * .po file Moon+ synced for it over WebDAV, whichever reached the server last. KOReader's
+ * positions are written back into that .po file, so Moon+ opens the book there.
  */
 @Injectable()
 export class ProgressSyncService {
+  private readonly log = new Logger(ProgressSyncService.name);
+
   constructor(
     private readonly store: ProgressStore,
     private readonly library: LibraryService,
@@ -89,7 +116,33 @@ export class ProgressSyncService {
     const timestamp = Math.floor(Date.now() / 1000);
     const { document, ...rest } = update;
     await this.store.put(document, { ...rest, timestamp });
+    try {
+      await this.writeForMoonplus(update);
+    } catch (e) {
+      // KOReader's position is saved; Moon+ just doesn't get this one
+      this.log.warn(`Couldn't write the Moon+ position for ${document}: ${String(e)}`);
+    }
     return timestamp;
+  }
+
+  /**
+   * Writes a KOReader position into the book's .po file: the one Moon+ synced, or a new one
+   * named after the file the KOReader plugin reported, next to Moon+'s other .po files.
+   */
+  private async writeForMoonplus(update: ProgressUpdate): Promise<void> {
+    if (isPageNumber(update.progress)) return;
+    const position = kosyncToMoon(update.progress, update.percentage, Date.now());
+    if (!position) return;
+    const files = await this.poFiles();
+    const hint = await this.hint(update.document);
+    const path =
+      poForDocument(update.document, hint, files)?.path ?? newPoPath(hint?.file ?? null, files);
+    if (!path) return;
+    await mkdir(dirname(path), { recursive: true });
+    const tmp = `${path}.part`;
+    await writeFile(tmp, formatMoonPosition(position));
+    await rename(tmp, path);
+    await this.store.wrote(path, { chapter: position.chapter, offset: position.offset });
   }
 
   /** The newest position for a document, or null when there is none. */
@@ -106,7 +159,11 @@ export class ProgressSyncService {
   async moonFor(document: string): Promise<{ po: PoFile; position: MoonPosition } | null> {
     const po = poForDocument(document, await this.hint(document), await this.poFiles());
     const position = po && parseMoonPosition(po.text);
-    return po && position ? { po, position } : null;
+    if (!po || !position) return null;
+    // the dashboard's own write, not Moon+ having moved
+    const ours = await this.store.writtenFor(po.path);
+    if (ours && ours.chapter === position.chapter && ours.offset === position.offset) return null;
+    return { po, position };
   }
 
   /** What the KOReader plugin told the dashboard about this document's file. */
@@ -133,4 +190,16 @@ export class ProgressSyncService {
     }
     return out;
   }
+}
+
+/**
+ * Where to write a .po file for a book Moon+ hasn't synced: in the folder holding most of
+ * Moon+'s .po files, named after the device's book file. Null when Moon+ has never synced.
+ */
+export function newPoPath(bookFile: string | null, files: PoFile[]): string | null {
+  if (!bookFile || !isReflowable(bookFile) || !files.length) return null;
+  const counts = new Map<string, number>();
+  for (const f of files) counts.set(dirname(f.path), (counts.get(dirname(f.path)) ?? 0) + 1);
+  const [folder] = [...counts].sort((a, b) => b[1] - a[1])[0];
+  return join(folder, `${basename(bookFile)}.po`);
 }
