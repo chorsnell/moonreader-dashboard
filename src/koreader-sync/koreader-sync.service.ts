@@ -236,6 +236,11 @@ export class KoreaderSyncService {
     }
   }
 
+  /** What the plugin last sent about each device file, keyed by its partial MD5. */
+  sidecars(): Promise<Record<string, SidecarBook>> {
+    return this.readBooks();
+  }
+
   private async readBooks(): Promise<Record<string, SidecarBook>> {
     return (await this.readJson<Record<string, SidecarBook>>(this.booksPath)) ?? {};
   }

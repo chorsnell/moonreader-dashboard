@@ -28,3 +28,28 @@ On each KOReader device, with a book open:
 
 `document` is KOReader's id for the book: the partial MD5 of the file (the default) or the
 MD5 of the file name. Positions are kept in `library/progress-sync/koreader.json`.
+
+## Moon+ Reader into KOReader
+
+Moon+ already syncs its positions to the dashboard (**Settings → Sync → WebDAV**, pointed at
+`<dashboard address>/dav/`): one `<book file>.po` per book, e.g. `1502878256645*28@0#15529:12.3%`
+(when it was saved, the chapter from 0, Moon+'s split, characters into the chapter, the percentage).
+
+When a KOReader device asks for a book's position, the dashboard also looks for that book's
+`.po` file, and answers with whichever position reached the server last. A Moon+ position shows
+on KOReader as coming from the device "Moon+ Reader".
+
+The `.po` file is found by, in order:
+
+1. KOSync's file-name id: the MD5 of the `.po` file's book file name (choose **Document
+   matching method → Filename** in KOReader's progress sync to rely on this alone);
+2. the file name the [KOReader plugin](../koreader/README.md) reported for that document,
+   ignoring case, accents, punctuation and extensions (`Dune.kepub.epub` is `Dune.epub`);
+3. the title the plugin reported, against the `.po` file's name (`Dune - Frank Herbert.epub`).
+
+Without the plugin's page layout (below), a Moon+ position takes KOReader to the start of its
+chapter: Moon+ counts characters, KOReader points at elements, and only the book itself can
+turn one into the other. Moon+'s chapter is taken to be the EPUB's spine item (DocFragment)
+of the same number, counted from 0; Moon+ sometimes splits a chapter at table-of-contents
+entries, in which case it runs ahead. KOReader shows the percentage on its prompt, so a jump
+that looks wrong can be refused.
