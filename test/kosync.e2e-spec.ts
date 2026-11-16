@@ -3,8 +3,9 @@
  * push a position from one device and get it on another.
  */
 import { createHash } from 'node:crypto';
+import { utimes } from 'node:fs/promises';
 import request from 'supertest';
-import { TOKEN, TestDashboard } from './support/test-dashboard';
+import { DAV_AUTH, TOKEN, TestDashboard } from './support/test-dashboard';
 
 const md5 = (s: string) => createHash('md5').update(s).digest('hex');
 const KOSYNC = {
@@ -95,5 +96,74 @@ describe('KOSync server', () => {
       .set({ ...KOSYNC, 'x-auth-key': md5('wrong') })
       .send({ document: 'abc', progress: '1', percentage: 0.1 })
       .expect(401);
+  });
+});
+
+describe('Moon+ positions for KOReader', () => {
+  const PO = '/dav/Apps/Books/.Moon+/Cache/Dune.epub.po';
+  const DUNE = md5('Dune.epub');
+
+  async function moonplusSyncs(d: TestDashboard, text: string, atSeconds: number) {
+    const res = await request(d.server).put(PO).set('Authorization', DAV_AUTH).send(text);
+    expect([201, 204]).toContain(res.status);
+    const file = d.path('dav', 'Apps', 'Books', '.Moon+', 'Cache', 'Dune.epub.po');
+    await utimes(file, atSeconds, atSeconds);
+  }
+
+  it('gives KOReader the Moon+ position when it is the newest', async () => {
+    dash = await TestDashboard.start();
+    const now = Math.floor(Date.now() / 1000);
+    await moonplusSyncs(dash, '1700000000000*5@0#1234:42.5%', now - 100);
+
+    const got = await request(dash.server)
+      .get(`/kosync/syncs/progress/${DUNE}`)
+      .set(KOSYNC)
+      .expect(200);
+    expect(got.body).toEqual({
+      document: DUNE,
+      progress: '/body/DocFragment[6]',
+      percentage: 0.425,
+      device: 'Moon+ Reader',
+      device_id: 'moonplus',
+      timestamp: now - 100,
+    });
+
+    // KOReader reads on: its position is newer
+    await request(dash.server)
+      .put('/kosync/syncs/progress')
+      .set(KOSYNC)
+      .send({
+        document: DUNE,
+        progress: '/body/DocFragment[7]/body/p[3]/text().0',
+        percentage: 0.5,
+        device: 'Kobo',
+        device_id: 'K1',
+      })
+      .expect(200);
+    const after = await request(dash.server).get(`/kosync/syncs/progress/${DUNE}`).set(KOSYNC);
+    expect(after.body.device).toBe('Kobo');
+
+    // then Moon+ again
+    await moonplusSyncs(dash, '1700000000000*9@0#10:61%', now + 100);
+    const later = await request(dash.server).get(`/kosync/syncs/progress/${DUNE}`).set(KOSYNC);
+    expect(later.body).toMatchObject({ progress: '/body/DocFragment[10]', percentage: 0.61 });
+  });
+
+  it('finds the book by the file name the KOReader plugin reported', async () => {
+    dash = await TestDashboard.start();
+    await moonplusSyncs(dash, '1*2@0#0:9%', Math.floor(Date.now() / 1000));
+    await request(dash.server)
+      .post('/api/koreader/books')
+      .set('X-Upload-Token', TOKEN)
+      .send({
+        device: 'Kobo',
+        books: [{ md5: 'partialmd5', file: 'Dune.kepub.epub', title: 'Dune' }],
+      })
+      .expect(200);
+    const got = await request(dash.server)
+      .get('/kosync/syncs/progress/partialmd5')
+      .set(KOSYNC)
+      .expect(200);
+    expect(got.body).toMatchObject({ device: 'Moon+ Reader', progress: '/body/DocFragment[3]' });
   });
 });
