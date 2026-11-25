@@ -316,6 +316,8 @@ describe('imports', () => {
     expect(daily.find((r) => r.book_id === 'alpha' && r.date === '2026-03-02')).toMatchObject({
       minutes: 30,
       by_source: { moonplus: { minutes: 20 }, koreader: { minutes: 10 } },
+      // Moon+ logged words that day, so speed uses its minutes alone
+      timed_minutes: 20,
     });
 
     const list = await request(d.server)

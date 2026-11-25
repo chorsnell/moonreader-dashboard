@@ -459,6 +459,7 @@ const ANON_KEEP = new Set([
   'prev_progress',
   'hours',
   'minutes',
+  'timed_minutes',
   'words',
   'times_read',
   'read_no',
@@ -515,6 +516,11 @@ function mergeDays(rows: Record<string, unknown>[]): Record<string, unknown>[] {
       delete first.by_source;
       by.set(key, first);
       continue;
+    }
+    // before minutes are added up: a row without timed_minutes counts all of its own
+    if ('timed_minutes' in had || 'timed_minutes' in r) {
+      const timed = (x: Record<string, unknown>) => num(x.timed_minutes) ?? num(x.minutes) ?? 0;
+      had.timed_minutes = timed(had) + timed(r);
     }
     for (const k of ['minutes', 'words']) {
       const a = num(had[k]);

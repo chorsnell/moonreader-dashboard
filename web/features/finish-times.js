@@ -16,7 +16,7 @@
         let words = d3.sum(ds, (d) => d.words || 0);
         if (!words && b.times_read === 1) words = b.words || 0;
         const span = Math.round((Date.parse(r.end) - Date.parse(r.start)) / 864e5) + 1;
-        const ok = ds.filter((d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800), m = d3.sum(ok, (d) => d.minutes);
+        const ok = ds.map(timedDay).filter((d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800), m = d3.sum(ok, (d) => d.minutes);
         return { read_id: r.read_id, book_id: r.book_id, title: r.title, author: r.author, genre: r.genre, read_no: r.read_no, start: r.start, end: r.end,
           words, days: span, days_read: r.days_read, minutes: Math.round(d3.sum(ds, (d) => d.minutes || 0)), wpm: m >= 30 ? Math.round(d3.sum(ok, (d) => d.words) / m) : null };
       }).filter((r) => r.words >= 1000);

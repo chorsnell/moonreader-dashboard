@@ -12,7 +12,7 @@
       const out = [];
       d3.groups(reads.filter((r) => r.times_read > 1), (r) => r.book_id).forEach(([, rs]) => {
         rs.sort((a, b) => a.read_no - b.read_no);
-        const sp = rs.map((r) => { const v = days.get(r.read_id).filter(ok), m = d3.sum(v, (d) => d.minutes); return m >= MIN_MINUTES ? { wpm: d3.sum(v, (d) => d.words) / m, m } : null; });
+        const sp = rs.map((r) => { const v = days.get(r.read_id).map(timedDay).filter(ok), m = d3.sum(v, (d) => d.minutes); return m >= MIN_MINUTES ? { wpm: d3.sum(v, (d) => d.words) / m, m } : null; });
         const first = sp[0];
         rs.forEach((r, i) => out.push({ read_id: r.read_id, book_id: r.book_id, title: r.title, author: r.author, genre: r.genre, read_no: r.read_no,
           start: r.start, end: r.end, finished: r.finished === true, minutes: sp[i] ? Math.round(sp[i].m) : null, wpm: sp[i] ? Math.round(sp[i].wpm) : null,

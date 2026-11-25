@@ -6,7 +6,7 @@
     inputs: ['daily'],
     title: 'Speed by genre, day by day',
     description: 'Words per minute for each book on each day with believable timings, with its genre and minutes.',
-    fn: (daily) => daily.filter(okDay).map((d) => ({ genre: d.genre, wpm: Math.round(d.words / d.minutes), minutes: d.minutes })),
+    fn: (daily) => daily.map(timedDay).filter(okDay).map((d) => ({ genre: d.genre, wpm: Math.round(d.words / d.minutes), minutes: d.minutes })),
   });
 
   rh.card({

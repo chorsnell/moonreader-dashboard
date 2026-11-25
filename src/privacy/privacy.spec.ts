@@ -207,6 +207,26 @@ describe('filterDataFile', () => {
     expect(JSON.stringify(d)).not.toMatch(/2026-03-2\d/);
   });
 
+  it('adds up the timed minutes when grouping days, and drops the per-source split', () => {
+    const ctx = ctxFor({ ...PRESETS.everything, dates: 'month' });
+    const day = { book_id: 'dune', words: 6000, progress: 10 };
+    const rows = [
+      { ...day, date: '2026-03-02', minutes: 50, timed_minutes: 30, by_source: {} },
+      // no split: all its minutes are timed
+      { ...day, date: '2026-03-03', minutes: 20 },
+    ];
+    expect(filterDataFile('daily.json', rows, ctx)).toEqual([
+      {
+        date: '2026-03-01',
+        book_id: 'dune',
+        minutes: 70,
+        timed_minutes: 50,
+        words: 12000,
+        progress: 10,
+      },
+    ]);
+  });
+
   it('has no exact days in the diary when streaks are hidden', () => {
     const ctx = ctxFor({ ...PRESETS.everything, streaks: false });
     const d = filterDataFile('daily.json', daily, ctx) as typeof daily;

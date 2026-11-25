@@ -20,7 +20,7 @@
       const dates = [...new Set(days.map((d) => dayNo(d.date)))].sort((a, b) => a - b);
       let best = 0, run = 0;
       dates.forEach((d, i) => { run = i && d - dates[i - 1] === 1 ? run + 1 : 1; best = Math.max(best, run); });
-      const timed = days.filter((d) => d.minutes > 0 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800);
+      const timed = days.map(timedDay).filter((d) => d.minutes > 0 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800);
       const m = timed.reduce((a, d) => a + d.minutes, 0);
       return [
         { stat: 'books', value: reads.filter((r) => r.finished === true && r.end && inYear(r.end)).length },
