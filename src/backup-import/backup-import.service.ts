@@ -1,6 +1,8 @@
 import { mkdir, mkdtemp, readFile, rename, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { parseMoonPosition } from '../progress-sync/positions';
+import { isWritten, readWritten, writtenKey } from '../progress-sync/written';
 import { DatabaseSync } from 'node:sqlite';
 import { Injectable } from '@nestjs/common';
 import { BibliographyStore } from '../bibliography/bibliography-store.service';
@@ -227,10 +229,19 @@ export class BackupImportService {
   /** The .po files Moon+ synced over WebDAV. */
   private async readSyncedPositions(): Promise<SyncedPositionFile[]> {
     const out: SyncedPositionFile[] = [];
+    const written = await readWritten(this.library.root);
     for (const path of await findFiles(this.library.dav, '.po')) {
       try {
         const text = (await readFile(path, 'utf8')).slice(0, PO_READ_LIMIT);
-        out.push({ name: basename(path), text, mtimeMs: await mtimeMs(path) });
+        const position = parseMoonPosition(text);
+        const ownWrite =
+          !!position && isWritten(written[writtenKey(this.library.dav, path)], position);
+        out.push({
+          name: basename(path),
+          text,
+          mtimeMs: await mtimeMs(path),
+          ...(ownWrite ? { ownWrite } : {}),
+        });
       } catch {
         // removed while we were looking
       }

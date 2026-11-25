@@ -101,6 +101,32 @@ Response:
 - `others` (only when `"others": true`) lists books with `days` that matched none of `files`:
   books read in Moon+ whose files aren't on this device.
 
+## POST {base}/api/koreader/layout
+
+Where each page of the open book starts, so reading positions convert exactly between
+KOReader and Moon+ (see [docs/progress-sync.md](../docs/progress-sync.md)). Sent for
+reflowable books when they're opened, and again only when their page count changes.
+
+```json
+{
+  "md5": "partial md5",
+  "file": "Book Name.epub",
+  "pages": [ { "xp": "/body/DocFragment[2]/body/p[9]/text().12", "offset": 1500, "pct": 0.3 } ]
+}
+```
+
+- `xp`: the page's first xpointer (`getPageXPointer`).
+- `offset`: characters from the start of its DocFragment to there (`getTextFromXPointers`).
+- `pct`: page / pages, as KOReader's progress sync counts it.
+- 200 `{ "ok": true, "pages": 312 }`. Kept per partial MD5 and per MD5 of the file name.
+- 400 for an `md5` that isn't 32 hex digits, or pages none of which has a DocFragment xpointer.
+
+## Progress sync: {base}/kosync
+
+Not used by this plugin: KOReader's own **Progress sync** talks to it, with
+`x-auth-key` = MD5 of `UPLOAD_TOKEN`. The requests, and how positions reach Moon+, are in
+[docs/progress-sync.md](../docs/progress-sync.md).
+
 ## WebDAV
 
 KOReader's own *Reading statistics → Synchronize* to a WebDAV folder on `{base}/dav/` also works:
