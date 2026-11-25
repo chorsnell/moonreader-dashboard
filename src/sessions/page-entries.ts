@@ -8,9 +8,9 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { bookKey, SERIES_SUFFIX } from '../common/book-match';
 import type { BookHistory, Catalogue } from '../backup-import/reading-history.types';
-import { MAX_ENTRY_SECONDS } from '../imports/koreader';
+import { MAX_ENTRY_SECONDS, SYNTHETIC_MD5 } from '../imports/koreader';
 import type { ImportedBook } from '../imports/imports.types';
-import { koreaderAuthors, SYNTHETIC_MD5 } from '../koreader-sync/koreader-books';
+import { koreaderAuthors } from '../koreader-sync/koreader-books';
 import type { PageEntry } from './sessions';
 
 /** One book of one statistics database, and its page turns. */
