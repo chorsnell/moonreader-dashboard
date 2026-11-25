@@ -168,6 +168,19 @@ describe('buildReadingHistory', () => {
     expect(books[0].synced).toBe('2026-10-22T12:20');
   });
 
+  it("dates the dashboard's own write by its arrival, whatever stamp it kept", () => {
+    const stamp = new Date(2026, 2, 20, 23, 12).getTime();
+    const arrived = new Date(2026, 9, 22, 12, 20).getTime();
+    const { books } = buildReadingHistory(
+      input([row('/b/Dune.epub', [`${day('2026-03-01')}|60000`, '#7.2%'])], {
+        synced: [
+          { name: 'Dune.epub.po', text: `${stamp}*18@0#0:12.9%`, mtimeMs: arrived, ownWrite: true },
+        ],
+      }),
+    );
+    expect(books[0].synced).toBe('2026-10-22T12:20');
+  });
+
   it('matches a synced position by title when its file name differs from the backup', () => {
     const later = new Date(2026, 9, 20, 22, 0).getTime();
     const result = buildReadingHistory(

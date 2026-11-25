@@ -10,6 +10,7 @@ The decision helpers are pure; the KOReader glue receives the plugin instance.
 
 local History = require("history")
 local Highlights = require("highlights")
+local ProgressSync = require("progresssync")
 
 local MoonPlus = {
     SETTINGS_KEY = "readingdashboard", -- key in each book's doc_settings
@@ -44,18 +45,21 @@ function MoonPlus.shouldMarkComplete(match, had_status)
 end
 
 --- Sidecar data for a matched book KOReader never opened (nil = nothing to write).
-function MoonPlus.unopenedSidecar(match, md5)
+-- @param leave_position Progress sync places the book, so only a finished one is written
+function MoonPlus.unopenedSidecar(match, md5, leave_position)
     if not match then return nil end
     local p = tonumber(match.progress)
     local finished = match.status == "finished"
     if finished and not p then p = 100 end
     if not p and not finished then return nil end
     p = math.max(0, math.min(100, p or 0))
+    if leave_position and not finished then return nil end
     local data = {
         last_percent = p / 100, -- read by ReaderRolling:onReadSettings when there's no last_xpointer
         percent_finished = p / 100,
         partial_md5_checksum = md5,
     }
+    if leave_position then data.last_percent = nil end
     if finished then
         data.summary = { status = "complete", modified = os.date("%Y-%m-%d") }
     end
@@ -169,7 +173,9 @@ function MoonPlus.applyToOpenBook(plugin, match, interactive)
         if reader and reader.getLastPercent then
             current = (tonumber(reader:getLastPercent()) or 0) * 100
         end
-        local target = MoonPlus.progressTarget(match, plugin.had_position, current)
+        -- Progress sync has the exact place; a jump of ours would override it, and be sent back
+        local target = not ProgressSync.configured(ui)
+            and MoonPlus.progressTarget(match, plugin.had_position, current)
         if target then
             ui:handleEvent(Event:new("GotoPercent", target))
             report.progress = target

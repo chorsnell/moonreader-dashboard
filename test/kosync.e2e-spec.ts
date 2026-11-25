@@ -315,4 +315,33 @@ describe("the plugin's page layout", () => {
     await push(pages[2]);
     expect(await po()).toMatch(/\*1@0#1500:30\.0%$/);
   });
+
+  it('puts the exact place in the .po when it arrives after the position', async () => {
+    dash = await TestDashboard.start();
+    await request(dash.server)
+      .put('/dav/Apps/Books/.Moon+/Cache/Dune.epub.po')
+      .set('Authorization', DAV_AUTH)
+      .send('1700000000000*0@0#0:1.0%')
+      .expect(201);
+    await request(dash.server)
+      .put('/kosync/syncs/progress')
+      .set(KOSYNC)
+      .send({
+        document: md5('Dune.epub'),
+        progress: pages[2].xp,
+        percentage: 0.3,
+        device: 'Kobo',
+        device_id: 'K1',
+      })
+      .expect(200);
+    const po = () => readFile(dash!.path(...CACHE, 'Dune.epub.po'), 'utf8');
+    expect(await po()).toBe('1700000000000*1@0#0:30.0%');
+
+    await request(dash.server)
+      .post('/api/koreader/layout')
+      .set('X-Upload-Token', TOKEN)
+      .send({ md5: PARTIAL, file: 'Dune.epub', pages })
+      .expect(200);
+    expect(await po()).toBe('1700000000000*1@0#1500:30.0%');
+  });
 });

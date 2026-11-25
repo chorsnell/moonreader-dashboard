@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { LibraryService } from '../library/library.service';
+import type { Mapping } from './layout';
 import { type WrittenPlace, writtenPath } from './written';
 
 /** One device's last push of a document, to know when it sends the same place again. */
@@ -79,12 +80,15 @@ class JsonMap<T> {
  * - koreader.json: the positions KOReader devices send, keyed by KOSync's document id (the
  *   book file's partial MD5, or the MD5 of its file name);
  * - moonplus-written.json: the places the dashboard wrote for Moon+, keyed by .po path,
- *   so they aren't mistaken for Moon+'s own when they come back.
+ *   so they aren't mistaken for Moon+'s own when they come back;
+ * - mappings.json: how Moon+'s chapters fitted each book, keyed by its partial MD5.
  */
 @Injectable()
 export class ProgressStore {
   private readonly positions = new JsonMap<KosyncProgress>(() => join(this.dir, 'koreader.json'));
   private readonly written = new JsonMap<WrittenPlace[]>(() => writtenPath(this.library.root));
+
+  private readonly mappings = new JsonMap<Mapping>(() => join(this.dir, 'mappings.json'));
 
   constructor(private readonly library: LibraryService) {}
 
@@ -98,6 +102,14 @@ export class ProgressStore {
 
   put(document: string, progress: KosyncProgress): Promise<void> {
     return this.positions.update(document, () => progress);
+  }
+
+  mapping(md5: string): Promise<Mapping | null> {
+    return this.mappings.get(md5);
+  }
+
+  fitted(md5: string, mapping: Mapping): Promise<void> {
+    return this.mappings.update(md5, () => mapping);
   }
 
   writtenFor(key: string): Promise<WrittenPlace[] | null> {

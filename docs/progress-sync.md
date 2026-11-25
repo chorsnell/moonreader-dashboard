@@ -76,15 +76,16 @@ The `.po` file is found by, in order:
 
 Without the plugin's page layout (below), a Moon+ position takes KOReader to the start of its
 chapter: Moon+ counts characters, KOReader points at elements, and only the book itself can
-turn one into the other. Moon+'s chapter is taken to be the EPUB's spine item (DocFragment)
-of the same number, counted from 0; Moon+ sometimes splits a chapter at table-of-contents
-entries, in which case it runs ahead.
+turn one into the other. Moon+'s chapter is then taken to be the EPUB's spine item
+(DocFragment) of the same number, counted from 0, which for many books is wrong (see
+**Moon+'s chapters** below).
 
 ## KOReader into Moon+ Reader
 
 Each position a KOReader device sends is also written into the book's `.po` file in the
 WebDAV folder (found as above, never by title alone), so Moon+ opens the book there the next
-time it syncs. The file gets a new ETag and a later modification time. When Moon+ hasn't
+time it syncs. The file keeps its first number and gets a new ETag and a later modification
+time. When Moon+ hasn't
 synced the book yet, a new `.po` file is started in Moon+'s `.Moon+/Cache` folder (or next to
 most of its other `.po` files), named after the device's file. Nothing is written for PDFs and
 other paged documents, before Moon+ has synced any book, or over a file that isn't a position.
@@ -100,16 +101,37 @@ second book for one that isn't.
 
 ## Exact positions: the plugin's page layout
 
-The KOReader plugin measures where each page of the open book starts (its xpointer, how many
-characters into its spine item that is, and page / pages) and sends it to
-`POST /api/koreader/layout` (see [koreader/API.md](../koreader/API.md)). Layouts are kept in
-`library/progress-sync/layouts/`, under the book's partial MD5 and the MD5 of its file name.
+The KOReader plugin measures where each page of a book starts (its xpointer, how many
+characters into its spine item that is, and page / pages), where each table of contents entry
+points and how long each spine item is, and sends it to `POST /api/koreader/layout` (see
+[koreader/API.md](../koreader/API.md)). Layouts are kept in `library/progress-sync/layouts/`,
+under the book's partial MD5 and the MD5 of its file name. When one arrives, the book's latest
+KOReader position is written to the `.po` again (unless Moon+ has saved one since), so a book
+first read offline doesn't leave Moon+ at the start of a chapter.
+
+### Moon+'s chapters
+
+Moon+ doesn't document its numbering. Two readings are tried:
+
+- **contents**: a chapter starts at each table of contents entry; files and text it doesn't
+  list belong to the chapter before, and anything before the first entry is chapter 0;
+- **spine**: one chapter per spine item.
+
+A reading fits when its chapter is long enough to hold Moon+'s character and the page there is
+within 4 points of Moon+'s percentage. When only one fits, it is remembered for the book
+(`library/progress-sync/mappings.json`) and used for writing too. When both fit, what was
+remembered stands; with no history it's the contents, unless the spine is over 1.5 points
+closer. **Chapters shorter than a few percent of the book can't always be told apart**, until
+a position somewhere in the book settles it.
+
+A chapter over about 80,000 characters is taken to be split by Moon+ (it splits at 100,000
+characters of HTML, so this is an estimate): `split` counts parts of that size, and the offset
+is from the part's start.
 
 With a layout:
 
-- **Moon+ → KOReader**: the page of Moon+'s chapter holding its character. If that page is
-  more than 5% away from Moon+'s own percentage, Moon+ has split the book's chapters
-  differently from the spine, and the page at Moon+'s percentage is used instead.
+- **Moon+ → KOReader**: the page holding that place. If no reading fits, the page at Moon+'s
+  percentage within its chapter, and failing that in the book.
 - **KOReader → Moon+**: KOReader syncs the top of the page. A measured page start, or a place
   in the same paragraph's text as one, gives an exact character count. Anything else (another
   font size) falls back to the start of the page at KOReader's percentage.
@@ -124,6 +146,5 @@ are KOReader's text and Moon+ counts its own, so a position can land a little ea
   so close the book on one before opening it on the other.
 - KOReader queues pushes made offline and sends them later without saying when they were
   made, so one sent late counts as new.
-- Writing to Moon+ assumes its chapters are the spine items. For a book Moon+ splits
-  differently, Moon+ can open in the wrong chapter.
-- Moon+'s split within a chapter is written as 0, and ignored when read.
+- Moon+'s numbering above comes from other people's reverse-engineering and hasn't been
+  checked against a real device.

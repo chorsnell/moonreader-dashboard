@@ -5,11 +5,12 @@
  *
  *     1502878256645*28@0#15529:12.3%
  *
- * - `1502878256645`: when it was saved, in ms (older versions: seconds). Optional.
- * - `28`: the chapter, counted from 0. For most EPUBs this is the index of the HTML file in
- *   the spine, but Moon+ sometimes splits a file at table-of-contents entries, so it can run
- *   ahead of the spine. The percentage is what tells the two apart.
- * - `0`: the part of a chapter Moon+ split for paging. We always write 0.
+ * - `1502878256645`: a time in ms (older versions: seconds), though it can be months stale and
+ *   may identify the device rather than the save. Optional; kept when a file is rewritten.
+ * - `28`: the chapter, counted from 0. Usually Moon+'s chapters follow the table of contents,
+ *   with files it doesn't list belonging to the one before; in some books they are the spine
+ *   items. So it can run ahead of the spine or behind it (see layout.ts).
+ * - `0`: the part of a long chapter Moon+ split for paging.
  * - `15529`: characters from the start of the chapter to the top of the screen.
  * - `12.3`: how far through the book, in percent.
  *
@@ -52,12 +53,16 @@ export function parseMoonPosition(text: string): MoonPosition | null {
  * The text of a .po file, as Moon+ writes it: time in ms, one decimal place, except that a
  * finished book is "100%".
  */
-export function formatMoonPosition(p: MoonPosition): string {
-  const time = Math.round(p.time ?? Date.now());
+export function formatMoonPosition(p: MoonPosition, stamp: string | null = null): string {
+  const time = stamp ?? Math.round(p.time ?? Date.now());
   const fixed = Math.min(100, Math.max(0, p.percent)).toFixed(1);
   const percent = fixed === '100.0' ? '100' : fixed;
   return `${time}*${int(p.chapter)}@${int(p.split)}#${int(p.offset)}:${percent}%`;
 }
+
+/** A .po file's first number, exactly as written, or null when it has none. */
+export const moonStamp = (text: string): string | null =>
+  /^\s*(\d{10,13})\*/.exec(text)?.[1] ?? null;
 
 const int = (n: number) => Math.max(0, Math.floor(Number.isFinite(n) ? n : 0));
 

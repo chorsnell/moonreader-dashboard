@@ -3,6 +3,7 @@ import {
   formatMoonPosition,
   fragmentOfChapter,
   fragmentStart,
+  moonStamp,
   parseMoonPosition,
   toFraction,
   toPercent,
@@ -51,6 +52,16 @@ describe('formatMoonPosition', () => {
     expect(formatMoonPosition({ time: 1, chapter: -2, split: 0, offset: 3.9, percent: 120 })).toBe(
       '1*0@0#3:100%',
     );
+  });
+});
+
+describe('moonStamp', () => {
+  it('keeps the first number as written', () => {
+    expect(moonStamp('1502878256*1@0#2:3%')).toBe('1502878256');
+    expect(moonStamp('1*2@0#3:4%')).toBeNull();
+    expect(
+      formatMoonPosition({ time: 5, chapter: 1, split: 2, offset: 3, percent: 4 }, '1502878256'),
+    ).toBe('1502878256*1@2#3:4.0%');
   });
 });
 

@@ -1,4 +1,11 @@
-import { moonToXpointer, parseLayout, samePlace, xpointerOffset } from './layout';
+import {
+  locate,
+  moonPlace,
+  moonToXpointer,
+  parseLayout,
+  samePlace,
+  xpointerOffset,
+} from './layout';
 
 const MD5 = '0123456789abcdef0123456789abcdef';
 // three spine items: 1 is one page, 2 is three pages, 3 is two pages
@@ -99,5 +106,153 @@ describe('xpointerOffset', () => {
   it('otherwise uses the page of that spine item at the percentage', () => {
     expect(xpointerOffset(layout, '/body/DocFragment[2]/body/p[12]/text().0', 0.35)).toBe(1500);
     expect(xpointerOffset(layout, '/body/DocFragment[7]/body', 0.9)).toBe(0);
+  });
+});
+
+/** A book of spine items so many pages long, 1000 characters to a page. */
+const book = (sizes: number[], toc: [number, number][] = []) => {
+  const count = sizes.reduce((s, n) => s + n, 0);
+  let n = 0;
+  return parseLayout({
+    md5: MD5,
+    pages: sizes.flatMap((size, f) =>
+      Array.from({ length: size }, (_, p) => ({
+        xp: at(f + 1, p * 1000),
+        offset: p * 1000,
+        pct: ++n / count,
+      })),
+    ),
+    toc: toc.map(([fragment, offset]) => ({ fragment, offset })),
+    lengths: sizes.slice(0, -1).map((size) => size * 1000),
+  });
+};
+const at = (fragment: number, offset: number) =>
+  `/body/DocFragment[${fragment}]/body/p[${offset / 1000 + 1}]/text().0`;
+const split = (chapter: number, part: number, offset: number, percent: number) => ({
+  ...moon(chapter, offset, percent),
+  split: part,
+});
+// a cover and a title page the contents don't list, then two chapters
+const novel = book(
+  [1, 1, 10, 10],
+  [
+    [3, 0],
+    [4, 0],
+  ],
+);
+
+describe("which chapters are Moon+'s", () => {
+  it('keeps the contents and file lengths the plugin sends', () => {
+    expect(novel.toc).toEqual([
+      { fragment: 3, offset: 0 },
+      { fragment: 4, offset: 0 },
+    ]);
+    expect(novel.lengths).toEqual([1000, 1000, 10000]);
+    expect(book([2]).toc).toBeUndefined();
+  });
+
+  it("reads the contents' chapters, with front matter as chapter 0", () => {
+    expect(locate(novel, moon(1, 4500, 30))).toEqual({
+      xp: at(3, 4000),
+      method: 'exact',
+      mapping: 'toc',
+      decisive: true,
+    });
+  });
+
+  it('reads the spine when only that fits the percentage', () => {
+    expect(locate(novel, moon(3, 4000, 74))).toMatchObject({
+      xp: at(4, 4000),
+      mapping: 'spine',
+      decisive: true,
+    });
+  });
+
+  it('writes by the same mapping, not always the spine', () => {
+    expect(moonPlace(novel, at(3, 4000), 0.32)).toEqual({ chapter: 1, split: 0, offset: 4000 });
+    expect(moonPlace(novel, at(3, 4000), 0.32, 'spine')).toEqual({
+      chapter: 2,
+      split: 0,
+      offset: 4000,
+    });
+  });
+
+  it('keeps what fitted before when short chapters let both fit', () => {
+    // thirty one-page files, the contents starting at the third
+    const short = book(
+      Array.from({ length: 30 }, () => 1),
+      Array.from({ length: 28 }, (_, i) => [i + 3, 0] as [number, number]),
+    );
+    expect(locate(short, moon(10, 0, 38))).toMatchObject({ mapping: 'toc', decisive: false });
+    expect(locate(short, moon(10, 0, 38), 'spine')).toMatchObject({
+      xp: at(11, 0),
+      mapping: 'spine',
+      decisive: false,
+    });
+  });
+
+  it("doesn't believe a chapter too short to hold the character", () => {
+    // 3% apart, which the percentage alone would let pass
+    const b = book(
+      [30, 1, 30, 39],
+      [
+        [3, 0],
+        [4, 0],
+      ],
+    );
+    expect(locate(b, moon(1, 20000, 51))).toMatchObject({ xp: at(3, 20000), mapping: 'toc' });
+  });
+
+  it('starts a chapter at a contents entry inside a file', () => {
+    const one = book(
+      [10],
+      [
+        [1, 0],
+        [1, 5000],
+      ],
+    );
+    expect(moonToXpointer(one, moon(1, 2000, 75))).toBe(at(1, 7000));
+    expect(moonPlace(one, at(1, 7000), 0.8)).toEqual({ chapter: 1, split: 0, offset: 2000 });
+  });
+
+  it('counts on through files the contents merge into one chapter', () => {
+    const merged = book(
+      [2, 2, 2],
+      [
+        [1, 0],
+        [3, 0],
+      ],
+    );
+    expect(moonToXpointer(merged, moon(0, 3500, 60))).toBe(at(2, 1000));
+    expect(moonPlace(merged, at(2, 1000), 0.66)).toEqual({ chapter: 0, split: 0, offset: 3001 });
+  });
+});
+
+describe("Moon+'s split chapters", () => {
+  const long = book([1, 200], [[2, 0]]);
+
+  it('counts a split from the start of its part, both ways', () => {
+    expect(locate(long, split(1, 2, 500, 80))).toMatchObject({
+      xp: at(2, 160000),
+      method: 'exact',
+    });
+    expect(moonPlace(long, at(2, 161000), 0.81)).toEqual({ chapter: 1, split: 2, offset: 1000 });
+    expect(moonPlace(long, at(2, 5000), 0.03)).toEqual({ chapter: 1, split: 0, offset: 5000 });
+  });
+
+  it('stays in the chapter, by percentage, when the estimate is off', () => {
+    const two = book([100, 100]);
+    expect(locate(two, split(1, 1, 0, 60))).toMatchObject({
+      xp: at(2, 19000),
+      method: 'chapter',
+    });
+    expect(locate(two, split(0, 3, 0, 30))).toMatchObject({
+      xp: at(1, 59000),
+      method: 'chapter',
+    });
+  });
+
+  it('goes by percentage alone when no chapter fits', () => {
+    expect(locate(novel, moon(40, 0, 50))).toMatchObject({ method: 'percent' });
   });
 });
