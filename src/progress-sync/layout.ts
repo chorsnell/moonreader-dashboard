@@ -313,17 +313,15 @@ export function moonPlace(
 
 /**
  * Whether Moon+'s position is already on the page KOReader is on, so writing KOReader's over
- * it would only lose Moon+'s own place within the page. Without a layout all that can be
- * written is the start of the chapter, which is never better within the same chapter.
+ * it would only lose Moon+'s own place within the page.
  */
 export function samePlace(
-  layout: Layout | null,
+  layout: Layout,
   moon: MoonPosition,
   xp: string,
   mine: MoonPosition,
   preferred: Mapping | null = null,
 ): boolean {
-  if (!layout) return moon.chapter === mine.chapter;
   const there = moonToXpointer(layout, moon, preferred);
   if (there === xp) return true;
   const fragment = xpointerFragment(xp);
@@ -331,4 +329,37 @@ export function samePlace(
   const r = ruler(layout);
   const here = r.at({ fragment, offset: xpointerOffset(layout, xp, mine.percent / 100) });
   return there === layout.pages[indexAt(r.pages, here)].xp;
+}
+
+/**
+ * Whether `mine` is behind Moon+'s position. Within a chapter a layout's character counts
+ * say; otherwise only the percentages can.
+ */
+export function isBehind(layout: Layout | null, moon: MoonPosition, mine: MoonPosition): boolean {
+  if (layout && mine.chapter === moon.chapter && mine.split === moon.split) {
+    return mine.offset < moon.offset;
+  }
+  return mine.percent < moon.percent;
+}
+
+/**
+ * Characters assumed for each percent of a book when there's no layout to count them. That of
+ * a short book, so a guess falls short of the real place rather than past it.
+ */
+export const CHARS_PER_PERCENT = 2000;
+
+/**
+ * Without a layout, how far into the chapter KOReader has got, reckoned on from a position
+ * already in that chapter by the percentage read since. Null when it isn't further on: by
+ * any amount over our own last write, but over Moon+'s only by more than the two apps'
+ * percentages can disagree.
+ */
+export function furtherInChapter(
+  from: MoonPosition,
+  mine: MoonPosition,
+  moons: boolean,
+): Pick<MoonPosition, 'split' | 'offset'> | null {
+  const ahead = mine.percent - from.percent;
+  if (mine.chapter !== from.chapter || ahead <= (moons ? PCT_TOLERANCE * 100 : 0)) return null;
+  return { split: from.split, offset: from.offset + Math.round(ahead * CHARS_PER_PERCENT) };
 }

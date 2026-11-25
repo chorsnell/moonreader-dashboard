@@ -5,6 +5,7 @@ import {
   parseLayout,
   samePlace,
   xpointerOffset,
+  furtherInChapter,
 } from './layout';
 
 const MD5 = '0123456789abcdef0123456789abcdef';
@@ -100,7 +101,6 @@ describe('xpointerOffset', () => {
     expect(samePlace(layout, moon(1, 2000, 32), xp, moon(1, 1500, 30))).toBe(true);
     expect(samePlace(layout, moon(1, 3100, 40), xp, moon(1, 1500, 30))).toBe(false);
     expect(samePlace(layout, moon(2, 0, 60), xp, moon(1, 1500, 30))).toBe(false);
-    expect(samePlace(null, moon(1, 3100, 40), xp, moon(1, 0, 30))).toBe(true);
   });
 
   it('otherwise uses the page of that spine item at the percentage', () => {
@@ -254,5 +254,18 @@ describe("Moon+'s split chapters", () => {
 
   it('goes by percentage alone when no chapter fits', () => {
     expect(locate(novel, moon(40, 0, 50))).toMatchObject({ method: 'percent' });
+  });
+});
+
+describe('without a layout', () => {
+  it("reckons on within a chapter, but over Moon+'s only when clearly ahead", () => {
+    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 62), true)).toEqual({
+      split: 0,
+      offset: 23000,
+    });
+    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 58), true)).toBeNull();
+    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 58), false)?.offset).toBe(15000);
+    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 50), false)).toBeNull();
+    expect(furtherInChapter(moon(4, 9000, 55), moon(5, 0, 70), true)).toBeNull();
   });
 });

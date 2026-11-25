@@ -91,8 +91,14 @@ most of its other `.po` files), named after the device's file. Nothing is writte
 other paged documents, before Moon+ has synced any book, or over a file that isn't a position.
 
 Moon+'s own place is left alone when KOReader is on the same page (it has only gone where
-Moon+ was) and, without a page layout, whenever KOReader is in the same chapter. Without a
-layout, the position written is the start of KOReader's chapter with KOReader's percentage.
+Moon+ was). KOReader takes Moon+ **backwards** only after a device has been given that Moon+
+position. Until then (a book opened on the Kobo for the first time, before the dashboard knows
+which file it is) Moon+'s file is kept, and the next time KOReader asks it gets Moon+'s place.
+
+Without a page layout, the position written is the start of KOReader's chapter with
+KOReader's percentage. Within the chapter Moon+ is already in, it moves on only when
+KOReader's percentage is more than 4 points ahead, to a rough offset (2,000 characters per
+point, meant to fall short rather than overshoot).
 
 The places the dashboard writes are remembered in `library/progress-sync/moonplus-written.json`,
 so they aren't taken for Moon+'s own, by a KOReader device or by the dashboard's rebuild. The

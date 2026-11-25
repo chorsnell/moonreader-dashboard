@@ -55,7 +55,7 @@
       // fastest finished read: words per minute over its plausible timed days (as the speed tab)
       const ok = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
       const byBook = new Map();
-      rows.forEach((d) => { if (ok(d)) { if (!byBook.has(d.book_id)) byBook.set(d.book_id, []); byBook.get(d.book_id).push(d); } });
+      rows.map(timedDay).forEach((d) => { if (ok(d)) { if (!byBook.has(d.book_id)) byBook.set(d.book_id, []); byBook.get(d.book_id).push(d); } });
       const timed = reads.filter((r) => r.finished === true && r.end).sort((a, b) => (a.end < b.end ? -1 : 1)).map((r) => {
         const v = (byBook.get(r.book_id) || []).filter((d) => d.date >= r.start && d.date <= r.end);
         const m = v.reduce((a, d) => a + d.minutes, 0);

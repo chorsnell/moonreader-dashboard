@@ -1063,8 +1063,8 @@
   }
   $('#bk-read').addEventListener('change', (e) => { bookRead = +e.target.value; drawBook(); });
 
-  const okDay = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
-  const speedFrom = (rows) => { const v = rows.filter(okDay), m = d3.sum(v, (d) => d.minutes); return m >= 30 ? { wpm: d3.sum(v, (d) => d.words) / m, m } : null; };
+  const okDay = (d) => { const m = timedMinutes(d); return m >= 1 && d.words > 0 && d.words / m >= 40 && d.words / m <= 800; };
+  const speedFrom = (rows) => { const v = rows.map(timedDay).filter(okDay), m = d3.sum(v, (d) => d.minutes); return m >= 30 ? { wpm: d3.sum(v, (d) => d.words) / m, m } : null; };
   const span = (a, b) => d3.utcDay.count(pDate(a), pDate(b)) + 1;
   const plural = (n, w) => `${fmt(n)} ${w}${n === 1 ? '' : 's'}`;
   const progStep = (d) => (d.progress == null ? '—' : d.prev_progress != null && d.prev_progress !== d.progress ? `${pct(d.prev_progress)} → ${pct(d.progress)}` : pct(d.progress));
@@ -1176,7 +1176,7 @@
       c0.append(document.createTextNode(d3.utcFormat('%a %-d %b %Y')(pDate(d.date))));
       if (d.event) c0.append(el('span', 'ev ' + d.event, d.event === 'finished' ? 'Finished' : d.event === 'reread' ? 'Started re-read' : 'Started'));
       tr.append(c0, el('td', 'n', d.minutes ? mins(d.minutes) : '—'), el('td', 'n hide-sm', d.words ? fmt(d.words) : '—'),
-        el('td', 'n hide-sm', okDay(d) ? fmt(Math.round(d.words / d.minutes)) : '—'), el('td', 'n', progStep(d)));
+        el('td', 'n hide-sm', okDay(d) ? fmt(Math.round(d.words / timedMinutes(d))) : '—'), el('td', 'n', progStep(d)));
       return tr;
     }));
     drawBookCards(b);
@@ -1262,7 +1262,7 @@
       .on('mousemove', (e, day) => {
         const d = byDate.get(day);
         showTip(tip, box, e, (tp) => tipLines(tp, d3.utcFormat('%a %-d %b %Y')(pDate(day)), d
-          ? [[null, 'Time', d.minutes ? mins(d.minutes) : '—'], ...splitLine(day, b.id), [null, 'Words', d.words ? fmt(d.words) : '—'], [null, 'Speed', okDay(d) ? Math.round(d.words / d.minutes) + ' wpm' : '—'], [null, 'Progress', progStep(d)]]
+          ? [[null, 'Time', d.minutes ? mins(d.minutes) : '—'], ...splitLine(day, b.id), [null, 'Words', d.words ? fmt(d.words) : '—'], [null, 'Speed', okDay(d) ? Math.round(d.words / timedMinutes(d)) + ' wpm' : '—'], [null, 'Progress', progStep(d)]]
           : [[null, '', 'Not opened']]));
       })
       .on('mouseleave', () => hideTip(tip))

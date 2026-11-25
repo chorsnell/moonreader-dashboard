@@ -4,7 +4,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { findFiles, mtimeMs } from '../common/files';
 import { KoreaderSyncService } from '../koreader-sync/koreader-sync.service';
 import { LibraryService } from '../library/library.service';
-import { type Layout, locate, type Mapping, moonPlace, moonToXpointer, samePlace } from './layout';
+import {
+  furtherInChapter,
+  isBehind,
+  type Layout,
+  locate,
+  type Mapping,
+  moonPlace,
+  moonToXpointer,
+  samePlace,
+} from './layout';
 import { LayoutStore } from './layout-store';
 import {
   type DocumentHint,
@@ -137,7 +146,8 @@ export function kosyncToMoon(
  * Reading positions for KOReader's progress sync (KOSync). What KOReader devices send is kept
  * as it came. A device asking for a book gets the newest position from KOReader or from the
  * .po file Moon+ synced for it over WebDAV, whichever reached the server last. KOReader's
- * positions are written back into that .po file, so Moon+ opens the book there.
+ * positions are written back into that .po file, so Moon+ opens the book there; but only
+ * take Moon+ backwards once a device has been offered where Moon+ was.
  */
 @Injectable()
 export class ProgressSyncService {
@@ -174,7 +184,8 @@ export class ProgressSyncService {
       const stored = (await Promise.all(documents.map((d) => this.store.get(d))))
         .flatMap((p, i) => (p ? [{ ...p, document: documents[i] }] : []))
         .sort((a, b) => (b.at ?? 0) - (a.at ?? 0))[0];
-      if (!stored) return;
+      // a held position is not to be written, even now Moon+'s has been offered since
+      if (!stored || stored.held) return;
       try {
         await this.writeForMoonplus(stored, stored.at ?? stored.timestamp * 1000);
       } catch (e) {
@@ -212,10 +223,11 @@ export class ProgressSyncService {
       percentage: update.percentage,
     };
     try {
-      await this.writeForMoonplus(update);
+      const held = (await this.writeForMoonplus(update)) === 'held';
       // only now, so a failed write is tried again when the device repeats itself
       await this.store.put(document, {
         ...position,
+        ...(held ? { held } : {}),
         sent: [...others, sent].slice(-MAX_DEVICES),
       });
     } catch (e) {
@@ -241,12 +253,13 @@ export class ProgressSyncService {
   /**
    * Writes a KOReader position into the book's .po file: the one Moon+ synced, or a new one
    * named after the device's file, next to Moon+'s other .po files. With `since`, a Moon+
-   * position that arrived after it is left alone.
+   * position that arrived after it is left alone. 'held' when the position would take Moon+
+   * back from somewhere no device has been offered (a book just opened for the first time).
    */
   private async writeForMoonplus(
     update: Pick<ProgressUpdate, 'document' | 'progress' | 'percentage'>,
     since: number | null = null,
-  ): Promise<void> {
+  ): Promise<'held' | void> {
     if (isPageNumber(update.progress) || xpointerFragment(update.progress) === null) return;
     const layout = await this.layouts.get(update.document);
     const files = await this.poFiles();
@@ -263,10 +276,23 @@ export class ProgressSyncService {
     const moons = found && !isWritten(await this.store.writtenFor(key), found) ? found : null;
     if (moons && since !== null && before!.mtimeMs > since) return;
     const mapping = await this.mappingFor(layout, moons);
-    const position = kosyncToMoon(update.progress, update.percentage, Date.now(), layout, mapping);
+    let position = kosyncToMoon(update.progress, update.percentage, Date.now(), layout, mapping);
     if (!position) return;
     // KOReader went where Moon+ is (or never left): keep Moon+'s exact place
-    if (moons && samePlace(layout, moons, update.progress, position, mapping)) return;
+    if (moons && layout && samePlace(layout, moons, update.progress, position, mapping)) return;
+    if (moons && isBehind(layout, moons, position)) {
+      const served = await this.store.served(update.document);
+      const offered =
+        served?.key === key &&
+        (isWritten([served.place], moons) || served.mtimeMs >= before!.mtimeMs);
+      if (!offered) return 'held';
+    }
+    if (!layout && found && found.chapter === position.chapter) {
+      const further = furtherInChapter(found, position, !!moons);
+      // the start of the chapter is never better than where Moon+ is within it
+      if (!further && moons) return;
+      position = { ...position, ...further };
+    }
     // writing what's already there would only look like news to Moon+
     if (found && isWritten([placeOf(position)], found)) return;
     // remembered before the file appears, so nothing can read it as Moon+'s
@@ -298,7 +324,13 @@ export class ProgressSyncService {
     if (!moon) return kosync;
     const layout = await this.layouts.get(document);
     const mapping = await this.mappingFor(layout, moon.position);
-    if (kosync && moon.po.mtimeMs <= (kosync.at ?? kosync.timestamp * 1000)) return kosync;
+    const older = kosync && moon.po.mtimeMs <= (kosync.at ?? kosync.timestamp * 1000);
+    if (older && !kosync.held) return kosync;
+    await this.store.serve(document, {
+      key: writtenKey(this.library.dav, moon.po.path),
+      place: placeOf(moon.position),
+      mtimeMs: moon.po.mtimeMs,
+    });
     return moonToKosync(moon.position, moon.po.mtimeMs, layout, mapping);
   }
 

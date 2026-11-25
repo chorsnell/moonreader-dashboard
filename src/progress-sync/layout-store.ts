@@ -1,4 +1,5 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { LibraryService } from '../library/library.service';
@@ -38,8 +39,14 @@ export class LayoutStore {
     const ids = new Set([layout.md5, ...(layout.file ? [fileNameDigest(layout.file)] : [])]);
     for (const id of ids) {
       const path = this.path(id)!;
-      await writeFile(`${path}.tmp`, text);
-      await rename(`${path}.tmp`, path);
+      // a name of its own: two uploads of a book's layout may cross
+      const tmp = `${path}.${randomUUID()}.tmp`;
+      try {
+        await writeFile(tmp, text);
+        await rename(tmp, path);
+      } finally {
+        await rm(tmp, { force: true });
+      }
     }
   }
 }
