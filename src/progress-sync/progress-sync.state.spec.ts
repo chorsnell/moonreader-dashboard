@@ -137,6 +137,61 @@ describe('echoes', () => {
   });
 });
 
+describe("taking Moon+ backwards (a book's first open on the Kobo)", () => {
+  const moon = '1700000000000*5@0#1200:40.0%';
+  const start = '/body/DocFragment[1]/body/p[1]/text().0';
+  // nothing is known about this partial MD5 until a push brings the file's name
+  const first = () => push(start, 0.001, { document: PARTIAL, filename: 'Dune.epub' });
+  const readOn = () => push('/body/DocFragment[2]/body/p[1]/text().0', 0.1, { document: PARTIAL });
+
+  beforeEach(() => moonSyncs(moon, 86_400_000));
+
+  it('keeps it however far KOReader reads without being offered it', async () => {
+    await first();
+    await readOn();
+    expect(await read(PO)).toBe(moon);
+  });
+
+  it('needs a new offer after Moon+ moves again', async () => {
+    await first();
+    await service.pull(PARTIAL);
+    const later = '1700000000000*8@0#10:70.0%';
+    await moonSyncsLater(later);
+    await readOn();
+    expect(await read(PO)).toBe(later);
+  });
+
+  it("doesn't write a held position when its layout arrives", async () => {
+    await first();
+    await service.pull(PARTIAL);
+    await measure();
+    await service.layoutArrived(parseLayout({ md5: PARTIAL, file: 'Dune.epub', pages: PAGES }));
+    expect(await read(PO)).toBe(moon);
+  });
+
+  it('still writes a position further on', async () => {
+    await push('/body/DocFragment[7]', 0.6, { document: PARTIAL, filename: 'Dune.epub' });
+    expect(await read(PO)).toMatch(/\*6@0#0:60\.0%$/);
+  });
+});
+
+describe('further on in a chapter without a layout', () => {
+  it('moves Moon+ on when clearly ahead, and again from there', async () => {
+    await moonSyncs('1700000000000*4@0#9000:55.0%', 60_000);
+    await push('/body/DocFragment[5]/body/p[40]', 0.62);
+    expect(await read(PO)).toMatch(/\*4@0#23000:62\.0%$/);
+    await push('/body/DocFragment[5]/body/p[50]', 0.63);
+    expect(await read(PO)).toMatch(/\*4@0#25000:63\.0%$/);
+  });
+});
+
+describe('layouts arriving together', () => {
+  it('all get saved', async () => {
+    await Promise.all(Array.from({ length: 20 }, measure));
+    expect(await layouts.get(PARTIAL)).toMatchObject({ md5: PARTIAL });
+  });
+});
+
 describe('writing for Moon+', () => {
   beforeEach(measure);
 
@@ -229,6 +284,7 @@ describe("Moon+'s chapters and stamp", () => {
   it('writes the spine item once a Moon+ position showed this book goes by the spine', async () => {
     await layouts.put(novel);
     await moonSyncs('1700000000000*3@0#4000:74.0%', 60_000);
+    await service.pull(DOC); // offered, so KOReader may take Moon+ back
     await push(at(3, 4), 7 / 22);
     expect(await read(PO)).toBe('1700000000000*2@0#4000:31.8%');
   });

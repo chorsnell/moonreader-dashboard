@@ -29,6 +29,17 @@ export interface KosyncProgress {
   title?: string;
   /** What each device last sent. */
   sent?: Sent[];
+  /** Behind a Moon+ position no device had been offered: Moon+'s is the one to give. */
+  held?: boolean;
+}
+
+/** The last Moon+ position a document's devices were given. */
+export interface Served {
+  /** The .po file's path under dav/. */
+  key: string;
+  place: WrittenPlace;
+  /** When that position reached the server. */
+  mtimeMs: number;
 }
 
 /** Writes remembered per .po file, in case Moon+ sends back one older than the last. */
@@ -81,6 +92,7 @@ class JsonMap<T> {
  *   book file's partial MD5, or the MD5 of its file name);
  * - moonplus-written.json: the places the dashboard wrote for Moon+, keyed by .po path,
  *   so they aren't mistaken for Moon+'s own when they come back;
+ * - moonplus-served.json: the last Moon+ position given for each document;
  * - mappings.json: how Moon+'s chapters fitted each book, keyed by its partial MD5.
  */
 @Injectable()
@@ -89,6 +101,8 @@ export class ProgressStore {
   private readonly written = new JsonMap<WrittenPlace[]>(() => writtenPath(this.library.root));
 
   private readonly mappings = new JsonMap<Mapping>(() => join(this.dir, 'mappings.json'));
+
+  private readonly offered = new JsonMap<Served>(() => join(this.dir, 'moonplus-served.json'));
 
   constructor(private readonly library: LibraryService) {}
 
@@ -110,6 +124,14 @@ export class ProgressStore {
 
   fitted(md5: string, mapping: Mapping): Promise<void> {
     return this.mappings.update(md5, () => mapping);
+  }
+
+  served(document: string): Promise<Served | null> {
+    return this.offered.get(document);
+  }
+
+  serve(document: string, served: Served): Promise<void> {
+    return this.offered.update(document, () => served);
   }
 
   writtenFor(key: string): Promise<WrittenPlace[] | null> {
