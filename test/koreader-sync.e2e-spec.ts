@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import request from 'supertest';
+import type { SessionsFile } from '../src/sessions/sessions';
 import { makeBackup } from './support/fake-backup';
 import { makeKoreaderDb } from './support/fake-koreader';
 import { DAV_AUTH, TOKEN, TestDashboard, fileExists, waitFor } from './support/test-dashboard';
@@ -259,5 +260,16 @@ describe('KOReader sync', () => {
     const only = daily.filter((r) => r.title === 'KOReader Only Book');
     expect(only.map((r) => r.minutes)).toEqual([20, 90]);
     expect(daily.filter((r) => r.title === 'Phone Book')).toHaveLength(1);
+
+    // page by page: the same turns from both devices once, under the dashboard's ids
+    const pages = (await request(d.server).get('/data/sessions.json').expect(200))
+      .body as SessionsFile;
+    expect(pages.coverage).toMatchObject({ since: '2024-01-10', books: 4 });
+    const books = await d.json<BookRow[]>('data', 'books.json');
+    const id = (title: string) => books.find((b) => b.title === title)!.id;
+    const minutes = (title: string) => pages.books.find((b) => b.book_id === id(title))?.minutes;
+    // the five hours left on a page aren't reading
+    expect(minutes('KOReader Only Book')).toBe(110);
+    expect(minutes('Phone Book')).toBe(10);
   });
 });
