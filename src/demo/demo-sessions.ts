@@ -13,6 +13,8 @@ import { Random } from './random';
 
 /** How much of the demo's history has page-level data. */
 const DAYS = 120;
+/** KOReader's default cap on the time recorded for one page. */
+const MAX_PAGE_SECONDS = 120;
 const DEVICES = ['kobo-libra-2-demo', 'boox-palma-demo'];
 
 interface DailyRow {
@@ -41,7 +43,8 @@ export function demoSessions(
     const to = d.progress === null ? null : Math.max(1, Math.round((d.progress / 100) * total));
     if (to !== null) at.set(d.book_id, to);
     if (d.date < from || d.date >= today || to === null || !d.minutes) continue;
-    const turns = Math.max(1, Math.round((d.minutes * 60) / 75));
+    let left = Math.round(d.minutes * 60);
+    const turns = Math.max(1, Math.ceil(left / 70));
     const first = had !== undefined && had < to ? had : Math.max(1, to - turns);
     // mostly evenings, some lunchtimes and early mornings
     const when = rng.random();
@@ -49,17 +52,13 @@ export function demoSessions(
     const [y, m, day] = d.date.split('-').map(Number);
     let t = new Date(y, m - 1, day, hour, Math.floor(rng.random() * 50)).getTime() / 1000;
     const device = DEVICES[rng.random() < 0.8 ? 0 : 1];
-    let left = Math.round(d.minutes * 60);
     for (let i = 0; i < turns && left > 0; i++) {
       let page = Math.max(1, Math.round(first + ((to - first) * (i + 1)) / turns));
       // now and then a look back, or a page that takes a while
       if (rng.random() < 0.01) page = Math.max(1, page - 8);
-      const stall = rng.random() < 0.008;
-      const usual = (d.minutes * 60) / turns;
-      const seconds =
-        i === turns - 1
-          ? left
-          : Math.min(left, Math.max(8, Math.round(usual * (stall ? 5 : 0.6 + rng.random() * 0.7))));
+      const usual = left / (turns - i);
+      const wanted = rng.random() < 0.01 ? MAX_PAGE_SECONDS : usual * (0.7 + rng.random() * 0.6);
+      const seconds = Math.min(left, MAX_PAGE_SECONDS, Math.max(8, Math.round(wanted)));
       entries.push({ book_id: d.book_id, page, start: t, seconds, total, device });
       t += seconds;
       left -= seconds;

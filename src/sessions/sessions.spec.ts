@@ -176,6 +176,19 @@ describe('sessions', () => {
     expect(b.progress[0]).toEqual(['2026-11-01T20:00', 0.7]);
   });
 
+  it('counts a page at KOReader’s two-minute cap as a stall', () => {
+    const file = buildSessions(
+      [
+        ...read(1, 20, '2026-11-01T20:00:00'),
+        ...read(21, 1, '2026-11-01T20:20:00', { seconds: 120 }),
+        ...read(22, 1, '2026-11-01T20:22:00', { seconds: 100 }),
+      ],
+      [book('a')],
+      NOW,
+    );
+    expect(file.books[0].stalls.map((s) => s.page)).toEqual([21]);
+  });
+
   it('says how far back each book and the whole file go', () => {
     const file = buildSessions(
       [

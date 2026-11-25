@@ -17,9 +17,14 @@ export const TRIM = 0.1;
 export const MIN_SPEED_PAGES = 10;
 /** A page glanced at for less than this isn't a re-read. */
 export const REREAD_MIN_SECONDS = 10;
-/** A stall: this long on one page, and this many times the book's typical page. */
+/**
+ * A stall: at least this long on one page, and STALL_FACTOR times the book's typical page.
+ * KOReader records at most 2 minutes a page by default, so nearly that long counts too
+ * when the page is still half as long again as usual.
+ */
 export const STALL_MIN_SECONDS = 60;
 export const STALL_FACTOR = 3;
+export const STALL_CAPPED_SECONDS = 115;
 /** Caps that keep the file small. */
 export const MAX_SESSIONS = 3000;
 export const MAX_PROGRESS_POINTS = 200;
@@ -302,7 +307,12 @@ function rereads(all: Visit[]): BookPages['reread'] {
 function stalls(inSessions: Visit[]): BookPages['stalls'] {
   if (inSessions.length < MIN_SPEED_PAGES) return [];
   const per = (v: Visit) => v.seconds / Math.max(1, v.width);
-  const limit = Math.max(STALL_MIN_SECONDS, STALL_FACTOR * median(inSessions.map(per)));
+  const typical = median(inSessions.map(per));
+  const limit = Math.max(
+    STALL_MIN_SECONDS,
+    1.5 * typical,
+    Math.min(STALL_FACTOR * typical, STALL_CAPPED_SECONDS),
+  );
   const longest = new Map<number, Visit>();
   for (const v of inSessions) {
     const had = longest.get(v.page);

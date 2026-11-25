@@ -173,9 +173,10 @@ Times are local to the server, as everywhere else, with no time zone.
   - `progress`: `[time, % through]`, at most 200 points, evenly thinned.
   - `reread`: pages gone back to after reading on (glances under 10 s don't count), as
     `[from, to, times read]` (at most 100 ranges; `pages` counts them all).
-  - `stalls`: pages stayed on at least a minute and 3× the book's typical page in one
-    session, the longest 20, in page order. KOReader caps the time it records per page (2
-    minutes by default), so with its default settings long stalls can't show.
+  - `stalls`: pages stayed on, in one session, at least a minute and 3× the book's typical
+    page, the longest 20, in page order. KOReader caps the time it records per page (2
+    minutes by default), so 115 s also counts if it is 1.5× typical. `minutes` is then a
+    floor ("2 min or more"), not how long the page really took.
 - **`coverage`**: the first and last day with page data. `sessions_since` is later than
   `since` when old sessions are cut. Per book, `since` and `until`.
 
