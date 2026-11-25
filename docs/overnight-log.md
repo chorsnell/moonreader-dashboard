@@ -1,5 +1,24 @@
 # Overnight log
 
+## Run 5: Same-day minutes across apps (25 Nov 2026)
+
+For a book and date, minutes and words from different sources (Moon+, KOReader, Kobo, Kindle) now add up; before, whatever came first stood and the rest was dropped. Progress is the furthest, never a sum.
+
+### Things for you
+
+- **Sync KOReader once after deploying.** A `library/koreader.json` saved by the old code may hold copies of Moon+ days, so until a statistics or book sync rebuilds it, it still only fills dates a book lacks.
+- **Words-a-minute reads low on mixed days.** Only Moon+ logs words, but the page divides them by the day's total minutes. `by_source` has what's needed to fix it in the speed views.
+- **Ask for a real marker on synthetic rows** (plugin): for example a `readingdashboard_synthetic(md5, start_time)` table in `statistics.sqlite3`, or sending the tracked rows with the upload. The signature would stay for rows already written.
+
+### Decisions
+
+- **One source counts once** because each rebuild starts from each source's own data (one file per source). Within KOReader, devices still merge per entry, and a file with two book rows now counts each entry once. Separate entries in one source (two files or editions of a book) add up.
+- **Synthetic KOReader rows are recognised by signature**, as they carry no marker under a book's own md5: 100 total pages, an hour at most, starting exactly on a quarter hour (local noon plus whole hours in any time zone). A real page turn in a 100-page document matches about 1 time in 900 and is lost. `moonplus:` books are dropped by md5.
+- **`by_source`** on a day (`reading_history.json` and `daily.json`) holds each source's minutes and words; a day without it is all Moon+. It's removed when privacy settings group days by week or month. Day records have no page count, so there is none to add.
+- **Reads and totals**: a read gains the minutes an import adds inside it. A read with no day data (Kobo without events) adds its time to the book's total too. A read carried on in another app takes the further progress.
+
+---
+
 ## Run 4: EP-20, the KOReader plugin (25 Oct 2026)
 
 A KOReader plugin (`koreader/readingdashboard.koplugin`) and the dashboard endpoints it uses (`src/koreader-sync`, contract in `koreader/API.md`), for BOO-108 to BOO-113. One PR. An independent review against KOReader's source fixed seven bugs before it went up.

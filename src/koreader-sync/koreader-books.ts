@@ -4,15 +4,13 @@ import { bookKey } from '../common/book-match';
 import type { BookHistory, DayEntry } from '../backup-import/reading-history.types';
 import type { Highlight } from '../backup-import/highlights';
 import type { ImportedBook, ImportedHighlight, ImportFile } from '../imports/imports.types';
+import { SYNTHETIC_MD5 } from '../imports/koreader';
 
 /**
  * The KOReader plugin's side of the sync (koreader/API.md): what a device's book sidecars
  * say, and what the dashboard sends back about books on the device. Pure functions, so the
  * rules are tested without a server.
  */
-
-/** Books KOReader holds only because the plugin copied Moon+ history in (koreader/API.md). */
-export const SYNTHETIC_MD5 = 'moonplus:';
 
 export interface SidecarAnnotation {
   text?: string | null;
