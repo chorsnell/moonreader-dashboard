@@ -84,7 +84,7 @@
       // pace over the last 365 days
       const year = daily.filter((d) => t(end) - t(d.date) < 365 * DAY);
       const minutes = year.reduce((s, d) => s + (d.minutes || 0), 0);
-      const timed = year.filter(okDay), tm = timed.reduce((s, d) => s + d.minutes, 0);
+      const timed = year.map(timedDay).filter(okDay), tm = timed.reduce((s, d) => s + d.minutes, 0);
       const wpm = tm >= 30 ? timed.reduce((s, d) => s + d.words, 0) / tm : null;
       const perDay = minutes / 365;
       const words = pile.reduce((s, r) => s + (r.words || 0), 0);

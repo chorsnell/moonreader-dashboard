@@ -30,6 +30,7 @@ import type {
   Catalogue,
   StatisticsRow,
   SyncedPositionFile,
+  DayEntry,
 } from './reading-history.types';
 
 /** What an import did, as lines for update.log. */
@@ -322,7 +323,11 @@ export class BackupImportService {
           minutes: d.minutes,
           words: d.words,
           progress: d.progress,
-          ...(d.by_source ? { by_source: d.by_source } : {}),
+          // timed_minutes: those the words were counted in, for words a minute; a number, so it
+          // survives where by_source doesn't (friends' share files, week or month grouping)
+          ...(d.by_source
+            ? { by_source: d.by_source, timed_minutes: timedMinutes(d.by_source) }
+            : {}),
         });
       }
     }
@@ -379,6 +384,11 @@ export class BackupImportService {
     await writeFile(`${path}.tmp`, JSON.stringify(value, null, pretty ? 1 : undefined), 'utf8');
     await rename(`${path}.tmp`, path);
   }
+}
+
+/** The minutes of the sources that logged words that day. */
+function timedMinutes(bySource: NonNullable<DayEntry['by_source']>): number {
+  return round1(Object.values(bySource).reduce((m, s) => m + (s.words ? (s.minutes ?? 0) : 0), 0));
 }
 
 /** Book titles and authors, the reading log and highlights, from Moon+'s database. */

@@ -15,9 +15,9 @@
           minutes: 0, words: 0, timed_words: 0, timed_minutes: 0, read: false, started: 0, finished: 0 };
       };
       daily.forEach((d) => {
-        const r = row(d.book_id, d.date, d.title), wpm = d.minutes ? d.words / d.minutes : 0;
+        const r = row(d.book_id, d.date, d.title), m = timedMinutes(d), wpm = m ? d.words / m : 0;
         r.minutes = d.minutes || 0; r.words = d.words || 0; r.read = true;
-        if (d.minutes >= 1 && d.words > 0 && wpm >= 40 && wpm <= 800) { r.timed_words = d.words; r.timed_minutes = d.minutes; }
+        if (m >= 1 && d.words > 0 && wpm >= 40 && wpm <= 800) { r.timed_words = d.words; r.timed_minutes = m; }
         at.set(d.book_id + '|' + d.date, r); out.push(r);
       });
       const ev = (r, date, k) => {
