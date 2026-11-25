@@ -283,6 +283,21 @@
   // ---------- date ranges (heatmap, timeline, diary, speed over time) ----------
   const RANGE_DEFAULTS = { heat: '12m', gantt: '24m', diary: '30d', speedtl: '12m' };
   const iso = (d) => d.toISOString().slice(0, 10);
+  // a day's minutes by app, "Moon+ 30, KOReader 12", for tooltips; null unless more than one app
+  // has some. A daily row without by_source is Moon+'s (see src/imports/merge.ts)
+  const APPS = { moonplus: 'Moon+', koreader: 'KOReader', kobo: 'Kobo', kindle: 'Kindle' };
+  let splitData = null, splitDays = null;
+  function appSplit(date, bookId) {
+    const all = D('daily').data;
+    if (all !== splitData) { splitData = all; splitDays = d3.group(all, (d) => d.date); }
+    const by = {};
+    (splitDays.get(date) || []).filter((d) => bookId == null || d.book_id === bookId).forEach((d) => {
+      Object.entries(d.by_source || { moonplus: d }).forEach(([app, v]) => { by[app] = (by[app] || 0) + (v.minutes || 0); });
+    });
+    const apps = Object.entries(by).filter(([, m]) => m > 0).sort((a, b) => b[1] - a[1]);
+    return apps.length > 1 ? apps.map(([app, m]) => `${APPS[app] || app} ${fmt(Math.round(m))}`).join(', ') : null;
+  }
+  const splitLine = (date, bookId) => { const s = appSplit(date, bookId); return s ? [[null, 'By app', s]] : []; };
   const params = () => (dash.params ? dash.params() || {} : {});
   const asOf = () => { const r = D('as_of'); return r.status === 'ok' && r.data[0] ? r.data[0].date : null; };
   const firstDay = () => { const r = D('day_totals'); return r.status === 'ok' && r.data.length ? r.data[0].date : null; };
@@ -403,7 +418,7 @@
         .attr('fill', (r) => (r.minutes > 0 || r.books ? C[0] : 'var(--cds-chart-grid)'))
         .attr('fill-opacity', (r) => (r.minutes > 0 ? op(r.minutes) : r.books ? 0.18 : 1))
         .on('mousemove', (e, r) => showTip(tip, el, e, (t) => {
-          tipLines(t, d3.utcFormat('%a %-d %b %Y')(r.d), [[null, 'Minutes', r.minutes ? fmt(r.minutes) : '—'], ...marksIn(r.date, r.date).map((m) => [m.color, '', m.title])]);
+          tipLines(t, d3.utcFormat('%a %-d %b %Y')(r.d), [[null, 'Minutes', r.minutes ? fmt(r.minutes) : '—'], ...splitLine(r.date), ...marksIn(r.date, r.date).map((m) => [m.color, '', m.title])]);
           if (r.books) r.books.split('; ').forEach((bk) => t.append('div').text(bk));
         }))
         .on('mouseleave', () => hideTip(tip))
@@ -755,7 +770,7 @@
       .on('mousemove', (e) => {
         const day = iso(d3.utcDay.floor(x.invert(d3.pointer(e)[0]))), es = byDate.get(day) || [];
         showTip(tip, el, e, (t) => {
-          tipLines(t, d3.utcFormat('%a %-d %b %Y')(pDate(day)), [...(es.length ? [[null, 'Total', dayMin(es) ? mins(dayMin(es)) : '—']] : [[null, '', 'No reading']]), ...marksIn(day, day).map((mk) => [mk.color, '', mk.title])]);
+          tipLines(t, d3.utcFormat('%a %-d %b %Y')(pDate(day)), [...(es.length ? [[null, 'Total', dayMin(es) ? mins(dayMin(es)) : '—'], ...splitLine(day)] : [[null, '', 'No reading']]), ...marksIn(day, day).map((mk) => [mk.color, '', mk.title])]);
           es.slice().sort((a, b) => (b.minutes || 0) - (a.minutes || 0)).forEach((r) => {
             const d = t.append('div'); d.append('span').attr('class', 'sw').style('background', gColor(r.genre));
             d.append('span').text(r.title + (r.minutes ? ': ' : '')); if (r.minutes) d.append('b').text(mins(r.minutes));
@@ -1247,7 +1262,7 @@
       .on('mousemove', (e, day) => {
         const d = byDate.get(day);
         showTip(tip, box, e, (tp) => tipLines(tp, d3.utcFormat('%a %-d %b %Y')(pDate(day)), d
-          ? [[null, 'Time', d.minutes ? mins(d.minutes) : '—'], [null, 'Words', d.words ? fmt(d.words) : '—'], [null, 'Speed', okDay(d) ? Math.round(d.words / d.minutes) + ' wpm' : '—'], [null, 'Progress', progStep(d)]]
+          ? [[null, 'Time', d.minutes ? mins(d.minutes) : '—'], ...splitLine(day, b.id), [null, 'Words', d.words ? fmt(d.words) : '—'], [null, 'Speed', okDay(d) ? Math.round(d.words / d.minutes) + ' wpm' : '—'], [null, 'Progress', progStep(d)]]
           : [[null, '', 'Not opened']]));
       })
       .on('mouseleave', () => hideTip(tip))
