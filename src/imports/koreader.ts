@@ -10,6 +10,21 @@ import type { ImportedBook, ImportedRead } from './imports.types';
  */
 export const MAX_ENTRY_SECONDS = 4 * 60 * 60;
 
+/** Books KOReader holds only because the plugin copied Moon+ history in (koreader/API.md). */
+export const SYNTHETIC_MD5 = 'moonplus:';
+
+/**
+ * Whether a page entry is one the plugin wrote from the dashboard's history, including under a
+ * book's own md5 (koreader/API.md "Synthetic history rows"). The rows carry no marker, so this
+ * is their signature: 100 total pages, at most an hour, starting a whole number of hours after
+ * the device's local noon. Every time zone is a multiple of 15 minutes from UTC, so that start
+ * is on a quarter hour exactly, whatever zone the device or server is in. A real page turn
+ * matches only in a 100-page document on that very second (about 1 in 900).
+ */
+export function isSyntheticEntry(start: number, seconds: number, totalPages: number | null) {
+  return totalPages === 100 && seconds <= 3600 && start % 900 === 0;
+}
+
 const num = (v: unknown) => {
   const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN;
   return Number.isFinite(n) ? n : null;
@@ -56,6 +71,67 @@ export function isKoreaderDb(path: string): boolean {
   }
 }
 
+/** A page entry that counts as reading. */
+export interface CountedEntry {
+  /** The statistics database's own id for the book. */
+  bookId: string;
+  page: number | null;
+  /** Unix seconds. */
+  start: number;
+  seconds: number;
+  /** As the row has it; older databases have none. */
+  totalPages: number | null;
+}
+
+/**
+ * The page entries that count as reading, in time order: what both the daily totals and the
+ * page-level views (src/sessions) are made from, so they can't disagree. Left out: entries
+ * over MAX_ENTRY_SECONDS, the plugin's copies of Moon+ history, a broken clock's, and the
+ * same entry (md5, page, start) under a second book row.
+ */
+export function countedEntries(db: DatabaseSync): CountedEntry[] {
+  const bookCols = columns(db, 'book');
+  const statCols = columns(db, 'page_stat_data');
+  if (!bookCols.has('id') || !statCols.has('id_book')) {
+    throw new Error("That database isn't KOReader's statistics.sqlite3.");
+  }
+  const md5s = new Map(
+    db
+      .prepare(`select id, ${bookCols.has('md5') ? 'md5' : 'null as md5'} from book`)
+      .all()
+      .map((b) => [String(b.id), str(b.md5)]),
+  );
+  const rows = db
+    .prepare(
+      `select id_book, page, start_time, duration,
+        ${statCols.has('total_pages') ? 'total_pages' : 'null as total_pages'}
+      from page_stat_data order by start_time`,
+    )
+    .all();
+  const out: CountedEntry[] = [];
+  // one file can have two rows (devices that spell its title differently): count an entry once
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const start = num(r.start_time);
+    const seconds = num(r.duration);
+    if (start === null || seconds === null || seconds <= 0 || seconds > MAX_ENTRY_SECONDS) {
+      continue;
+    }
+    const bookId = String(r.id_book);
+    const md5 = md5s.get(bookId) ?? '';
+    const totalPages = num(r.total_pages);
+    if (md5.startsWith(SYNTHETIC_MD5) || isSyntheticEntry(start, seconds, totalPages)) continue;
+    if (md5) {
+      const entry = `${md5}\0${String(r.page)}\0${start}`;
+      if (seen.has(entry)) continue;
+      seen.add(entry);
+    }
+    if (new Date(start * 1000).getUTCFullYear() < 2000) continue;
+    out.push({ bookId, page: num(r.page), start, seconds, totalPages });
+  }
+  return out;
+}
+
 /** "Discworld #3" -> Discworld and 3; "Discworld" -> Discworld and no number. */
 export function koreaderSeries(raw: string): { series: string; series_no: number | null } | null {
   const s = str(raw);
@@ -81,22 +157,10 @@ const authors = (raw: unknown) =>
 export function readKoreader(path: string): ImportedBook[] {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
+    const entries = countedEntries(db);
     const bookCols = columns(db, 'book');
-    const statCols = columns(db, 'page_stat_data');
-    if (!bookCols.has('id') || !statCols.has('id_book')) {
-      throw new Error("That database isn't KOReader's statistics.sqlite3.");
-    }
     const pick = (have: Set<string>, c: string, as = c) =>
       have.has(c) ? `"${c}" as "${as}"` : `null as "${as}"`;
-    // older databases have no total_pages per entry: the book's page count stands in
-    const rows = db
-      .prepare(
-        `select s.id_book as id_book, s.page as page, s.start_time as start_time,
-          s.duration as duration, ${statCols.has('total_pages') ? 's.total_pages' : 'null'}
-          as total_pages
-        from page_stat_data s order by s.start_time`,
-      )
-      .all();
     const days = new Map<string, Map<string, DayEntry>>();
     const pages = new Map<string, number | null>();
     const bookRows = db
@@ -107,22 +171,14 @@ export function readKoreader(path: string): ImportedBook[] {
       )
       .all();
     for (const b of bookRows) pages.set(String(b.id), num(b.pages));
-    for (const r of rows) {
-      const start = num(r.start_time);
-      const seconds = num(r.duration);
-      if (start === null || seconds === null || seconds <= 0 || seconds > MAX_ENTRY_SECONDS) {
-        continue;
-      }
-      const when = new Date(start * 1000);
-      if (when.getUTCFullYear() < 2000) continue;
-      const id = String(r.id_book);
-      const date = localDate(when);
+    // older databases have no total_pages per entry: the book's page count stands in
+    for (const { bookId: id, page, start, seconds, totalPages } of entries) {
+      const date = localDate(new Date(start * 1000));
       const book = days.get(id) ?? new Map<string, DayEntry>();
       days.set(id, book);
       const d = book.get(date) ?? { date, minutes: 0, words: null, progress: null };
       d.minutes = (d.minutes ?? 0) + seconds / 60;
-      const total = num(r.total_pages) || pages.get(id) || null;
-      const page = num(r.page);
+      const total = totalPages || pages.get(id) || null;
       if (total && total > 0 && page !== null && page > 0) {
         const p = round1(Math.min(100, (page / total) * 100));
         d.progress = Math.max(d.progress ?? 0, p);
@@ -180,6 +236,7 @@ export function readKoreader(path: string): ImportedBook[] {
         pages: num(b.pages) || null,
         reads,
         daily,
+        synthetic_removed: true,
         progress: finished ? 100 : (latest.progress ?? null),
         ...series,
       });

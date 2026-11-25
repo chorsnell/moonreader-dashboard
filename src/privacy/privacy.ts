@@ -552,7 +552,10 @@ function mergeDays(rows: Record<string, unknown>[]): Record<string, unknown>[] {
     const key = `${String(r.date)}|${String(r.book_id)}`;
     const had = by.get(key);
     if (!had) {
-      by.set(key, { ...r });
+      // without the per-source split: it would be one day's, not the whole week's or month's
+      const first = { ...r };
+      delete first.by_source;
+      by.set(key, first);
       continue;
     }
     for (const k of ['minutes', 'words']) {

@@ -236,6 +236,19 @@ export class KoreaderSyncService {
     }
   }
 
+  /** What the plugin last sent about each device file, keyed by its partial MD5. */
+  sidecars(): Promise<Record<string, SidecarBook>> {
+    return this.readBooks();
+  }
+
+  /** The file names of the dashboard book a device file (partial MD5) is linked to. */
+  async linkedFiles(md5: string): Promise<string[]> {
+    const links = await this.readLinks();
+    if (!Object.hasOwn(links, md5)) return [];
+    const history = await this.readData<{ books?: BookHistory[] }>('reading_history.json');
+    return history?.books?.find((b) => b.id === links[md5].book_id)?.source_files ?? [];
+  }
+
   private async readBooks(): Promise<Record<string, SidecarBook>> {
     return (await this.readJson<Record<string, SidecarBook>>(this.booksPath)) ?? {};
   }

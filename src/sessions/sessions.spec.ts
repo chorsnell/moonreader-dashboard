@@ -5,7 +5,9 @@ import { DatabaseSync } from 'node:sqlite';
 import type { BookHistory, Catalogue } from '../backup-import/reading-history.types';
 import type { ImportedBook } from '../imports/imports.types';
 import { buildContext, filterDataFile, PRESETS, DEFAULT_PRIVACY } from '../privacy/privacy';
-import { bookMatcher, isSyntheticRow, readPageEntries } from './page-entries';
+import { readKoreader } from '../imports/koreader';
+import { mergeStatsDbs } from '../koreader-sync/merge-stats';
+import { bookMatcher, readPageEntries } from './page-entries';
 import {
   buildSessions,
   downsample,
@@ -258,10 +260,6 @@ describe('page entries', () => {
   const t = at('2026-11-02T20:00:07');
 
   it('leaves out the Moon+ history the plugin copied in', async () => {
-    expect(isSyntheticRow(noon, 3600, 100)).toBe(true);
-    expect(isSyntheticRow(noon + 3600, 120, 100)).toBe(true);
-    expect(isSyntheticRow(noon, 60, 300)).toBe(false);
-    expect(isSyntheticRow(t, 60, 100)).toBe(false);
     makeDb(
       'device-kobo.sqlite3',
       [
@@ -314,6 +312,73 @@ describe('page entries', () => {
       [9, 'boox'],
     ]);
     expect(unreadable).toEqual(['upload.sqlite3']);
+  });
+
+  it('gives each book and day the minutes the daily totals have', async () => {
+    const midnight = at('2026-11-03T00:00:00');
+    // durations in whole tenths of a minute, so rounding can't blur the comparison
+    const books: [number, string, string, string][] = [
+      [1, 'Alpha', 'Ann Author', 'md5a'],
+      [2, 'Proper Name', 'Bo', 'md5b'],
+      [3, 'Alpha', 'Ann Author', 'moonplus:alpha'],
+    ];
+    makeDb('device-kobo.sqlite3', books, [
+      [1, 5, t, 60, 300],
+      [1, 6, t + 60, 90, 300],
+      // read across midnight
+      [1, 7, midnight - 120, 60, 300],
+      [1, 8, midnight - 30, 120, 300],
+      [1, 9, midnight + 90, 60, 300],
+      // Moon+ copies, a page left open, an old clock; a page 0 and a future date count
+      [1, 40, noon, 3600, 100],
+      [3, 41, t + 500, 600, 300],
+      [1, 10, t + 700, 5 * 3600, 300],
+      [1, 11, at('1999-01-01T10:00:00'), 60, 300],
+      [1, 0, t + 800, 30, 300],
+      [2, 1, at('2027-01-01T10:00:07'), 60, 300],
+    ]);
+    makeDb(
+      'device-boox.sqlite3',
+      [
+        [4, 'Alpha (epub)', 'Ann Author', 'md5a'],
+        [5, 'Proper Name', 'Bo', 'md5b'],
+      ],
+      [
+        // the same entry as the Kobo's, under another title
+        [4, 5, t, 60, 300],
+        [4, 50, t + 3000, 120, 300],
+        [5, 2, t, 180, 300],
+      ],
+    );
+    const files = ['device-boox.sqlite3', 'device-kobo.sqlite3'].map((n) => join(dir, n));
+    const merged = join(dir, 'merged.db');
+    mergeStatsDbs(files, merged);
+    const imported = readKoreader(merged);
+    const match = matcher(imported);
+
+    const daily = new Map<string, number>();
+    for (const b of imported) {
+      const id = match({ rowId: '', md5: b.id.replace(/-\d+$/, ''), ...b })!;
+      for (const d of b.daily ?? []) {
+        const key = `${id} ${d.date}`;
+        daily.set(key, (daily.get(key) ?? 0) + d.minutes!);
+      }
+    }
+    const { entries } = await readPageEntries(dir, match);
+    const file = buildSessions(entries, [book('alpha'), book('renamed')], NOW);
+    const sessions = new Map<string, number>();
+    for (const s of file.sessions) {
+      const key = `${s.book_id} ${s.start.slice(0, 10)}`;
+      sessions.set(key, (sessions.get(key) ?? 0) + s.minutes);
+    }
+
+    expect(Object.fromEntries(sessions)).toEqual(Object.fromEntries(daily));
+    expect(Object.fromEntries(daily)).toEqual({
+      'alpha 2026-11-02': 8,
+      'alpha 2026-11-03': 1,
+      'renamed 2026-11-02': 3,
+      'renamed 2027-01-01': 1,
+    });
   });
 
   it('finds the dashboard book the import went to, and drops books it has none for', () => {

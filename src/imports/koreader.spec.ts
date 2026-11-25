@@ -5,7 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { makeKoboDb } from '../../test/support/fake-kobo';
 import { makeKoreaderDb } from '../../test/support/fake-koreader';
 import { detectUpload } from './detect';
-import { isKoreaderDb, koreaderSeries, readKoreader } from './koreader';
+import { isKoreaderDb, isSyntheticEntry, koreaderSeries, readKoreader } from './koreader';
 
 let tmp: string;
 beforeAll(async () => {
@@ -20,6 +20,18 @@ describe('KOReader', () => {
     expect(koreaderSeries('Discworld')).toEqual({ series: 'Discworld', series_no: null });
     expect(koreaderSeries('N/A')).toBeNull();
     expect(koreaderSeries('')).toBeNull();
+  });
+
+  it('knows the rows the plugin copied from Moon+', () => {
+    const noon = Date.parse('2026-01-05T12:00:00Z') / 1000;
+    expect(isSyntheticEntry(noon, 3600, 100)).toBe(true);
+    expect(isSyntheticEntry(noon + 3600, 120, 100)).toBe(true);
+    // a device half an hour off UTC
+    expect(isSyntheticEntry(noon + 1800, 120, 100)).toBe(true);
+    expect(isSyntheticEntry(noon, 60, 300)).toBe(false);
+    expect(isSyntheticEntry(noon, 3601, 100)).toBe(false);
+    expect(isSyntheticEntry(noon + 7, 60, 100)).toBe(false);
+    expect(isSyntheticEntry(noon, 60, null)).toBe(false);
   });
 
   it('reads books, days, progress and reads from statistics.sqlite3', () => {
@@ -76,7 +88,7 @@ describe('KOReader', () => {
       create table page_stat_data (id_book integer, page integer, start_time integer,
         duration integer, total_pages integer);
       insert into book values (1, 'Grown', 'Ann', 100, null, null), (2, 'Empty', 'Bo', 50, null, null);
-      insert into page_stat_data values (1, 120, ${Date.parse('2026-01-05T12:00:00Z') / 1000}, 90, 100);
+      insert into page_stat_data values (1, 120, ${Date.parse('2026-01-05T12:00:07Z') / 1000}, 90, 100);
     `);
     db.close();
     const books = readKoreader(path);

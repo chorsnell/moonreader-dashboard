@@ -1,16 +1,19 @@
 /**
  * The page turns in the statistics databases KOReader devices sent (library/koreader/
  * statistics/, one per device; src/koreader-sync keeps them), each tied to its dashboard
- * book, with the plugin's copies of Moon+ history left out and nothing counted twice.
+ * book. Which rows count is countedEntries' call, over the databases merged as the KOReader
+ * import merges them, so the page-level views and the daily totals agree.
  */
-import { readdir } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { bookKey, SERIES_SUFFIX } from '../common/book-match';
 import type { BookHistory, Catalogue } from '../backup-import/reading-history.types';
-import { MAX_ENTRY_SECONDS } from '../imports/koreader';
+import { countedEntries } from '../imports/koreader';
 import type { ImportedBook } from '../imports/imports.types';
-import { koreaderAuthors, SYNTHETIC_MD5 } from '../koreader-sync/koreader-books';
+import { koreaderAuthors } from '../koreader-sync/koreader-books';
+import { mergeStatsDbs } from '../koreader-sync/merge-stats';
 import type { PageEntry } from './sessions';
 
 /** One book of one statistics database, and its page turns. */
@@ -19,18 +22,7 @@ export interface StatsBook {
   md5: string;
   title: string;
   author: string;
-  entries: Omit<PageEntry, 'book_id'>[];
-}
-
-/**
- * Whether a row is Moon+ history the plugin wrote into a real book's statistics
- * (koreader/API.md "Synthetic history rows"): out of 100 pages, at most an hour, starting at
- * local noon or whole hours after it. The device's time zone may not be the server's, so any
- * start on a quarter hour (every zone's whole hour) counts. A real page turn in a 100-page
- * book meets that about once in 900, which costs one page.
- */
-export function isSyntheticRow(start: number, seconds: number, total: number | null): boolean {
-  return total === 100 && seconds <= 3600 && start % 900 === 0;
+  entries: Omit<PageEntry, 'book_id' | 'device'>[];
 }
 
 /** "device-kobo-libra-2-ab12.sqlite3" -> "kobo-libra-2-ab12"; WebDAV and uploads name none. */
@@ -40,18 +32,17 @@ export const deviceOf = (file: string): string | null =>
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 
-/** The books and page turns of one statistics.sqlite3. */
-export function readStatsDb(path: string, device: string | null, now = Date.now()): StatsBook[] {
+/** The books and counted page turns of one statistics.sqlite3. */
+export function readStatsDb(path: string): StatsBook[] {
   const db = new DatabaseSync(path, { readOnly: true });
   try {
-    const columns = (table: string) =>
-      new Set(
-        db
-          .prepare(`pragma table_info(${table})`)
-          .all()
-          .map((c) => String(c.name)),
-      );
-    const bookCols = columns('book');
+    const entries = countedEntries(db);
+    const bookCols = new Set(
+      db
+        .prepare('pragma table_info(book)')
+        .all()
+        .map((c) => String(c.name)),
+    );
     const pick = (c: string) => (bookCols.has(c) ? `"${c}"` : 'null') + ` as "${c}"`;
     const books = new Map<string, StatsBook & { pages: number | null }>();
     for (const b of db
@@ -59,48 +50,30 @@ export function readStatsDb(path: string, device: string | null, now = Date.now(
         `select ${['id', 'title', 'authors', 'pages', 'md5'].map(pick).join(', ')} from book`,
       )
       .all()) {
-      const md5 = str(b.md5);
-      // a book KOReader holds only because the plugin copied Moon+ history in
-      if (md5.startsWith(SYNTHETIC_MD5)) continue;
       books.set(String(b.id), {
         rowId: String(b.id),
-        md5,
+        md5: str(b.md5),
         title: str(b.title),
         author: koreaderAuthors(b.authors),
         pages: num(b.pages),
         entries: [],
       });
     }
-    const total = columns('page_stat_data').has('total_pages') ? 'total_pages' : 'null';
-    const rows = db
-      .prepare(
-        `select id_book, page, start_time, duration, ${total} as total_pages from page_stat_data`,
-      )
-      .iterate();
-    for (const r of rows) {
-      const book = books.get(String(r.id_book));
-      const page = num(r.page);
-      const start = num(r.start_time);
-      const seconds = num(r.duration);
-      if (!book || page === null || page <= 0 || start === null || seconds === null) continue;
-      // as the daily totals do: over four hours is the device left on a page
-      if (seconds <= 0 || seconds > MAX_ENTRY_SECONDS) continue;
-      // a broken clock
-      if (new Date(start * 1000).getUTCFullYear() < 2000 || start * 1000 > now + 86_400_000) {
-        continue;
-      }
-      const raw = num(r.total_pages);
-      if (isSyntheticRow(start, seconds, raw)) continue;
-      const pages = raw || book.pages || null;
+    for (const e of entries) {
+      const book = books.get(e.bookId);
+      if (!book) continue;
+      const total = e.totalPages || book.pages;
+      // time on no page in particular still counts; it just has no place in the book
+      const placed = e.page !== null && e.page > 0 && total !== null && total > 0;
       book.entries.push({
-        page: pages ? Math.min(page, pages) : page,
-        start,
-        seconds,
-        total: pages && pages > 0 ? pages : null,
-        device,
+        page: placed ? Math.min(e.page!, total) : 0,
+        start: e.start,
+        seconds: e.seconds,
+        total: placed ? total : null,
       });
     }
-    return [...books.values()].filter((b) => b.entries.length);
+    // a book with no title isn't imported, so has no daily totals either
+    return [...books.values()].filter((b) => b.title && b.entries.length);
   } finally {
     db.close();
   }
@@ -157,6 +130,23 @@ export function bookMatcher(
   };
 }
 
+/** The same entry in any database: the book's md5 (else title and author), page and start. */
+const entryKey = (b: StatsBook, e: StatsBook['entries'][number]) =>
+  `${b.md5 || `${b.title}\0${b.author}`}\0${e.page}\0${e.start}`;
+
+/** One database as it is, or several merged as the KOReader import merges them. */
+async function readMerged(paths: string[]): Promise<StatsBook[]> {
+  if (paths.length < 2) return paths.length ? readStatsDb(paths[0]) : [];
+  const tmp = await mkdtemp(join(tmpdir(), 'koreader-pages-'));
+  try {
+    const merged = join(tmp, 'statistics.sqlite3');
+    mergeStatsDbs(paths, merged);
+    return readStatsDb(merged);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+}
+
 /**
  * Every device's page turns under their dashboard books. A turn in more than one database
  * (KOReader's sync copies them between devices) counts once; when two devices hold it,
@@ -169,30 +159,34 @@ export async function readPageEntries(
   const names = (await readdir(statsDir).catch(() => [] as string[]))
     .filter((n) => n.endsWith('.sqlite3'))
     .sort();
-  const seen = new Map<string, { entry: PageEntry; devices: Set<string> }>();
+  const readable: string[] = [];
   const unreadable: string[] = [];
+  const devices = new Map<string, Set<string>>();
   for (const name of names) {
-    let books: StatsBook[];
+    const path = join(statsDir, name);
     try {
-      books = readStatsDb(join(statsDir, name), deviceOf(name));
+      const books = readStatsDb(path);
+      readable.push(path);
+      const device = deviceOf(name);
+      if (!device) continue;
+      for (const b of books) {
+        for (const e of b.entries) {
+          const key = entryKey(b, e);
+          devices.set(key, (devices.get(key) ?? new Set()).add(device));
+        }
+      }
     } catch {
       unreadable.push(name);
-      continue;
-    }
-    for (const b of books) {
-      const book_id = match(b);
-      if (book_id === null) continue;
-      for (const e of b.entries) {
-        const key = `${book_id}\0${e.page}\0${e.start}`;
-        let had = seen.get(key);
-        if (!had) {
-          had = { entry: { ...e, book_id }, devices: new Set() };
-          seen.set(key, had);
-        }
-        if (e.device) had.devices.add(e.device);
-        had.entry.device = had.devices.size === 1 ? [...had.devices][0] : null;
-      }
     }
   }
-  return { entries: [...seen.values()].map((s) => s.entry), unreadable };
+  const entries: PageEntry[] = [];
+  for (const b of await readMerged(readable)) {
+    const book_id = match(b);
+    if (book_id === null) continue;
+    for (const e of b.entries) {
+      const held = devices.get(entryKey(b, e));
+      entries.push({ ...e, book_id, device: held?.size === 1 ? [...held][0] : null });
+    }
+  }
+  return { entries, unreadable };
 }

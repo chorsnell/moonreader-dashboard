@@ -69,13 +69,23 @@ export interface SyncedPositionFile {
   name: string;
   text: string;
   mtimeMs: number;
+  /** The dashboard wrote it from a KOReader position (src/progress-sync). */
+  ownWrite?: boolean;
 }
+
+/** Where a day's reading was recorded. */
+export type DaySource = 'moonplus' | ImportSource;
 
 export interface DayEntry {
   date: string;
   minutes: number | null;
   words: number | null;
   progress: number | null;
+  /**
+   * What each source recorded that day; minutes and words above are their totals. Set on
+   * every day an import added to; a day without it is wholly Moon+'s.
+   */
+  by_source?: Partial<Record<DaySource, { minutes: number | null; words: number | null }>>;
 }
 
 export interface ReadEntry {

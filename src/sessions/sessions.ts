@@ -120,13 +120,19 @@ interface Run {
   end: number;
 }
 
-/** Splits one book's page turns (in time order) at long gaps, and where the device changes. */
+const dayOf = (e: PageEntry) => localDate(new Date(e.start * 1000));
+
+/**
+ * Splits one book's page turns (in time order) at long gaps, where the device changes, and
+ * at midnight, so a day's sessions add up to that day's daily total.
+ */
 export function splitSessions(entries: PageEntry[]): Run[] {
   const runs: Run[] = [];
   let run: Run | undefined;
   for (const e of entries) {
     const otherDevice = run?.device && e.device && run.device !== e.device;
-    if (!run || e.start - run.end > SESSION_GAP_SECONDS || otherDevice) {
+    const newDay = run && dayOf(e) !== dayOf(run.entries[0]);
+    if (!run || e.start - run.end > SESSION_GAP_SECONDS || otherDevice || newDay) {
       run = { entries: [], device: null, end: 0 };
       runs.push(run);
     }

@@ -147,13 +147,14 @@ KOReader reading, and says from when. Don't fill the days before `since` from ot
 
 Times are local to the server, as everywhere else, with no time zone.
 
-- **Left out:** the Moon+ history the plugin copies into KOReader (`moonplus:` books, and
-  rows out of 100 pages, at most an hour, starting on a quarter hour, which covers "local
-  noon, an hour each" in any time zone); entries over four hours; books with no dashboard
-  book (or excluded in `catalogue.json`). A page entry in several devices' databases (same
-  book, page and start time) counts once.
+- **Which rows count** is the same as for the daily totals (`countedEntries` in
+  `src/imports/koreader.ts`): not the Moon+ history the plugin copies into KOReader, entries
+  over four hours or a broken clock's, and a page entry in several devices' databases (same
+  md5, page and start time) counts once. So a book's session minutes on a date add up to its
+  KOReader minutes that day (give or take 0.05 a session of rounding; old sessions past the
+  cap aside). Books with no dashboard book are left out.
 - **`sessions`** (oldest first, newest 3000): one book's page turns with no gap over
-  `session_gap_minutes`, split also when the device changes. `device` is the name the plugin
+  `session_gap_minutes`, split also when the device changes and at midnight. `device` is the name the plugin
   sent, as a slug; `null` for WebDAV and uploaded files, and for turns two devices both hold.
   `minutes` is time on pages, not `end - start`. `pages` counts different pages read.
   `first_page` and `last_page` are where it started and stopped (not the lowest and highest),
