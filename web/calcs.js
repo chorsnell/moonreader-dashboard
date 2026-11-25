@@ -1,3 +1,15 @@
+// Words per minute needs the minutes the words were counted in. On a day read in several apps
+// only some (Moon+) log words, so speed figures use their minutes alone: timed_minutes (from
+// the build), else worked out from by_source, else (neither there) all the day's minutes.
+function timedMinutes(d) {
+  if (d.timed_minutes != null) return d.timed_minutes;
+  if (!d.by_source) return d.minutes;
+  const m = Object.values(d.by_source).reduce((a, s) => a + (s.words > 0 ? s.minutes || 0 : 0), 0);
+  return Math.round(m * 10) / 10;
+}
+// a day as speed figures see it
+const timedDay = (d) => ({ ...d, minutes: timedMinutes(d) });
+
 dash.calc('as_of', {
   inputs: ['daily'], title: 'Backup date',
   description: 'The latest day in the reading log, used as "today" everywhere.',
@@ -20,7 +32,7 @@ dash.calc('kpis', {
     for (const d of days) { run = prev && ms(d) - ms(prev) === DAY ? run + 1 : 1; best = Math.max(best, run); prev = d; }
     let now = 0;
     for (let i = days.length - 1; i >= 0 && ms(end) - ms(days[i]) === now * DAY; i--) now++;
-    const both = daily.filter((d) => d.minutes > 0 && d.words > 0);
+    const both = daily.map(timedDay).filter((d) => d.minutes > 0 && d.words > 0);
     const wpm = both.reduce((a, d) => a + d.words, 0) / both.reduce((a, d) => a + d.minutes, 0);
     const v = {
       finished_ytd: fin.filter((r) => inYtd(r.end, y)).length,
@@ -169,7 +181,7 @@ dash.calc('speed_year', {
   description: 'Words per minute per year, from days with both words and minutes logged.',
   fn: (daily) => {
     const y = {};
-    daily.filter((d) => d.minutes > 0 && d.words > 0).forEach((d) => { const k = +d.date.slice(0, 4); y[k] = y[k] || { year: k, w: 0, m: 0 }; y[k].w += d.words; y[k].m += d.minutes; });
+    daily.map(timedDay).filter((d) => d.minutes > 0 && d.words > 0).forEach((d) => { const k = +d.date.slice(0, 4); y[k] = y[k] || { year: k, w: 0, m: 0 }; y[k].w += d.words; y[k].m += d.minutes; });
     return Object.values(y).sort((a, b) => a.year - b.year).map((r) => ({ year: r.year, wpm: Math.round(r.w / r.m) }));
   },
 });
@@ -306,9 +318,10 @@ dash.calc('anomalies', {
         detail: top.map((d) => d.title + (d.minutes ? ` (${Math.round(d.minutes)} min)` : '')).join(' · '), books: v.length });
     });
     daily.forEach((d) => {
-      if (d.minutes >= CHECK.longDayMin) add('long', d, d.date, `${Math.round(d.minutes / 6) / 10} hours in one day${d.words ? `, ${Math.round(d.words / d.minutes)} wpm` : ''}. Left open?`, { minutes: d.minutes });
-      else if (d.minutes >= 5 && d.words > 0 && (d.words / d.minutes > 800 || d.words / d.minutes < 40))
-        add('speed', d, d.date, `${Math.round(d.words / d.minutes)} wpm over ${Math.round(d.minutes)} min (${d.words.toLocaleString()} words). Left out of speed figures.`, { wpm: Math.round(d.words / d.minutes) });
+      const t = timedMinutes(d);
+      if (d.minutes >= CHECK.longDayMin) add('long', d, d.date, `${Math.round(d.minutes / 6) / 10} hours in one day${d.words && timedMinutes(d) ? `, ${Math.round(d.words / timedMinutes(d))} wpm` : ''}. Left open?`, { minutes: d.minutes });
+      else if (t >= 5 && d.words > 0 && (d.words / t > 800 || d.words / t < 40))
+        add('speed', d, d.date, `${Math.round(d.words / t)} wpm over ${Math.round(t)} min (${d.words.toLocaleString()} words). Left out of speed figures.`, { wpm: Math.round(d.words / t) });
     });
     // progress from one logged day to the next, per book
     const last = new Map();
@@ -345,7 +358,7 @@ dash.calc('diary', {
       const k = d.book_id + '|' + d.date, st = starts[k], fin = ends[k];
       const row = {
         date: d.date, book_id: d.book_id, title: d.title, author: d.author || '', genre: d.genre,
-        minutes: d.minutes, words: d.words, progress: d.progress ?? null, prev_progress: st ? 0 : last[d.book_id] ?? null,
+        minutes: d.minutes, words: d.words, ...(timedMinutes(d) !== d.minutes ? { timed_minutes: timedMinutes(d) } : {}), progress: d.progress ?? null, prev_progress: st ? 0 : last[d.book_id] ?? null,
         event: fin ? 'finished' : st ? (st.read_no > 1 ? 'reread' : 'started') : null,
       };
       if (d.progress != null) last[d.book_id] = d.progress;
@@ -410,7 +423,7 @@ dash.calc('book_speed', {
     const ok = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
     const meta = new Map(books.map((b) => [b.id, b])), agg = new Map();
     let W = 0, M = 0;
-    daily.filter(ok).forEach((d) => {
+    daily.map(timedDay).filter(ok).forEach((d) => {
       const a = agg.get(d.book_id) || { w: 0, m: 0, days: 0 };
       a.w += d.words; a.m += d.minutes; a.days++; agg.set(d.book_id, a); W += d.words; M += d.minutes;
     });
@@ -428,7 +441,7 @@ dash.calc('speed_overall', {
   description: 'Your overall words per minute, and the fastest and slowest books.',
   fn: (daily, book_speed) => {
     const ok = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
-    const v = daily.filter(ok), w = v.reduce((s, d) => s + d.words, 0), m = v.reduce((s, d) => s + d.minutes, 0);
+    const v = daily.map(timedDay).filter(ok), w = v.reduce((s, d) => s + d.words, 0), m = v.reduce((s, d) => s + d.minutes, 0);
     const f = book_speed[0] || {}, s = book_speed[book_speed.length - 1] || {};
     return [
       { metric: 'avg_wpm', value: m ? Math.round(w / m) : null },
@@ -449,7 +462,7 @@ dash.calc('group_speed', {
       const k = kind + '|' + name, a = g.get(k) || { kind, name, genre, w: 0, m: 0, books: new Set() };
       a.w += d.words; a.m += d.minutes; a.books.add(d.book_id); g.set(k, a);
     };
-    daily.filter(ok).forEach((d) => {
+    daily.map(timedDay).filter(ok).forEach((d) => {
       const b = meta.get(d.book_id) || {};
       add('genre', b.genre || d.genre, b.genre || d.genre, d);
       add('subgenre', b.subgenre || 'Untagged', b.genre || d.genre, d);
@@ -467,7 +480,7 @@ dash.calc('speed_days', {
   description: 'Words per minute for each book on each timed day, for the speed-over-time chart.',
   fn: (daily) => {
     const ok = (d) => d.minutes >= 1 && d.words > 0 && d.words / d.minutes >= 40 && d.words / d.minutes <= 800;
-    return daily.filter(ok).map((d) => ({ date: d.date, book_id: d.book_id, title: d.title, author: d.author, genre: d.genre,
+    return daily.map(timedDay).filter(ok).map((d) => ({ date: d.date, book_id: d.book_id, title: d.title, author: d.author, genre: d.genre,
       minutes: d.minutes, words: d.words, wpm: Math.round(d.words / d.minutes) }))
       .sort((a, b) => (a.date < b.date ? -1 : 1));
   },

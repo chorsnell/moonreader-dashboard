@@ -459,6 +459,7 @@ const ANON_KEEP = new Set([
   'prev_progress',
   'hours',
   'minutes',
+  'timed_minutes',
   'words',
   'times_read',
   'read_no',
@@ -510,8 +511,16 @@ function mergeDays(rows: Record<string, unknown>[]): Record<string, unknown>[] {
     const key = `${String(r.date)}|${String(r.book_id)}`;
     const had = by.get(key);
     if (!had) {
-      by.set(key, { ...r });
+      // without the per-source split: it would be one day's, not the whole week's or month's
+      const first = { ...r };
+      delete first.by_source;
+      by.set(key, first);
       continue;
+    }
+    // before minutes are added up: a row without timed_minutes counts all of its own
+    if ('timed_minutes' in had || 'timed_minutes' in r) {
+      const timed = (x: Record<string, unknown>) => num(x.timed_minutes) ?? num(x.minutes) ?? 0;
+      had.timed_minutes = timed(had) + timed(r);
     }
     for (const k of ['minutes', 'words']) {
       const a = num(had[k]);

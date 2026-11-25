@@ -69,6 +69,11 @@ export interface ImportedBook {
   reads: ImportedRead[];
   /** Per-day reading, when the source has it. */
   daily?: DayEntry[];
+  /**
+   * KOReader: `daily` was read leaving out the plugin's synthetic Moon+ rows. An import saved
+   * before that was done has no flag, and only fills dates the book lacks.
+   */
+  synthetic_removed?: boolean;
   /** When the source has them as fields (Kobo, KOReader); Goodreads puts them in the title. */
   series?: string | null;
   series_no?: number | null;

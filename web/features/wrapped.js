@@ -22,7 +22,7 @@
       reads.forEach((r) => { if (r.author && r.start && (!firstBy.has(r.author) || r.start < firstBy.get(r.author))) firstBy.set(r.author, r.start); });
       const logStart = daily.reduce((m, d) => (d.date < m ? d.date : m), end);
       const byBook = new Map();
-      daily.forEach((d) => { if (ok(d)) { if (!byBook.has(d.book_id)) byBook.set(d.book_id, []); byBook.get(d.book_id).push(d); } });
+      daily.map(timedDay).forEach((d) => { if (ok(d)) { if (!byBook.has(d.book_id)) byBook.set(d.book_id, []); byBook.get(d.book_id).push(d); } });
 
       return [...years].filter((y) => y <= end.slice(0, 4)).sort().map((Y) => {
         const yr = +Y, inY = (s) => !!s && s.slice(0, 4) === Y, partial = end.slice(0, 4) === Y;

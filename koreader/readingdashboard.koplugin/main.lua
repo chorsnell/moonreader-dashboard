@@ -31,7 +31,9 @@ local T = require("ffi/util").template
 local Client = require("client")
 local Feel = require("feel")
 local History = require("history")
+local Layout = require("layout")
 local MoonPlus = require("moonplus")
+local ProgressSync = require("progresssync")
 local Sidecars = require("sidecars")
 
 local Screen = Device.screen
@@ -40,6 +42,8 @@ local Screen = Device.screen
 local AUTO_SYNC_INTERVAL = 15 * 60
 -- Module-level so it survives Reader <-> FileManager switches (plugins are re-instantiated).
 local last_auto_sync = 0
+-- Books' layouts waiting for the network; a few are plenty.
+local MAX_WAITING_LAYOUTS = 10
 
 local ReadingDashboard = WidgetContainer:extend{
     name = "readingdashboard",
@@ -93,6 +97,30 @@ function ReadingDashboard:loadBundledDefaults()
     end
 end
 
+--- A copy downloaded with the password also sets up KOReader's Progress sync, once.
+function ReadingDashboard:prefillProgressSync()
+    if self.settings.progress_sync_prefilled then return end
+    local path = self.path and (self.path .. "/defaults.lua")
+    if not path or lfs.attributes(path, "mode") ~= "file" then return end
+    local ok, defaults = pcall(dofile, path)
+    if not ok or type(defaults) ~= "table" or type(defaults.token) ~= "string" or defaults.token == "" then
+        return
+    end
+    if not (self.settings.url and self.settings.token) then return end
+    local done, wrote = pcall(ProgressSync.prefill, self.ui, self.settings.url, self.settings.token)
+    if not done then
+        logger.warn("ReadingDashboard: can't set up Progress sync:", wrote)
+        return
+    end
+    self.settings.progress_sync_prefilled = true
+    self:saveSettings()
+    if wrote then
+        UIManager:show(InfoMessage:new{
+            text = _("Progress sync is set up to use your reading dashboard.\n\nSet Network → Action when Wi-Fi is off to \"turn on\", then restart KOReader."),
+        })
+    end
+end
+
 function ReadingDashboard:saveSettings()
     ReadingDashboard.settings_obj:saveSetting("settings", self.settings)
     ReadingDashboard.settings_obj:flush()
@@ -137,6 +165,7 @@ end
 
 function ReadingDashboard:init()
     self:loadSettings()
+    self:prefillProgressSync()
     self:onDispatcherRegisterActions()
     self.ui.menu:registerToMainMenu(self)
 end
@@ -166,6 +195,14 @@ function ReadingDashboard:onReaderReady()
     if self.settings.feel_applied then
         self:registerFeelZones()
     end
+    -- Measured even offline: it waits for the network.
+    if self:isConfigured() and self.settings.auto_sync then
+        UIManager:scheduleIn(2, function()
+            if self.ui and self.ui.document then
+                self:sendLayout()
+            end
+        end)
+    end
     if self:isConfigured() and self.settings.auto_sync and NetworkMgr:isOnline() then
         -- Let the statistics plugin set up its book row and the first page render first.
         UIManager:scheduleIn(2, function()
@@ -178,6 +215,8 @@ end
 
 function ReadingDashboard:onNetworkConnected()
     if not (self:isConfigured() and self.settings.auto_sync) then return end
+    -- not throttled like the full sync: positions depend on these
+    UIManager:scheduleIn(1, function() self:flushLayouts() end)
     local now = os.time()
     if now - last_auto_sync < AUTO_SYNC_INTERVAL then return end
     last_auto_sync = now
@@ -186,6 +225,9 @@ end
 
 function ReadingDashboard:onCloseDocument()
     if not (self:isConfigured() and self.settings.auto_sync) then return end
+    -- the font may have changed since it was opened, and the document is about to go
+    local ok, err = pcall(self.queueLayout, self)
+    if not ok then logger.warn("ReadingDashboard: layout not measured:", err) end
     if not NetworkMgr:isOnline() then return end
     -- ReaderUI has saved the sidecar by now; the statistics plugin flushes its
     -- session on this same event, so run after the close has finished.
@@ -297,6 +339,8 @@ function ReadingDashboard:doSync()
     local client = self:getClient()
     local parts, failed = {}, false
 
+    self:flushLayouts()
+
     -- (a) statistics database, only when it changed
     local db_path = self:statsDBPath()
     if lfs.attributes(db_path, "mode") == "file" then
@@ -391,6 +435,86 @@ function ReadingDashboard:matchCurrentBook(interactive)
         if state.applied_basics then state.history_pending = true end
     end
     MoonPlus.applyToOpenBook(self, match, interactive)
+end
+
+-- Reading position sync: the open book's page layout ------------------------
+
+--- Layouts not sent yet, kept apart from the settings: they're large.
+function ReadingDashboard:layoutQueue()
+    if not ReadingDashboard.layout_queue_obj then
+        ReadingDashboard.layout_queue_obj =
+            LuaSettings:open(DataStorage:getSettingsDir() .. "/readingdashboard_layouts.lua")
+    end
+    local store = ReadingDashboard.layout_queue_obj
+    return store:readSetting("waiting", {}), store
+end
+
+--- Measures the open book (layout.lua) and keeps the result for sending, so the dashboard
+-- can turn Moon+ positions into KOReader pages and back. Only when the pages have changed
+-- since it was last measured (a new book, another font or size).
+function ReadingDashboard:queueLayout()
+    local ui = self.ui
+    local doc = ui and ui.document
+    if not doc or (doc.info and doc.info.has_pages) then return end
+    local md5 = ui.doc_settings:readSetting("partial_md5_checksum") or util.partialMD5(doc.file)
+    local signature = Layout.signature(doc, ui.font and ui.font.font_face)
+    if not md5 or not signature then return end
+    local waiting, store = self:layoutQueue()
+    if waiting[md5] then
+        if waiting[md5].signature == signature then return end
+    elseif (self.settings.layouts or {})[md5] == signature then
+        return
+    end
+    local pages, lengths = Layout.build(doc)
+    if not pages then return end
+    local _, file = util.splitFilePathName(doc.file)
+    local count = 0
+    for _ in pairs(waiting) do count = count + 1 end
+    if count >= MAX_WAITING_LAYOUTS then
+        waiting[next(waiting)] = nil
+    end
+    waiting[md5] = {
+        signature = signature,
+        body = {
+            md5 = md5,
+            file = file,
+            pages = pages,
+            toc = Layout.toc(doc),
+            -- an empty table would be sent as an object
+            lengths = #lengths > 0 and lengths or nil,
+        },
+    }
+    store:flush()
+end
+
+--- Sends the waiting layouts, if online.
+function ReadingDashboard:flushLayouts()
+    if not self:isConfigured() then return end
+    local waiting, store = self:layoutQueue()
+    if not next(waiting) or not NetworkMgr:isOnline() then return end
+    local done = {}
+    for md5, item in pairs(waiting) do
+        local ok, res, code = self:getClient():postJSON("/api/koreader/layout", item.body)
+        if ok then
+            self.settings.layouts = self.settings.layouts or {}
+            self.settings.layouts[md5] = item.signature
+            table.insert(done, md5)
+        else
+            logger.warn("ReadingDashboard: layout not sent:", res)
+            -- one the dashboard will never accept is dropped; anything else waits
+            if code ~= 400 then break end
+            table.insert(done, md5)
+        end
+    end
+    if #done == 0 then return end
+    for _, md5 in ipairs(done) do waiting[md5] = nil end
+    store:flush()
+    self:saveSettings()
+end
+
+function ReadingDashboard:sendLayout()
+    self:queueLayout()
+    self:flushLayouts()
 end
 
 -- Moon+ → KOReader: books not on the device ---------------------------------
@@ -526,7 +650,7 @@ function ReadingDashboard:applyToDeviceBooks()
     for md5, match in pairs(matches) do
         local file = by_md5_path[md5]
         if file and not has_sidecar[file] then
-            local data = MoonPlus.unopenedSidecar(match, md5)
+            local data = MoonPlus.unopenedSidecar(match, md5, ProgressSync.configured(self.ui))
             if data then
                 local ds = DocSettings:open(file)
                 for k, v in pairs(data) do ds:saveSetting(k, v) end

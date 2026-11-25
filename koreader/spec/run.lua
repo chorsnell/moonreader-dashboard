@@ -102,6 +102,7 @@ local specs = {
     "history_spec",
     "feel_spec",
     "moonplus_spec",
+    "layout_spec",
     "client_spec",
     "main_spec",
 }

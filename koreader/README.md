@@ -73,7 +73,8 @@ Gesture actions (Settings → Taps and gestures): *Reading dashboard: sync now*,
 
 **Bring in what the dashboard knows about this book** (also automatic on opening a book):
 
-- **Progress**: if KOReader has never had a position for this book, it jumps to the dashboard's progress.
+- **Progress**: if KOReader has never had a position for this book, it jumps to the dashboard's
+  progress. Not when Progress sync is set up: that has the exact place.
 - **Status**: if the dashboard says finished and KOReader had no status, the book is marked finished.
 - **History**: the book's Moon+ reading days are added to KOReader's reading statistics under the
   book's own statistics entry. Days KOReader already has are skipped. Each day becomes rows starting
@@ -92,12 +93,55 @@ device. They appear in the statistics as separate books.
 
 **Apply progress and status to books on this device**: checks the books in your history and home
 folder (up to 2000). For books KOReader has never opened, it sets the reading position and finished
-status. With **Add books to collections by genre** on (the default), matched books are also added
+status (with Progress sync set up, only the finished status). With **Add books to collections by
+genre** on (the default), matched books are also added
 to a collection named after their genre. Books you've already opened in KOReader are left alone,
 apart from collections.
 
 **Undo Moon+ history** removes every reading day this plugin added: the separate books and the
 days added to your own books.
+
+## Reading position with Moon+
+
+Positions sync through KOReader's own **Progress sync**, pointed at the dashboard. Moon+ must
+also sync positions to the dashboard over WebDAV (see
+[docs/progress-sync.md](../docs/progress-sync.md#set-up)).
+
+### Set up Progress sync
+
+**Downloaded with the admin password filled in?** The plugin fills these in itself the first
+time it starts, if Progress sync has no server or login yet. You only need to:
+
+1. on a Kobo (and other devices that can switch Wi-Fi), set **Network → Action when Wi-Fi is
+   off** to **turn on**;
+2. restart KOReader.
+
+Otherwise, with a book open, under **Tools → Progress sync**:
+
+| Setting | Choose |
+| --- | --- |
+| Custom sync server | the dashboard's address followed by `/kosync`, e.g. `https://example.duckdns.org/books/kosync` |
+| Register / Login | **Login**, with any username and `UPLOAD_TOKEN` as the password |
+| Document matching method | **Filename** |
+| Send document metadata | on, if your KOReader has it |
+| Automatically keep documents in sync | on (on a Kobo, first set Network → **Action when Wi-Fi is off** → **turn on**) |
+| Sync behavior → Sync to a newer state | **Silently** |
+| Sync behavior → Sync to an older state | **Prompt** (it starts as *Never*) |
+| Device hostname | leave empty |
+
+KOReader compares how far through the book each place is: further on, it jumps by itself;
+further back, it asks. It doesn't ask about skipping chapters forward.
+
+### What this plugin adds
+
+With **Sync automatically** on, it measures each book you open (where every page starts, where
+the contents point, how long each file is), so the dashboard can turn Moon+'s "characters into
+chapter N" into a KOReader page, and back. Offline, the measurement is kept and sent on the next
+sync, Wi-Fi connection or book close. It's measured again when the font, size or margins change.
+Books over 8000 pages, PDFs and comics aren't measured.
+
+Once Progress sync is logged in, the plugin no longer jumps to the dashboard's percentage
+itself (on opening a book, or in *Apply progress and status*).
 
 ## Moon+ feel
 
@@ -142,6 +186,8 @@ luajit koreader/spec/run.lua
 | File | Purpose |
 | --- | --- |
 | `main.lua` | Plugin: menu, settings, events, sync, Moon+ actions, Moon+ feel UI |
+| `layout.lua` | Measures a book's pages, contents and files for position sync |
+| `progresssync.lua` | Reads and pre-fills KOReader's Progress sync settings |
 | `client.lua` | HTTP (JSON POST, streamed PUT) with KOReader's socket timeouts |
 | `sidecars.lua` | Builds `/books` payloads from sidecars; change detection; batching |
 | `moonplus.lua` | Decides and applies progress, status, history, highlights, collections |

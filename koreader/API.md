@@ -101,6 +101,42 @@ Response:
 - `others` (only when `"others": true`) lists books with `days` that matched none of `files`:
   books read in Moon+ whose files aren't on this device.
 
+## POST {base}/api/koreader/layout
+
+Where each page of a book starts, so reading positions convert exactly between KOReader and
+Moon+ (see [docs/progress-sync.md](../docs/progress-sync.md)). Measured for reflowable books
+when they're opened or closed, again only when the pages change (font, size, margins), and
+kept on the device until it can be sent.
+
+```json
+{
+  "md5": "partial md5",
+  "file": "Book Name.epub",
+  "pages": [ { "xp": "/body/DocFragment[2]/body/p[9]/text().12", "offset": 1500, "pct": 0.3 } ],
+  "toc": [ { "fragment": 2, "offset": 0 } ],
+  "lengths": [ 640, 18250 ]
+}
+```
+
+- `xp`: the page's first xpointer (`getPageXPointer`).
+- `offset`: characters from the start of its DocFragment to there (`getTextFromXPointers`),
+  counted as Moon+ would: UTF-16 units, no soft hyphens, white space collapsed, 1.5 for a
+  paragraph break.
+- `pct`: page / pages, as KOReader's progress sync counts it.
+- `toc` (optional): the DocFragment, and characters into it, of each table of contents entry.
+- `lengths` (optional): characters in each DocFragment, from the first, up to the one before
+  the last with a page.
+- When a layout arrives, the book's latest KOReader position is written to Moon+'s `.po`
+  again, unless Moon+ has saved one since.
+- 200 `{ "ok": true, "pages": 312 }`. Kept per partial MD5 and per MD5 of the file name.
+- 400 for an `md5` that isn't 32 hex digits, or pages none of which has a DocFragment xpointer.
+
+## Progress sync: {base}/kosync
+
+Not used by this plugin: KOReader's own **Progress sync** talks to it, with
+`x-auth-key` = MD5 of `UPLOAD_TOKEN`. The requests, and how positions reach Moon+, are in
+[docs/progress-sync.md](../docs/progress-sync.md).
+
 ## WebDAV
 
 KOReader's own *Reading statistics → Synchronize* to a WebDAV folder on `{base}/dav/` also works:
@@ -113,4 +149,7 @@ GET returns an ETag and PUT honours `If-Match`, as KOReader's sync expects.
   and the dashboard's title and author.
 - Each Moon+ day becomes `page_stat_data` rows starting at local noon, each at most an hour,
   later ones an hour apart, with `total_pages = 100` and `page` from the day's progress.
-- The dashboard needs no marker: imported days on dates the book already has are ignored.
+- The dashboard must not count these rows. It drops `moonplus:` books, and in any book drops
+  entries with `total_pages = 100`, `duration <= 3600` and a `start_time` on a quarter hour
+  (local noon plus whole hours, in any time zone). Changing how the rows are written means
+  changing `isSyntheticEntry` in `src/imports/koreader.ts` too.

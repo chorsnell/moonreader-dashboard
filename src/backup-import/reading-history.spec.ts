@@ -168,6 +168,19 @@ describe('buildReadingHistory', () => {
     expect(books[0].synced).toBe('2026-10-22T12:20');
   });
 
+  it("dates the dashboard's own write by its arrival, whatever stamp it kept", () => {
+    const stamp = new Date(2026, 2, 20, 23, 12).getTime();
+    const arrived = new Date(2026, 9, 22, 12, 20).getTime();
+    const { books } = buildReadingHistory(
+      input([row('/b/Dune.epub', [`${day('2026-03-01')}|60000`, '#7.2%'])], {
+        synced: [
+          { name: 'Dune.epub.po', text: `${stamp}*18@0#0:12.9%`, mtimeMs: arrived, ownWrite: true },
+        ],
+      }),
+    );
+    expect(books[0].synced).toBe('2026-10-22T12:20');
+  });
+
   it('matches a synced position by title when its file name differs from the backup', () => {
     const later = new Date(2026, 9, 20, 22, 0).getTime();
     const result = buildReadingHistory(
@@ -196,6 +209,25 @@ describe('buildReadingHistory', () => {
       'The Talisman - Stephen King.epub.po  ->  The Talisman',
     ]);
     expect(result.unmatchedSyncs).toEqual([]);
+  });
+
+  it("adds no book for the dashboard's own .po, but still applies it to one it has", () => {
+    const now = new Date(2026, 9, 22, 12, 0).getTime();
+    const result = buildReadingHistory(
+      input(
+        [row('/b/Dune.epub', [`${day('2026-10-14')}|60000`, `${day('2026-10-15')}|60000`, '#40%'])],
+        {
+          synced: ['Dune.epub.po', 'Only On The Kobo.epub.po'].map((name) => ({
+            name,
+            text: `${now}*3@0#1:55.0%`,
+            mtimeMs: now,
+            ownWrite: true,
+          })),
+        },
+      ),
+    );
+    expect(result.books.map((b) => b.title)).toEqual(['Dune']);
+    expect(result.books[0]).toMatchObject({ progress: 55, last_read: '2026-10-22' });
   });
 
   it('does not match a short title partially', () => {

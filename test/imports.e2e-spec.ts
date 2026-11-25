@@ -303,7 +303,7 @@ describe('imports', () => {
       ['2024-01-10', '2024-01-10', false],
       ['2026-02-01', '2026-02-02', false],
     ]);
-    // Moon+ already has Alpha's 2 March, so its day stands
+    // Moon+ already has Alpha's 2 March: KOReader's ten minutes add to it
     const daily = await d.json<{ book_id: string; date: string; minutes: number }[]>(
       'data',
       'daily.json',
@@ -313,7 +313,12 @@ describe('imports', () => {
       '2026-03-02',
       '2026-03-03',
     ]);
-    expect(daily.find((r) => r.book_id === 'alpha' && r.date === '2026-03-02')?.minutes).toBe(20);
+    expect(daily.find((r) => r.book_id === 'alpha' && r.date === '2026-03-02')).toMatchObject({
+      minutes: 30,
+      by_source: { moonplus: { minutes: 20 }, koreader: { minutes: 10 } },
+      // Moon+ logged words that day, so speed uses its minutes alone
+      timed_minutes: 20,
+    });
 
     const list = await request(d.server)
       .get('/api/admin/imports')

@@ -76,7 +76,7 @@ describe('KOReader', () => {
       create table page_stat_data (id_book integer, page integer, start_time integer,
         duration integer, total_pages integer);
       insert into book values (1, 'Grown', 'Ann', 100, null, null), (2, 'Empty', 'Bo', 50, null, null);
-      insert into page_stat_data values (1, 120, ${Date.parse('2026-01-05T12:00:00Z') / 1000}, 90, 100);
+      insert into page_stat_data values (1, 120, ${Date.parse('2026-01-05T12:00:07Z') / 1000}, 90, 100);
     `);
     db.close();
     const books = readKoreader(path);

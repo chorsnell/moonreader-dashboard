@@ -251,16 +251,22 @@ describe('mergeImports', () => {
       empty,
     );
     const b = books[0];
-    // Moon+ keeps its own 20 January; the Kobo adds the 25th
-    expect(b.daily.map((d) => [d.date, d.minutes])).toEqual([
-      ['2024-01-01', 30],
-      ['2024-01-20', 30],
-      ['2024-01-25', 50],
+    // 20 January adds up across the two; the Kobo adds the 25th
+    expect(b.daily.map((d) => [d.date, d.minutes, d.progress])).toEqual([
+      ['2024-01-01', 30, 30],
+      ['2024-01-20', 129, 70],
+      ['2024-01-25', 50, 100],
     ]);
     expect(b.reads).toEqual([
-      expect.objectContaining({ start: '2024-01-01', end: '2024-01-25', finished: true }),
+      expect.objectContaining({
+        start: '2024-01-01',
+        end: '2024-01-25',
+        finished: true,
+        days_read: 3,
+        minutes: 209,
+      }),
     ]);
-    expect(b).toMatchObject({ status: 'finished', progress: 100, total_minutes: 110 });
+    expect(b).toMatchObject({ status: 'finished', progress: 100, total_minutes: 209 });
     expect(b.last_read).toBe('2024-01-25');
     expect(r.highlights).toEqual([
       expect.objectContaining({ book_id: 'emma', source: 'kobo', text: 'A line' }),

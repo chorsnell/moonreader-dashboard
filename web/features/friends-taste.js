@@ -17,7 +17,7 @@
     daily.forEach((d) => { if (!days.has(d.book_id)) days.set(d.book_id, []); days.get(d.book_id).push(d); });
     const out = new Map();
     byBook.forEach((r, id) => {
-      const ds = (days.get(id) || []).filter((d) => d.date >= r.start && d.date <= r.end && d.minutes > 0 && d.words > 0);
+      const ds = (days.get(id) || []).map(timedDay).filter((d) => d.date >= r.start && d.date <= r.end && d.minutes > 0 && d.words > 0);
       const m = ds.reduce((a, d) => a + d.minutes, 0), w = ds.reduce((a, d) => a + d.words, 0);
       out.set(id, {
         finished: r.finished === true, progress: r.progress, start: r.start, end: r.end,

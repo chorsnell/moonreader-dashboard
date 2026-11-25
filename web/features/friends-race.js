@@ -15,7 +15,8 @@
     let best = 0;
     const points = days.filter((d) => d.progress != null).map((d) => ({ date: d.date, progress: (best = Math.max(best, d.progress)), minutes: d.minutes || 0, words: d.words || 0 }));
     if (!points.length) return null;
-    const m = d3.sum(days, (d) => (d.minutes > 0 && d.words > 0 ? d.minutes : 0)), w = d3.sum(days, (d) => (d.minutes > 0 && d.words > 0 ? d.words : 0));
+    const timed = days.map(timedDay).filter((d) => d.minutes > 0 && d.words > 0);
+    const m = d3.sum(timed, (d) => d.minutes), w = d3.sum(timed, (d) => d.words);
     return { read: r, points, finished: r.finished === true, wpm: m >= 20 ? Math.round(w / m) : null };
   }
 

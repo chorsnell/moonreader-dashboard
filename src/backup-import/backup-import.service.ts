@@ -1,6 +1,8 @@
 import { mkdir, mkdtemp, readFile, rename, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
+import { parseMoonPosition } from '../progress-sync/positions';
+import { isWritten, readWritten, writtenKey } from '../progress-sync/written';
 import { DatabaseSync } from 'node:sqlite';
 import { Injectable } from '@nestjs/common';
 import { BibliographyStore } from '../bibliography/bibliography-store.service';
@@ -28,6 +30,7 @@ import type {
   Catalogue,
   StatisticsRow,
   SyncedPositionFile,
+  DayEntry,
 } from './reading-history.types';
 
 /** What an import did, as lines for update.log. */
@@ -227,10 +230,19 @@ export class BackupImportService {
   /** The .po files Moon+ synced over WebDAV. */
   private async readSyncedPositions(): Promise<SyncedPositionFile[]> {
     const out: SyncedPositionFile[] = [];
+    const written = await readWritten(this.library.root);
     for (const path of await findFiles(this.library.dav, '.po')) {
       try {
         const text = (await readFile(path, 'utf8')).slice(0, PO_READ_LIMIT);
-        out.push({ name: basename(path), text, mtimeMs: await mtimeMs(path) });
+        const position = parseMoonPosition(text);
+        const ownWrite =
+          !!position && isWritten(written[writtenKey(this.library.dav, path)], position);
+        out.push({
+          name: basename(path),
+          text,
+          mtimeMs: await mtimeMs(path),
+          ...(ownWrite ? { ownWrite } : {}),
+        });
       } catch {
         // removed while we were looking
       }
@@ -311,6 +323,11 @@ export class BackupImportService {
           minutes: d.minutes,
           words: d.words,
           progress: d.progress,
+          // timed_minutes: those the words were counted in, for words a minute; a number, so it
+          // survives where by_source doesn't (friends' share files, week or month grouping)
+          ...(d.by_source
+            ? { by_source: d.by_source, timed_minutes: timedMinutes(d.by_source) }
+            : {}),
         });
       }
     }
@@ -367,6 +384,11 @@ export class BackupImportService {
     await writeFile(`${path}.tmp`, JSON.stringify(value, null, pretty ? 1 : undefined), 'utf8');
     await rename(`${path}.tmp`, path);
   }
+}
+
+/** The minutes of the sources that logged words that day. */
+function timedMinutes(bySource: NonNullable<DayEntry['by_source']>): number {
+  return round1(Object.values(bySource).reduce((m, s) => m + (s.words ? (s.minutes ?? 0) : 0), 0));
 }
 
 /** Book titles and authors, the reading log and highlights, from Moon+'s database. */

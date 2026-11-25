@@ -29,7 +29,7 @@
     const points = days.filter((d) => d.progress != null).map((d) => ({ date: d.date, progress: (best = Math.max(best, d.progress)) }));
     if (!points.length) return null;
     const done = points.find((p) => p.progress >= 99.5);
-    const timed = days.filter(okDay);
+    const timed = days.map(timedDay).filter(okDay);
     return {
       points, finished: !!done, end: done ? done.date : null, at: points.at(-1).progress,
       minutes: d3.sum(days, (d) => d.minutes || 0), wpm: d3.sum(timed, (d) => d.minutes) >= 20 ? Math.round(d3.sum(timed, (d) => d.words) / d3.sum(timed, (d) => d.minutes)) : null,

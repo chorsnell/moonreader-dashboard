@@ -10,6 +10,21 @@ import type { ImportedBook, ImportedRead } from './imports.types';
  */
 export const MAX_ENTRY_SECONDS = 4 * 60 * 60;
 
+/** Books KOReader holds only because the plugin copied Moon+ history in (koreader/API.md). */
+export const SYNTHETIC_MD5 = 'moonplus:';
+
+/**
+ * Whether a page entry is one the plugin wrote from the dashboard's history, including under a
+ * book's own md5 (koreader/API.md "Synthetic history rows"). The rows carry no marker, so this
+ * is their signature: 100 total pages, at most an hour, starting a whole number of hours after
+ * the device's local noon. Every time zone is a multiple of 15 minutes from UTC, so that start
+ * is on a quarter hour exactly, whatever zone the device or server is in. A real page turn
+ * matches only in a 100-page document on that very second (about 1 in 900).
+ */
+export function isSyntheticEntry(start: number, seconds: number, totalPages: number | null) {
+  return totalPages === 100 && seconds <= 3600 && start % 900 === 0;
+}
+
 const num = (v: unknown) => {
   const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN;
   return Number.isFinite(n) ? n : null;
@@ -106,16 +121,31 @@ export function readKoreader(path: string): ImportedBook[] {
           .join(', ')} from book`,
       )
       .all();
-    for (const b of bookRows) pages.set(String(b.id), num(b.pages));
+    const md5s = new Map<string, string>();
+    for (const b of bookRows) {
+      pages.set(String(b.id), num(b.pages));
+      md5s.set(String(b.id), str(b.md5));
+    }
+    // one file can have two rows (devices that spell its title differently): count an entry once
+    const seen = new Set<string>();
     for (const r of rows) {
       const start = num(r.start_time);
       const seconds = num(r.duration);
       if (start === null || seconds === null || seconds <= 0 || seconds > MAX_ENTRY_SECONDS) {
         continue;
       }
+      const id = String(r.id_book);
+      const md5 = md5s.get(id) ?? '';
+      if (md5.startsWith(SYNTHETIC_MD5) || isSyntheticEntry(start, seconds, num(r.total_pages))) {
+        continue;
+      }
+      if (md5) {
+        const entry = `${md5}\0${String(r.page)}\0${start}`;
+        if (seen.has(entry)) continue;
+        seen.add(entry);
+      }
       const when = new Date(start * 1000);
       if (when.getUTCFullYear() < 2000) continue;
-      const id = String(r.id_book);
       const date = localDate(when);
       const book = days.get(id) ?? new Map<string, DayEntry>();
       days.set(id, book);
@@ -180,6 +210,7 @@ export function readKoreader(path: string): ImportedBook[] {
         pages: num(b.pages) || null,
         reads,
         daily,
+        synthetic_removed: true,
         progress: finished ? 100 : (latest.progress ?? null),
         ...series,
       });
