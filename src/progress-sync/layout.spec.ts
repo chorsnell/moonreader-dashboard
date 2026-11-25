@@ -65,11 +65,17 @@ describe('moonToXpointer', () => {
     );
   });
 
-  it("goes by the percentage when Moon+'s chapters don't line up with the spine", () => {
-    // Moon+ says chapter 0, but 85% through: it split the book differently
-    expect(moonToXpointer(layout, moon(0, 50, 85))).toBe('/body/DocFragment[3]/body/p[7]/text().3');
-    // a chapter the book doesn't have
-    expect(moonToXpointer(layout, moon(9, 0, 61))).toBe('/body/DocFragment[3]/body/p[1]/text().0');
+  it('goes by chapter and character, however far out the percentage is', () => {
+    expect(moonToXpointer(layout, moon(1, 3100, 99))).toBe(
+      '/body/DocFragment[2]/body/p[20]/text().0',
+    );
+  });
+
+  it('goes by the percentage only for a chapter the book does not have', () => {
+    expect(locate(layout, moon(9, 0, 61))).toMatchObject({
+      xp: '/body/DocFragment[3]/body/p[1]/text().0',
+      method: 'percent',
+    });
   });
 });
 
@@ -152,7 +158,7 @@ describe("which chapters are Moon+'s", () => {
   });
 
   it("reads the contents' chapters, with front matter as chapter 0", () => {
-    expect(locate(novel, moon(1, 4500, 30))).toEqual({
+    expect(locate(novel, moon(1, 4500, 30))).toMatchObject({
       xp: at(3, 4000),
       method: 'exact',
       mapping: 'toc',
@@ -240,14 +246,15 @@ describe("Moon+'s split chapters", () => {
     expect(moonPlace(long, at(2, 5000), 0.03)).toEqual({ chapter: 1, split: 0, offset: 5000 });
   });
 
-  it('stays in the chapter, by percentage, when the estimate is off', () => {
+  it('stays in a chapter too short for the character', () => {
     const two = book([100, 100]);
-    expect(locate(two, split(1, 1, 0, 60))).toMatchObject({
-      xp: at(2, 19000),
-      method: 'chapter',
-    });
+    // by the percentage where that's inside the chapter, otherwise its end
     expect(locate(two, split(0, 3, 0, 30))).toMatchObject({
       xp: at(1, 59000),
+      method: 'chapter',
+    });
+    expect(locate(two, split(0, 3, 0, 90))).toMatchObject({
+      xp: at(1, 99000),
       method: 'chapter',
     });
   });
@@ -258,14 +265,12 @@ describe("Moon+'s split chapters", () => {
 });
 
 describe('without a layout', () => {
-  it("reckons on within a chapter, but over Moon+'s only when clearly ahead", () => {
-    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 62), true)).toEqual({
+  it("reckons on within a chapter from the dashboard's own write", () => {
+    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 58))).toEqual({
       split: 0,
-      offset: 23000,
+      offset: 15000,
     });
-    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 58), true)).toBeNull();
-    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 58), false)?.offset).toBe(15000);
-    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 50), false)).toBeNull();
-    expect(furtherInChapter(moon(4, 9000, 55), moon(5, 0, 70), true)).toBeNull();
+    expect(furtherInChapter(moon(4, 9000, 55), moon(4, 0, 50))).toBeNull();
+    expect(furtherInChapter(moon(4, 9000, 55), moon(5, 0, 70))).toBeNull();
   });
 });

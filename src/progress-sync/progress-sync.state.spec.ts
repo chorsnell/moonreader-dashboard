@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from 'node:fs/p
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { KoreaderSyncService } from '../koreader-sync/koreader-sync.service';
+import type { ActivityLogService } from '../library/activity-log.service';
 import type { LibraryService } from '../library/library.service';
 import { parseLayout } from './layout';
 import { LayoutStore } from './layout-store';
@@ -40,7 +41,9 @@ beforeEach(async () => {
     sidecars: async () => sidecars,
     linkedFiles: async (md5: string) => linked[md5] ?? [],
   } as unknown as KoreaderSyncService;
-  service = new ProgressSyncService(new ProgressStore(library), library, koreader, layouts);
+  service = new ProgressSyncService(new ProgressStore(library), library, koreader, layouts, {
+    log: () => undefined,
+  } as unknown as ActivityLogService);
 });
 afterEach(() => rm(root, { recursive: true, force: true }));
 
@@ -126,14 +129,13 @@ describe('echoes', () => {
     expect(await read(PO)).toMatch(/\*1@0#3100:40\.0%$/);
   });
 
-  it("without a layout, never drags Moon+ back to the start of the chapter it's in", async () => {
+  it("without a layout, never writes over Moon+'s position", async () => {
     await rm(join(root, 'progress-sync'), { recursive: true });
     const moon = '1700000000000*4@0#9000:55.0%';
     await moonSyncs(moon, 60_000);
     await push('/body/DocFragment[5]', 0.5);
+    await push('/body/DocFragment[6]', 0.9);
     expect(await read(PO)).toBe(moon);
-    await push('/body/DocFragment[6]', 0.6);
-    expect(await read(PO)).toMatch(/\*5@0#0:60\.0%$/);
   });
 });
 
@@ -144,7 +146,10 @@ describe("taking Moon+ backwards (a book's first open on the Kobo)", () => {
   const first = () => push(start, 0.001, { document: PARTIAL, filename: 'Dune.epub' });
   const readOn = () => push('/body/DocFragment[2]/body/p[1]/text().0', 0.1, { document: PARTIAL });
 
-  beforeEach(() => moonSyncs(moon, 86_400_000));
+  beforeEach(async () => {
+    await measure();
+    await moonSyncs(moon, 86_400_000);
+  });
 
   it('keeps it however far KOReader reads without being offered it', async () => {
     await first();
@@ -170,18 +175,23 @@ describe("taking Moon+ backwards (a book's first open on the Kobo)", () => {
   });
 
   it('still writes a position further on', async () => {
-    await push('/body/DocFragment[7]', 0.6, { document: PARTIAL, filename: 'Dune.epub' });
-    expect(await read(PO)).toMatch(/\*6@0#0:60\.0%$/);
+    await moonSyncs('1700000000000*1@0#1500:30.0%', 60_000);
+    await push(page(3, 1), 0.6, { document: PARTIAL });
+    expect(await read(PO)).toMatch(/\*2@0#0:60\.0%$/);
+  });
+
+  it("keeps a Moon+ position whose chapter the book doesn't have", async () => {
+    await push(page(3, 1), 0.6, { document: PARTIAL });
+    expect(await read(PO)).toBe(moon);
   });
 });
 
 describe('further on in a chapter without a layout', () => {
-  it('moves Moon+ on when clearly ahead, and again from there', async () => {
-    await moonSyncs('1700000000000*4@0#9000:55.0%', 60_000);
-    await push('/body/DocFragment[5]/body/p[40]', 0.62);
-    expect(await read(PO)).toMatch(/\*4@0#23000:62\.0%$/);
+  it('moves its own file on from where it last wrote', async () => {
+    await moonSyncs('1*0@0#0:1%', 0, `${CACHE}/other.epub.po`);
+    await push('/body/DocFragment[5]', 0.55, { filename: 'Dune.epub' });
     await push('/body/DocFragment[5]/body/p[50]', 0.63);
-    expect(await read(PO)).toMatch(/\*4@0#25000:63\.0%$/);
+    expect(await read(PO)).toMatch(/\*4@0#16000:63\.0%$/);
   });
 });
 
@@ -299,7 +309,7 @@ describe("Moon+'s chapters and stamp", () => {
   it('rewrites the position when the layout arrives after it', async () => {
     await moonSyncs(early, 60_000);
     await push(at(3, 4), 7 / 22);
-    expect(await read(PO)).toBe('1700000000000*2@0#0:31.8%');
+    expect(await read(PO)).toBe(early); // nothing to compare them by yet
     await layouts.put(novel);
     await service.layoutArrived(novel);
     expect(await read(PO)).toBe('1700000000000*1@0#4000:31.8%');

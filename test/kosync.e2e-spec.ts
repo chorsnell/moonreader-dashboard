@@ -123,6 +123,24 @@ describe('KOSync server', () => {
   });
 });
 
+/** The plugin's layout of a book of ten one-page files, so chapter n is spine item n + 1. */
+async function measured(d: TestDashboard, file = 'Dune.epub', id = 'ab'.repeat(16)) {
+  await request(d.server)
+    .post('/api/koreader/layout')
+    .set('X-Upload-Token', TOKEN)
+    .send({
+      md5: id,
+      file,
+      pages: Array.from({ length: 10 }, (_, f) => ({
+        xp: `/body/DocFragment[${f + 1}]`,
+        offset: 0,
+        pct: (f + 1) / 10,
+      })),
+      lengths: Array.from({ length: 10 }, () => 3000),
+    })
+    .expect(200);
+}
+
 describe('Moon+ positions for KOReader', () => {
   const PO = '/dav/Apps/Books/.Moon+/Cache/Dune.epub.po';
   const DUNE = md5('Dune.epub');
@@ -138,6 +156,9 @@ describe('Moon+ positions for KOReader', () => {
     dash = await TestDashboard.start();
     const now = Math.floor(Date.now() / 1000);
     await moonplusSyncs(dash, '1700000000000*5@0#1234:42.5%', now - 100);
+    // without the book's layout there's only guessing, so nothing is offered
+    await request(dash.server).get(`/kosync/syncs/progress/${DUNE}`).set(KOSYNC).expect(200, {});
+    await measured(dash);
 
     const got = await request(dash.server)
       .get(`/kosync/syncs/progress/${DUNE}`)
@@ -146,7 +167,8 @@ describe('Moon+ positions for KOReader', () => {
     expect(got.body).toEqual({
       document: DUNE,
       progress: '/body/DocFragment[6]',
-      percentage: 0.425,
+      // KOReader's percentage for that page, not Moon+'s 42.5%
+      percentage: 0.6,
       device: 'Moon+ Reader',
       device_id: 'moonplus',
       // no timestamp: KOReader then judges forward and backward by percentage
@@ -170,7 +192,7 @@ describe('Moon+ positions for KOReader', () => {
     // then Moon+ again
     await moonplusSyncs(dash, '1700000000000*9@0#10:61%', now + 100);
     const later = await request(dash.server).get(`/kosync/syncs/progress/${DUNE}`).set(KOSYNC);
-    expect(later.body).toMatchObject({ progress: '/body/DocFragment[10]', percentage: 0.61 });
+    expect(later.body).toMatchObject({ progress: '/body/DocFragment[10]', percentage: 1 });
   });
 
   it('finds the book by the file name the KOReader plugin reported', async () => {
@@ -184,8 +206,14 @@ describe('Moon+ positions for KOReader', () => {
         books: [{ md5: 'partialmd5', file: 'Dune.kepub.epub', title: 'Dune' }],
       })
       .expect(200);
+    await measured(dash, 'Dune.epub', 'cd'.repeat(16));
+    await request(dash.server)
+      .post('/api/koreader/books')
+      .set('X-Upload-Token', TOKEN)
+      .send({ device: 'Kobo', books: [{ md5: 'cd'.repeat(16), file: 'Dune.kepub.epub' }] })
+      .expect(200);
     const got = await request(dash.server)
-      .get('/kosync/syncs/progress/partialmd5')
+      .get(`/kosync/syncs/progress/${'cd'.repeat(16)}`)
       .set(KOSYNC)
       .expect(200);
     expect(got.body).toMatchObject({ device: 'Moon+ Reader', progress: '/body/DocFragment[3]' });
@@ -213,6 +241,7 @@ describe('KOReader positions for Moon+', () => {
   it("writes KOReader's position into the book's .po file, and doesn't echo it back", async () => {
     dash = await TestDashboard.start();
     await moonplusHasSynced(dash, 'Dune.epub', '1700000000000*2@0#50:10%');
+    await measured(dash);
     await push(dash, md5('Dune.epub'), '/body/DocFragment[7]/body/p[3]/text().0', 0.5);
 
     const text = await readFile(dash.path(...CACHE, 'Dune.epub.po'), 'utf8');
@@ -335,7 +364,7 @@ describe("the plugin's page layout", () => {
       })
       .expect(200);
     const po = () => readFile(dash!.path(...CACHE, 'Dune.epub.po'), 'utf8');
-    expect(await po()).toBe('1700000000000*1@0#0:30.0%');
+    expect(await po()).toBe('1700000000000*0@0#0:1.0%'); // nothing to compare them by yet
 
     await request(dash.server)
       .post('/api/koreader/layout')

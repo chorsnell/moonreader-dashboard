@@ -41,11 +41,12 @@ export class LayoutError extends Error {}
 /** A book this long is beyond what the plugin measures; anything longer isn't a layout. */
 export const MAX_LAYOUT_PAGES = 20_000;
 /**
- * How far a page may be from Moon+'s own percentage and still be believed. Moon+ works its
- * percentage out from its own layout, up to about 3.5 points from KOReader's.
+ * How near a page must be to Moon+'s own percentage for the percentage to count as a hint.
+ * It's only ever a hint: Moon+ usually agrees with KOReader to a few points, but has been seen
+ * 47 points out (The Talisman), while its chapter and character were right.
  */
 export const PCT_TOLERANCE = 0.04;
-/** How much closer the spine must come to beat the contents, for a book with no history. */
+/** How much closer the spine must come to beat the contents, when the percentage fits both. */
 export const BETTER_BY = 0.015;
 /**
  * Moon+ cuts a chapter with over 100,000 characters of HTML into parts ("splits") and counts
@@ -189,30 +190,46 @@ function indexAt(places: number[], at: number): number {
   return found;
 }
 
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-
 export interface Located {
   xp: string;
-  /** exact: by Moon+'s characters; chapter: right chapter, by percentage; percent: neither. */
+  /** The page's place in the layout, from 0. */
+  page: number;
+  /** KOReader's own percentage for that page, 0..1. */
+  pct: number;
+  /**
+   * exact: Moon+'s chapter and character; chapter: its chapter, which is too short to hold
+   * the character; percent: no reading of the book has that chapter.
+   */
   method: 'exact' | 'chapter' | 'percent';
   mapping?: Mapping;
-  /** Only this mapping fits, so it's worth remembering for the book. */
+  /** Worth remembering for the book. */
   decisive: boolean;
+  /** The last page Moon+ could be on: what a position has to reach not to be behind it. */
+  furthest: number;
+  /** The page each mapping's reading gives, for the log. */
+  readings: Partial<Record<Mapping, number>>;
 }
 
-interface Candidate {
+interface Reading {
   mapping: Mapping;
   start: number;
+  first: number;
+  last: number;
   page: number;
+  holds: boolean;
+  /** Whether Moon+'s percentage is about right for the page, and how far out it is. */
+  plausible: boolean;
   distance: number;
 }
 
 /**
- * The page KOReader should open for a Moon+ position. Moon+'s chapter is read both ways
- * (table of contents and spine) and its percentage says which fits. A reading is exact when
- * the chapter is long enough to hold the character and its page agrees with the percentage.
- * Failing that, the page at the percentage within a plausible chapter, and failing that, in
- * the book.
+ * The page KOReader should open for a Moon+ position. Moon+'s chapter, split and character
+ * say where; its percentage can be badly wrong and only helps to choose between readings.
+ *
+ * The chapter is read both ways (table of contents and spine). A reading whose chapter is
+ * long enough to hold the character wins. When both are, the remembered one stands; with no
+ * history the percentage chooses if it's about right for either, and otherwise the contents.
+ * Only when neither reading has such a chapter does the percentage pick the page.
  */
 export function locate(
   layout: Layout,
@@ -231,53 +248,69 @@ export function locate(
     if (p.pct <= target) byPercent = i;
   });
 
+  const into = position.split * PART_CHARS + position.offset;
   const order: Mapping[] = preferred === 'spine' ? ['spine', 'toc'] : ['toc', 'spine'];
-  const exact: Candidate[] = [];
-  const rough: Candidate[] = [];
-  // where each reading the layout can make puts the chapter, if it has that many
-  const readings = new Map<Mapping, number | undefined>();
+  const readings: Reading[] = [];
+  // where each mapping the layout can make puts the chapter, if it has that many
+  const starts = new Map<Mapping, number | undefined>();
   for (const mapping of order) {
     const chapters = chapterStarts(layout, r, mapping);
     if (!chapters) continue;
     const start = chapters[position.chapter];
-    readings.set(mapping, start);
+    starts.set(mapping, start);
     if (start === undefined) continue;
-    const end = chapters![position.chapter + 1] ?? r.total;
+    const end = chapters[position.chapter + 1] ?? r.total;
     const first = indexAt(r.pages, start);
-    const lastPage = Math.max(first, indexAt(r.pages, end - 1));
-    const plausible =
-      target >= layout.pages[first].pct - step - PCT_TOLERANCE &&
-      target <= layout.pages[lastPage].pct + PCT_TOLERANCE;
-    if (!plausible) continue;
-    const into = position.split * PART_CHARS + position.offset;
+    const last = Math.max(first, indexAt(r.pages, end - 1));
     const page = indexAt(r.pages, Math.min(start + into, end - 1));
-    if (start + into <= end + SLACK_CHARS && distance(page) <= PCT_TOLERANCE) {
-      exact.push({ mapping, start, page, distance: distance(page) });
-    } else {
-      const near = clamp(byPercent, first, lastPage);
-      rough.push({ mapping, start, page: near, distance: distance(near) });
-    }
+    const holds = start + into <= end + SLACK_CHARS;
+    const off = distance(page);
+    const plausible = off <= PCT_TOLERANCE;
+    readings.push({ mapping, start, first, last, page, holds, plausible, distance: off });
   }
 
-  const found = (c: Candidate, method: Located['method'], decisive: boolean): Located => ({
-    xp: layout.pages[c.page].xp,
+  const pages = Object.fromEntries(readings.map((c) => [c.mapping, c.page]));
+  const found = (
+    page: number,
+    method: Located['method'],
+    mapping: Mapping | undefined,
+    decisive = false,
+    furthest = page,
+  ): Located => ({
+    xp: layout.pages[page].xp,
+    page,
+    pct: layout.pages[page].pct,
     method,
-    mapping: c.mapping,
+    ...(mapping ? { mapping } : {}),
     decisive,
+    furthest,
+    readings: pages,
   });
-  if (exact.length) {
-    const [first, other] = exact;
-    if (other) {
-      // what fitted before stands; otherwise the contents, unless the spine is clearly closer
-      const closer = !preferred && other.distance < first.distance - BETTER_BY;
-      return found(closer ? other : first, 'exact', false);
-    }
-    // decisive when the other reading names somewhere else (or nowhere) and so doesn't fit
-    const disagreed = [...readings].some(([m, s]) => m !== first.mapping && s !== first.start);
-    return found(first, 'exact', disagreed);
+
+  const [first, other] = readings.filter((c) => c.holds);
+  if (first && !other) {
+    // decisive when the other mapping names somewhere else (or nowhere) and so doesn't fit
+    const disagreed = [...starts].some(([m, s]) => m !== first.mapping && s !== first.start);
+    return found(first.page, 'exact', first.mapping, disagreed);
   }
-  if (rough.length) return found(rough[0], 'chapter', false);
-  return { xp: layout.pages[byPercent].xp, method: 'percent', decisive: false };
+  if (first) {
+    if (preferred) return found(first.page, 'exact', first.mapping);
+    const closer =
+      other.plausible && (!first.plausible || other.distance < first.distance - BETTER_BY);
+    const chosen = closer ? other : first;
+    const hinted = first.plausible || other.plausible;
+    const decisive = first.plausible !== other.plausible && first.start !== other.start;
+    // a guess: either could be where Moon+ is
+    const furthest = hinted ? chosen.page : Math.max(first.page, other.page);
+    return found(chosen.page, 'exact', chosen.mapping, decisive, furthest);
+  }
+  const [short] = readings;
+  if (short) {
+    const hinted = byPercent >= short.first && byPercent <= short.last;
+    const page = hinted ? byPercent : short.page;
+    return found(page, 'chapter', short.mapping, false, short.last);
+  }
+  return found(byPercent, 'percent', undefined, false, layout.pages.length - 1);
 }
 
 export const moonToXpointer = (
@@ -332,14 +365,22 @@ export function samePlace(
 }
 
 /**
- * Whether `mine` is behind Moon+'s position. Within a chapter a layout's character counts
- * say; otherwise only the percentages can.
+ * Whether a KOReader position is behind Moon+'s, going by the pages they're on and never by
+ * Moon+'s percentage. When Moon+'s place can't be found, it counts as behind.
  */
-export function isBehind(layout: Layout | null, moon: MoonPosition, mine: MoonPosition): boolean {
-  if (layout && mine.chapter === moon.chapter && mine.split === moon.split) {
-    return mine.offset < moon.offset;
-  }
-  return mine.percent < moon.percent;
+export function isBehind(
+  layout: Layout,
+  moon: MoonPosition,
+  xp: string,
+  percentage: number,
+  preferred: Mapping | null = null,
+): boolean {
+  const there = locate(layout, moon, preferred);
+  const fragment = xpointerFragment(xp);
+  if (!there || there.method === 'percent' || fragment === null) return true;
+  const r = ruler(layout);
+  const here = r.at({ fragment, offset: xpointerOffset(layout, xp, percentage) });
+  return indexAt(r.pages, here) < there.furthest;
 }
 
 /**
@@ -349,17 +390,15 @@ export function isBehind(layout: Layout | null, moon: MoonPosition, mine: MoonPo
 export const CHARS_PER_PERCENT = 2000;
 
 /**
- * Without a layout, how far into the chapter KOReader has got, reckoned on from a position
- * already in that chapter by the percentage read since. Null when it isn't further on: by
- * any amount over our own last write, but over Moon+'s only by more than the two apps'
- * percentages can disagree.
+ * Without a layout, how far into the chapter KOReader has got, reckoned on from the
+ * dashboard's own last write in that chapter (never from Moon+'s, whose percentage may be on
+ * another scale altogether). Null when it isn't further on.
  */
 export function furtherInChapter(
   from: MoonPosition,
   mine: MoonPosition,
-  moons: boolean,
 ): Pick<MoonPosition, 'split' | 'offset'> | null {
   const ahead = mine.percent - from.percent;
-  if (mine.chapter !== from.chapter || ahead <= (moons ? PCT_TOLERANCE * 100 : 0)) return null;
+  if (mine.chapter !== from.chapter || ahead <= 0) return null;
   return { split: from.split, offset: from.offset + Math.round(ahead * CHARS_PER_PERCENT) };
 }
