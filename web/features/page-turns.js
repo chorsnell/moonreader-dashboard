@@ -5,7 +5,6 @@
 (() => {
   const { el, fmt, pDate, fDay, C, MARK, svgIn, axis, showTip, hideTip, tipLines, mins, plural, ref } = rh;
   const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const hh = (h) => String(h % 24).padStart(2, '0') + ':00';
   // KOReader stops timing a page at 2 minutes by default, so a stay that long is "or more"
   const CAPPED_MINUTES = 1.9;
@@ -39,7 +38,7 @@
   dash.calc('page_books', {
     inputs: ['sessions'], title: 'Page-level reading by book',
     description: 'For each book KOReader timed page by page: speed, time left, progress, pages read again and long stays on a page.',
-    fn: (file) => (file?.books || []).map((b) => ({ ...b, recent_days: file.recent_days })),
+    fn: (file) => file?.books || [],
   });
 
   const bookRow = (id) => {
@@ -53,38 +52,18 @@
 
   // ---------- speed and time left ----------
   const left = (m) => (m < 60 ? `~${Math.max(5, Math.round(m / 5) * 5)}\u00a0min left` : `~${fmt(Math.round(m / 60))}\u00a0h left`);
-  const localToday = () => {
-    const d = new Date();
-    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  };
-  // "by Friday", "by 29 Jan"; null with no date, or one already past (it's worked out at build time)
-  function finishBy(finish) {
-    if (!finish) return null;
-    const today = localToday(), d = pDate(finish);
-    // visitors may get only the week or month it falls in
-    if (dash.dates) {
-      const end = dash.dates === 'month' ? d3.utcMonth.offset(d, 1) : d3.utcDay.offset(d, 7);
-      return end > today ? `around ${fDay(d)}` : null;
-    }
-    const n = d3.utcDay.count(today, d);
-    if (n < 0) return null;
-    if (n === 0) return 'today';
-    if (n === 1) return 'by tomorrow';
-    if (n < 7) return `by ${WEEKDAY[d.getUTCDay()]}`;
-    return `by ${d3.utcFormat(d.getUTCFullYear() === today.getUTCFullYear() ? '%-d %b' : '%-d %b %Y')(d)}`;
-  }
-  const speed = (b) => `${fmt(b.minutes_per_page)} min a page · ${fmt(Math.round(b.pages_per_hour))} pages an hour`;
+  // no finish date here: this is KOReader's reading only, and "When you'll finish" (all reading)
+  // gives the one date
+  const perPage = (b) => `${fmt(Math.round(b.minutes_per_page * 10) / 10)} min/page`;
+  const pace = (b) => (b.eta ? `${left(b.eta.minutes_left)} at your page speed · ${perPage(b)}` : perPage(b));
 
   // on the Overview's "On the go" card (the book page has the card below instead)
   rh.goFact((r, where) => {
     const b = where !== 'book' && bookRow(r.id);
     if (!b || b.minutes_per_page == null) return [];
-    const by = b.eta && finishBy(b.eta.finish);
-    const time = b.eta && left(b.eta.minutes_left) + (by ? ` · ${by} at your recent pace` : '');
-    if (where === 'list') return time ? [{ k: '', v: `${left(b.eta.minutes_left)} by page speed (KOReader since ${day(b.since)})`, cls: 'pt', title: `${time}. ${speed(b)}. ${coverage(b.since)}.` }] : [];
+    if (where === 'list') return b.eta ? [{ k: '', v: `${pace(b)} (KOReader since ${day(b.since)})`, cls: 'pt', title: coverage(b.since) }] : [];
     return [
-      { k: 'Page speed', v: `${fmt(b.minutes_per_page)} min/page`, cls: 'pt', title: speed(b) },
-      ...(time ? [{ k: 'By pages', v: left(b.eta.minutes_left) + (by ? ` · ${by}` : ''), cls: 'pt', title: by ? `${time}, from your page speed` : 'From your page speed' }] : []),
+      { k: 'At page speed', v: b.eta ? `${left(b.eta.minutes_left)} · ${perPage(b)}` : perPage(b), cls: 'pt' },
       { k: 'Pages from', v: `KOReader, ${day(b.since)}`, cls: 'pt', title: coverage(b.since) },
     ];
   });
@@ -117,22 +96,7 @@
         box.append(el('p', 'pt-line', 'Too few timed pages yet to give a speed.'));
         return;
       }
-      const e = b.eta;
-      if (e) {
-        const by = finishBy(e.finish), take = el('p', 'pt-take');
-        take.append(el('b', null, left(e.minutes_left)));
-        if (by) take.append(' · ', el('b', null, by), ' at your recent pace');
-        box.append(take);
-        box.append(el('p', 'pt-why', by
-          ? `The date assumes your average over the ${b.recent_days} days before it was worked out: ${mins(e.minutes_per_day)} a day on this book in KOReader.`
-          : e.finish ? 'The date estimated from your pace has passed, so none is shown.'
-            : e.recent_minutes ? 'At your recent pace it’s too far off to name a date.'
-              : `No reading of it in KOReader in the last ${b.recent_days} days, so there’s no finish date.`));
-      }
-      const stats = el('div', 'dy-sum pt-stats');
-      stats.append(stat(fmt(b.minutes_per_page), 'minutes per page'), stat(fmt(Math.round(b.pages_per_hour)), 'pages per hour'), stat(mins(b.minutes), 'timed on its pages'));
-      if (e) stats.append(stat(fmt(b.pages_left), `pages left of ${fmt(b.total_pages)}`));
-      box.append(stats);
+      box.append(el('p', 'pt-take', `${pace(b)} · ${fmt(Math.round(b.pages_per_hour))} pages/h`));
     },
   });
 

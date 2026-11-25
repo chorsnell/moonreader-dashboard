@@ -1,6 +1,5 @@
 /* page-level views from KOReader's page turns */
-.pt-take{margin:0 0 var(--cds-gap-xs);font-size:var(--cds-font-size-body);line-height:1.5}
-.pt-take b{font-weight:600}
+.pt-take{margin:0;font-size:var(--cds-font-size-body);line-height:1.5}
 .pt-why{margin:var(--cds-gap-xs) 0 0;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);line-height:1.5;max-width:70ch}
 .pt-line{margin:0;color:var(--color-fg-muted);font-size:var(--cds-font-size-body)}
 .rh .dy-sum.pt-stats{margin:var(--cds-gap-sm) 0 0;grid-template-columns:repeat(auto-fit,minmax(min(100%,8.5rem),1fr))}

@@ -19,7 +19,6 @@ const session = (start: string, minutes: number) => ({ book_id: 'a', start, minu
 const file = {
   coverage: { since: '2026-11-02', until: '2026-11-09', sessions_since: '2026-11-02' },
   session_gap_minutes: 10,
-  recent_days: 14,
   time_of_day: grid,
   sessions: [
     session('2026-11-02T08:00:00', 10),
@@ -56,11 +55,5 @@ describe('page-level views', () => {
     const none = { ...file, coverage: { since: null }, sessions: [], books: [] };
     for (const sessions of [[], none]) expect(overview(sessions)).toEqual([]);
     expect(run('page_books', { sessions: [] })).toEqual([]);
-  });
-
-  it('gives each book the days its pace is taken over', () => {
-    expect(run('page_books', { sessions: file })).toEqual([
-      { book_id: 'a', since: '2026-11-02', recent_days: 14 },
-    ]);
   });
 });
