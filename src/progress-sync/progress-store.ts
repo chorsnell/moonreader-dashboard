@@ -2,6 +2,14 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { LibraryService } from '../library/library.service';
+import { type WrittenPlace, writtenPath } from './written';
+
+/** One device's last push of a document, to know when it sends the same place again. */
+export interface Sent {
+  device_id: string;
+  progress: string;
+  percentage: number;
+}
 
 /** One document's latest position, as KOSync keeps it. */
 export interface KosyncProgress {
@@ -13,60 +21,55 @@ export interface KosyncProgress {
   device_id: string;
   /** Seconds since 1970, set by the server when the position arrives. */
   timestamp: number;
+  /** The same moment in ms, to compare with .po files. */
+  at?: number;
+  /** From KOReader's "Send document metadata". */
+  filename?: string;
+  title?: string;
+  /** What each device last sent. */
+  sent?: Sent[];
 }
 
-/** A position the dashboard wrote into a .po file for Moon+. */
-export interface WrittenPosition {
-  chapter: number;
-  offset: number;
-}
+/** Writes remembered per .po file, in case Moon+ sends back one older than the last. */
+const REMEMBERED_WRITES = 10;
 
 /** A JSON object in a file, read once and written one change at a time. */
 class JsonMap<T> {
-  private cache: Record<string, T> | null = null;
+  private cache: Promise<Record<string, T>> | null = null;
   private queue: Promise<unknown> = Promise.resolve();
 
-  constructor(
-    private readonly dir: () => string,
-    private readonly name: string,
-  ) {}
-
-  private get path(): string {
-    return join(this.dir(), this.name);
-  }
+  constructor(private readonly path: () => string) {}
 
   async get(key: string): Promise<T | null> {
-    return (await this.load())[key] ?? null;
+    const all = await this.load();
+    // keys come from devices: "constructor" is not a document
+    return Object.hasOwn(all, key) ? all[key] : null;
   }
 
-  async all(): Promise<Record<string, T>> {
-    return { ...(await this.load()) };
-  }
-
-  set(key: string, value: T): Promise<void> {
+  update(key: string, value: (old: T | null) => T): Promise<void> {
     const run = this.queue.then(async () => {
       const all = await this.load();
-      all[key] = value;
-      await mkdir(this.dir(), { recursive: true });
-      const tmp = `${this.path}.tmp`;
-      await writeFile(tmp, JSON.stringify(all, null, 1));
-      await rename(tmp, this.path);
+      const next = { ...all, [key]: value(Object.hasOwn(all, key) ? all[key] : null) };
+      const path = this.path();
+      await mkdir(join(path, '..'), { recursive: true });
+      await writeFile(`${path}.tmp`, JSON.stringify(next, null, 1));
+      await rename(`${path}.tmp`, path);
+      this.cache = Promise.resolve(next);
     });
     this.queue = run.catch(() => undefined);
     return run;
   }
 
-  private async load(): Promise<Record<string, T>> {
-    if (this.cache) return this.cache;
-    try {
-      const parsed: unknown = JSON.parse(await readFile(this.path, 'utf8'));
-      this.cache =
-        parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+  /** One read shared by everyone asking at once, so none replaces a newer copy. */
+  private load(): Promise<Record<string, T>> {
+    this.cache ??= readFile(this.path(), 'utf8')
+      .then((text) => {
+        const parsed: unknown = JSON.parse(text);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
           ? (parsed as Record<string, T>)
           : {};
-    } catch {
-      this.cache = {};
-    }
+      })
+      .catch(() => ({}));
     return this.cache;
   }
 }
@@ -75,13 +78,13 @@ class JsonMap<T> {
  * What progress sync keeps, in library/progress-sync/:
  * - koreader.json: the positions KOReader devices send, keyed by KOSync's document id (the
  *   book file's partial MD5, or the MD5 of its file name);
- * - moonplus-written.json: the positions the dashboard wrote for Moon+, keyed by .po path,
+ * - moonplus-written.json: the places the dashboard wrote for Moon+, keyed by .po path,
  *   so they aren't mistaken for Moon+'s own when they come back.
  */
 @Injectable()
 export class ProgressStore {
-  private readonly positions = new JsonMap<KosyncProgress>(() => this.dir, 'koreader.json');
-  private readonly written = new JsonMap<WrittenPosition>(() => this.dir, 'moonplus-written.json');
+  private readonly positions = new JsonMap<KosyncProgress>(() => join(this.dir, 'koreader.json'));
+  private readonly written = new JsonMap<WrittenPlace[]>(() => writtenPath(this.library.root));
 
   constructor(private readonly library: LibraryService) {}
 
@@ -93,19 +96,18 @@ export class ProgressStore {
     return this.positions.get(document);
   }
 
-  all(): Promise<Record<string, KosyncProgress>> {
-    return this.positions.all();
-  }
-
   put(document: string, progress: KosyncProgress): Promise<void> {
-    return this.positions.set(document, progress);
+    return this.positions.update(document, () => progress);
   }
 
-  writtenFor(poPath: string): Promise<WrittenPosition | null> {
-    return this.written.get(poPath);
+  writtenFor(key: string): Promise<WrittenPlace[] | null> {
+    return this.written.get(key);
   }
 
-  wrote(poPath: string, position: WrittenPosition): Promise<void> {
-    return this.written.set(poPath, position);
+  wrote(key: string, place: WrittenPlace): Promise<void> {
+    // anything but a list is from an earlier version, which kept one place per file
+    return this.written.update(key, (old) =>
+      [...(Array.isArray(old) ? old : []), place].slice(-REMEMBERED_WRITES),
+    );
   }
 }

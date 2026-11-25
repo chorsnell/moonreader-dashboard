@@ -119,6 +119,13 @@ reflowable books when they're opened, and again only when their page count chang
 - `offset`: characters from the start of its DocFragment to there (`getTextFromXPointers`).
 - `pct`: page / pages, as KOReader's progress sync counts it.
 - 200 `{ "ok": true, "pages": 312 }`. Kept per partial MD5 and per MD5 of the file name.
+- 400 for an `md5` that isn't 32 hex digits, or pages none of which has a DocFragment xpointer.
+
+## Progress sync: {base}/kosync
+
+Not used by this plugin: KOReader's own **Progress sync** talks to it, with
+`x-auth-key` = MD5 of `UPLOAD_TOKEN`. The requests, and how positions reach Moon+, are in
+[docs/progress-sync.md](../docs/progress-sync.md).
 
 ## WebDAV
 

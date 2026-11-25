@@ -49,7 +49,7 @@ describe('formatMoonPosition', () => {
 
   it('clamps what it cannot write', () => {
     expect(formatMoonPosition({ time: 1, chapter: -2, split: 0, offset: 3.9, percent: 120 })).toBe(
-      '1*0@0#3:100.0%',
+      '1*0@0#3:100%',
     );
   });
 });
@@ -58,6 +58,8 @@ describe('xpointers', () => {
   it('finds the spine item an xpointer points into', () => {
     expect(xpointerFragment('/body/DocFragment[12]/body/div/p[5]/text().57')).toBe(12);
     expect(xpointerFragment('/body/DocFragment[3]')).toBe(3);
+    expect(xpointerFragment('/body/DocFragment/body/p[5]/text().2')).toBe(1);
+    expect(xpointerFragment('/body/DocFragmentX')).toBeNull();
     expect(xpointerFragment('/body/div/p[5]')).toBeNull();
     expect(xpointerFragment('42')).toBeNull();
   });

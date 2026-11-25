@@ -84,6 +84,30 @@ describe('KOSync server', () => {
     expect(await dash.json('progress-sync', 'koreader.json')).toHaveProperty('abc123');
   });
 
+  it('takes what KOReader sends with "Send document metadata" on, however long', async () => {
+    dash = await TestDashboard.start();
+    await request(dash.server)
+      .put('/kosync/syncs/progress')
+      .set(KOSYNC)
+      .send({
+        document: 'abc123',
+        metadata: { filename: 'Dune.epub', title: 'Dune', authors: 'Someone\n'.repeat(800) },
+        progress: '/body/DocFragment[3]',
+        percentage: 0.25,
+        device: 'Kobo',
+        device_id: 'K1',
+      })
+      .expect(200);
+    const got = await request(dash.server).get('/kosync/syncs/progress/abc123').set(KOSYNC);
+    expect(Object.keys(got.body).sort()).toEqual([
+      'device',
+      'device_id',
+      'document',
+      'percentage',
+      'progress',
+    ]);
+  });
+
   it('refuses a position without its fields', async () => {
     dash = await TestDashboard.start();
     await request(dash.server)
@@ -125,7 +149,7 @@ describe('Moon+ positions for KOReader', () => {
       percentage: 0.425,
       device: 'Moon+ Reader',
       device_id: 'moonplus',
-      timestamp: now - 100,
+      // no timestamp: KOReader then judges forward and backward by percentage
     });
 
     // KOReader reads on: its position is newer
@@ -268,20 +292,27 @@ describe("the plugin's page layout", () => {
       expect(got.body.progress).toBe('/body/DocFragment[2]/body/p[9]/text().12');
     }
 
-    // and KOReader's page top becomes Moon+'s character count
-    await request(dash.server)
-      .put('/kosync/syncs/progress')
-      .set(KOSYNC)
-      .send({
-        document: PARTIAL,
-        progress: pages[2].xp,
-        percentage: 0.3,
-        device: 'Kobo',
-        device_id: 'K1',
-      })
-      .expect(200);
-    expect(await readFile(dash.path(...CACHE, 'Dune.epub.po'), 'utf8')).toMatch(
-      /\*1@0#1500:30\.0%$/,
-    );
+    const push = (page: (typeof pages)[number]) =>
+      request(dash!.server)
+        .put('/kosync/syncs/progress')
+        .set(KOSYNC)
+        .send({
+          document: PARTIAL,
+          progress: page.xp,
+          percentage: page.pct,
+          device: 'Kobo',
+          device_id: 'K1',
+        })
+        .expect(200);
+    const po = () => readFile(dash!.path(...CACHE, 'Dune.epub.po'), 'utf8');
+
+    // KOReader on the page Moon+ is on: Moon+'s own place within it is kept
+    await push(pages[2]);
+    expect(await po()).toBe('1*1@0#1700:31.5%');
+    // and once KOReader moves, its page top becomes Moon+'s character count
+    await push(pages[1]);
+    expect(await po()).toMatch(/\*1@0#0:20\.0%$/);
+    await push(pages[2]);
+    expect(await po()).toMatch(/\*1@0#1500:30\.0%$/);
   });
 });

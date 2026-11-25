@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
 import {
   CanActivate,
   ExecutionContext,
@@ -8,6 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { WRONG_PASSWORD_DELAY_MS } from '../access/admin.guard';
 import { appConfig, type AppConfigType } from '../config/app.config';
 
 const md5 = (s: string) => createHash('md5').update(s, 'utf8').digest('hex');
@@ -30,7 +32,7 @@ export function keyMatches(key: string, token: string): boolean {
 export class KosyncAuthGuard implements CanActivate {
   constructor(@Inject(appConfig.KEY) private readonly config: AppConfigType) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     if (!this.config.uploadToken) {
       throw new NotFoundException({
         code: 2001,
@@ -43,7 +45,10 @@ export class KosyncAuthGuard implements CanActivate {
     if (typeof user !== 'string' || !user.trim() || typeof key !== 'string') {
       throw new UnauthorizedException(UNAUTHORIZED);
     }
-    if (!keyMatches(key, this.config.uploadToken)) throw new UnauthorizedException(UNAUTHORIZED);
+    if (!keyMatches(key, this.config.uploadToken)) {
+      await sleep(WRONG_PASSWORD_DELAY_MS); // slows down guessing
+      throw new UnauthorizedException(UNAUTHORIZED);
+    }
     return true;
   }
 }

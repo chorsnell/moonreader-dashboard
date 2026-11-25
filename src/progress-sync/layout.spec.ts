@@ -1,4 +1,4 @@
-import { moonToXpointer, parseLayout, xpointerOffset } from './layout';
+import { moonToXpointer, parseLayout, samePlace, xpointerOffset } from './layout';
 
 const MD5 = '0123456789abcdef0123456789abcdef';
 // three spine items: 1 is one page, 2 is three pages, 3 is two pages
@@ -68,6 +68,32 @@ describe('moonToXpointer', () => {
 describe('xpointerOffset', () => {
   it('is exact for the top of a measured page', () => {
     expect(xpointerOffset(layout, '/body/DocFragment[3]/body/p[7]/text().3', 0.8)).toBe(1400);
+  });
+
+  it('is exact within the text a measured page starts in', () => {
+    expect(xpointerOffset(layout, '/body/DocFragment[2]/body/p[9]/text().57', 0.3)).toBe(1545);
+    expect(xpointerOffset(layout, '/body/DocFragment[2]/body/p[9]/text().0', 0.3)).toBe(1488);
+  });
+
+  it('allows for KOReader rounding its percentage down', () => {
+    // page 2 of 3 is 0.66666…, which KOReader sends as 0.6666
+    const thirds = parseLayout({
+      md5: MD5,
+      pages: [1, 2, 3].map((n) => ({
+        xp: `/body/DocFragment[1]/body/p[${n}]/text().0`,
+        offset: (n - 1) * 100,
+        pct: n / 3,
+      })),
+    });
+    expect(xpointerOffset(thirds, '/body/DocFragment[1]/body/div/text().0', 0.6666)).toBe(100);
+  });
+
+  it('knows when Moon+ is already on the page', () => {
+    const xp = '/body/DocFragment[2]/body/p[9]/text().12';
+    expect(samePlace(layout, moon(1, 2000, 32), xp, moon(1, 1500, 30))).toBe(true);
+    expect(samePlace(layout, moon(1, 3100, 40), xp, moon(1, 1500, 30))).toBe(false);
+    expect(samePlace(layout, moon(2, 0, 60), xp, moon(1, 1500, 30))).toBe(false);
+    expect(samePlace(null, moon(1, 3100, 40), xp, moon(1, 0, 30))).toBe(true);
   });
 
   it('otherwise uses the page of that spine item at the percentage', () => {

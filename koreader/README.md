@@ -102,7 +102,8 @@ days added to your own books.
 ## Reading position with Moon+
 
 Positions themselves sync through KOReader's own **Progress sync**, pointed at the dashboard
-(see [docs/progress-sync.md](../docs/progress-sync.md)). This plugin helps it be exact: when
+(its settings are in [docs/progress-sync.md](../docs/progress-sync.md#set-up): matching by
+**Filename**, silently to a newer state, prompt for an older one). This plugin helps it be exact: when
 you open a book (online, with **Sync automatically** on) it sends where each page starts,
 so the dashboard can turn Moon+'s "characters into chapter N" into a KOReader page, and back.
 It's sent again only when the book's page count changes (another font size, say). Books over

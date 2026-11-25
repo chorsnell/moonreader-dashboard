@@ -69,6 +69,8 @@ export interface SyncedPositionFile {
   name: string;
   text: string;
   mtimeMs: number;
+  /** The dashboard wrote it from a KOReader position (src/progress-sync). */
+  ownWrite?: boolean;
 }
 
 export interface DayEntry {

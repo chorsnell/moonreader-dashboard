@@ -308,6 +308,9 @@ function applySyncedPositions(
       b = matchByTitle(bookFile, titles);
       if (b) byTitle.push(`${file.name}  ->  ${b.info.title}`);
     }
+    // a KOReader position the dashboard wrote for a book Moon+ doesn't have adds no book:
+    // KOReader's own import has it, under its proper title and author
+    if (!b && file.ownWrite) continue;
     if (!b) {
       // a book the backup doesn't have yet (or one the catalogue knows by this file name)
       b = bookFor(bookFile);

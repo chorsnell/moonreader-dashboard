@@ -48,21 +48,26 @@ export function parseMoonPosition(text: string): MoonPosition | null {
   };
 }
 
-/** The text of a .po file, as Moon+ writes it (time in ms, one decimal place). */
+/**
+ * The text of a .po file, as Moon+ writes it: time in ms, one decimal place, except that a
+ * finished book is "100%".
+ */
 export function formatMoonPosition(p: MoonPosition): string {
   const time = Math.round(p.time ?? Date.now());
-  const percent = Math.min(100, Math.max(0, p.percent)).toFixed(1);
+  const fixed = Math.min(100, Math.max(0, p.percent)).toFixed(1);
+  const percent = fixed === '100.0' ? '100' : fixed;
   return `${time}*${int(p.chapter)}@${int(p.split)}#${int(p.offset)}:${percent}%`;
 }
 
 const int = (n: number) => Math.max(0, Math.floor(Number.isFinite(n) ? n : 0));
 
-const FRAGMENT = /^\/body\/DocFragment\[(\d+)\]/;
+/** crengine leaves the index out when there is only one: "/body/DocFragment/body/…". */
+const FRAGMENT = /^\/body\/DocFragment(?:\[(\d+)\])?(?=[/.]|$)/;
 
 /** The spine item an xpointer points into, counted from 1, or null when it names none. */
 export function xpointerFragment(xpointer: string): number | null {
   const m = FRAGMENT.exec(xpointer.trim());
-  return m ? Number(m[1]) : null;
+  return m ? Number(m[1] ?? 1) : null;
 }
 
 /** An xpointer to the start of a spine item (counted from 1), which KOReader can go to. */

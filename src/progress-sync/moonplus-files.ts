@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { basename } from 'node:path';
+import { basename, extname } from 'node:path';
 import { titleFromFileName } from '../backup-import/reading-history';
 
 /** A .po file Moon+ synced (or the dashboard wrote) in the WebDAV folder. */
@@ -12,10 +12,13 @@ export interface PoFile {
   mtimeMs: number;
 }
 
-/** What is known about a KOSync document: the device's file name and title, when known. */
+/** What is known about a KOSync document. */
 export interface DocumentHint {
+  /** The device's file name. */
   file?: string | null;
   title?: string | null;
+  /** The file names of the dashboard book the file is linked to. */
+  linked?: string[];
 }
 
 /** KOSync's "file name" document id: the MD5 of the book's file name. */
@@ -42,46 +45,72 @@ export function matchKey(text: string): string {
     .replace(/^(the|a|an) /, '');
 }
 
-/** Shorter titles than this only match a file name exactly ("It" shouldn't match "It Ends…"). */
-const MIN_PARTIAL_TITLE = 6;
-
 /** Moon+ syncs positions of reflowable books; PDFs and comics keep page numbers elsewhere. */
 export const isReflowable = (fileName: string) =>
   /\.(epub|fb2|txt|html?|mobi|azw3?|docx?|rtf)$/i.test(fileName);
 
+/** The same file name, whatever its case and however its accents are encoded. */
+const sameName = (a: string, b: string) =>
+  basename(a).normalize('NFC').toLowerCase() === basename(b).normalize('NFC').toLowerCase();
+
+/** Another format's positions mean nothing in this file. */
+const sameFormat = (a: string, b: string) => extname(a).toLowerCase() === extname(b).toLowerCase();
+
 /**
- * The .po file for a KOSync document, newest first when several match: by the MD5 of its
- * file name (KOSync's "file name" matching), then by the device's file name, then by title.
+ * The .po file that is certainly this document's, newest first when several match: by the MD5
+ * of its file name (KOSync's "file name" matching), then by the device's file name, then by
+ * the names of the dashboard book it's linked to (when they point to one name only). This is
+ * the only file a KOReader position is written over.
+ */
+export function ownPoFile(
+  document: string,
+  hint: DocumentHint | null,
+  files: PoFile[],
+): PoFile | null {
+  const candidates = newestFirst(files);
+  const byDigest = candidates.find((f) => fileNameDigest(f.bookFile) === document);
+  if (byDigest) return byDigest;
+  const file = hint?.file;
+  if (file) {
+    const exact = candidates.find((f) => sameName(f.bookFile, file));
+    if (exact) return exact;
+    const want = fileKey(file);
+    const close =
+      want && candidates.find((f) => sameFormat(f.bookFile, file) && fileKey(f.bookFile) === want);
+    if (close) return close;
+  }
+  const linked = candidates.filter(
+    (f) =>
+      (!file || sameFormat(f.bookFile, file)) &&
+      hint?.linked?.some((name) => sameName(name, f.bookFile)),
+  );
+  return linked.length && linked.every((f) => sameName(f.bookFile, linked[0].bookFile))
+    ? linked[0]
+    : null;
+}
+
+/**
+ * The .po file to read a document's Moon+ position from: its own, or else one named after the
+ * title, alone or with an author before or after it ("Dune - Frank Herbert.epub"). A title is
+ * too weak to write over a file by.
  */
 export function poForDocument(
   document: string,
   hint: DocumentHint | null,
   files: PoFile[],
 ): PoFile | null {
-  const candidates = files
-    .filter((f) => isReflowable(f.bookFile))
-    .sort((a, b) => b.mtimeMs - a.mtimeMs);
-  const byDigest = candidates.find((f) => fileNameDigest(f.bookFile) === document);
-  if (byDigest) return byDigest;
-  if (hint?.file) {
-    const want = fileKey(hint.file);
-    const byFile = want && candidates.find((f) => fileKey(f.bookFile) === want);
-    if (byFile) return byFile;
-  }
-  if (hint?.title) {
-    const want = matchKey(hint.title);
-    const titled = (f: PoFile) => {
-      const key = matchKey(titleFromFileName(f.bookFile));
-      // "Dune - Frank Herbert.epub": the title with an author before or after it
-      return (
-        key === want ||
-        (want.length >= MIN_PARTIAL_TITLE &&
-          (key.startsWith(`${want} `) || key.endsWith(` ${want}`)))
-      );
-    };
-    const byTitle = want ? candidates.filter(titled) : [];
-    // a title that names two different books is no match
-    if (new Set(byTitle.map((f) => fileKey(f.bookFile))).size === 1) return byTitle[0];
-  }
-  return null;
+  const own = ownPoFile(document, hint, files);
+  if (own) return own;
+  const want = hint?.title ? matchKey(hint.title) : '';
+  if (!want) return null;
+  const titled = newestFirst(files).filter((f) => {
+    if (hint?.file && !sameFormat(f.bookFile, hint.file)) return false;
+    const name = titleFromFileName(f.bookFile);
+    return [name, ...name.split(/\s+-\s+/)].some((part) => matchKey(part) === want);
+  });
+  // a title that names two different books is no match
+  return new Set(titled.map((f) => fileKey(f.bookFile))).size === 1 ? titled[0] : null;
 }
+
+const newestFirst = (files: PoFile[]) =>
+  files.filter((f) => isReflowable(f.bookFile)).sort((a, b) => b.mtimeMs - a.mtimeMs);

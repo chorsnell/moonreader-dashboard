@@ -79,16 +79,48 @@ export function moonToXpointer(layout: Layout, position: MoonPosition): string |
   return lastWhere(layout.pages, (p) => p.pct <= target)?.xp ?? null;
 }
 
+/** KOReader rounds the percentage it syncs down to 4 places (Math.roundPercent). */
+const ROUNDING = 1e-4;
+
+/** An xpointer's node, and how many characters into its text it points. */
+function textPoint(xp: string): { node: string; at: number } {
+  const m = /^(.*)\.(\d+)$/.exec(xp);
+  return m ? { node: m[1], at: Number(m[2]) } : { node: xp, at: 0 };
+}
+
 /**
  * How many characters into its spine item a KOReader position is: exact when it's the start
- * of a page the plugin measured (KOReader syncs the top of the page), otherwise the page of
- * that spine item at KOReader's percentage.
+ * of a page the plugin measured (KOReader syncs the top of the page), or in the same text as
+ * one; otherwise the page of that spine item at KOReader's percentage.
  */
 export function xpointerOffset(layout: Layout, xp: string, percentage: number): number {
   const exact = layout.pages.find((p) => p.xp === xp);
   if (exact) return exact.offset;
+  const want = textPoint(xp);
+  const near = layout.pages.find((p) => textPoint(p.xp).node === want.node);
+  if (near) return Math.max(0, near.offset + want.at - textPoint(near.xp).at);
   const fragment = xpointerFragment(xp);
   const chapter = layout.pages.filter((p) => p.fragment === fragment);
   if (!chapter.length) return 0;
-  return lastWhere(chapter, (p) => p.pct <= percentage)?.offset ?? 0;
+  return lastWhere(chapter, (p) => p.pct <= percentage + ROUNDING)?.offset ?? 0;
+}
+
+/**
+ * Whether Moon+'s position is already on the page KOReader is on, so writing KOReader's over
+ * it would only lose Moon+'s own place within the page. Without a layout all that can be
+ * written is the start of the chapter, which is never better within the same chapter.
+ */
+export function samePlace(
+  layout: Layout | null,
+  moon: MoonPosition,
+  xp: string,
+  mine: MoonPosition,
+): boolean {
+  if (layout && moonToXpointer(layout, moon) === xp) return true;
+  if (moon.chapter !== mine.chapter) return false;
+  const fragment = fragmentOfChapter(mine.chapter);
+  const chapter = layout?.pages.filter((p) => p.fragment === fragment) ?? [];
+  if (!chapter.length) return true;
+  const page = (offset: number) => lastWhere(chapter, (p) => p.offset <= offset);
+  return page(moon.offset) === page(mine.offset);
 }
