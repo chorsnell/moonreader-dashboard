@@ -1,11 +1,17 @@
 name: deploy
-# Builds the image, pushes it to ghcr.io/chorsnell/moonreader-dashboard and deploys it
-# to the homelab, using the shared workflow in chorsnell/workflows. Runs after the test
-# workflow passes on main, or by hand from the Actions tab.
+# Builds the image, pushes it to ghcr.io/chorsnell/moonreader-dashboard, and rolls it out on the
+# host. Self-contained: no shared workflows, and a deploy key used by nothing else
+# (docs/deploy.md). Runs after the test workflow passes on main, or by hand from the Actions tab.
 #
-# Needs these repository secrets (passed through by `secrets: inherit`):
-#   TS_OAUTH_CLIENT_ID, TS_OAUTH_SECRET  Tailscale OAuth client (tag:ci)
-#   DEPLOY_SSH_KEY                       private key for deploy@docker-host
+# Repository secrets:
+#   TS_OAUTH_CLIENT_ID, TS_OAUTH_SECRET  Tailscale OAuth client (tag:ci), to reach the host
+#   READING_DASHBOARD_DEPLOY_KEY         private key whose authorized_keys line on the host runs
+#                                        scripts/deploy/host-deploy.sh and nothing else
+# Repository variables (optional):
+#   DEPLOY_TARGET                        user@host to ssh to (default reading-dashboard@docker-host)
+#
+# Without READING_DASHBOARD_DEPLOY_KEY the image is still built and pushed, and the rollout is
+# skipped with a notice.
 on:
   workflow_run:
     workflows: [test]
@@ -18,12 +24,75 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    uses: chorsnell/workflows/.github/workflows/deploy.yml@a3ca6a56e9b6a2c5887ad9d92d7031f38815d345  # last ubuntu-latest version: @main runs on a self-hosted runner this repo has none of
-    with:
-      app: reading-dashboard  # the app folder on docker-host
-    secrets: inherit
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      # the commit the tests passed on, not whatever main is by now
+      - id: sha
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.sha.outputs.sha }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: GIT_COMMIT=${{ steps.sha.outputs.sha }}
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ steps.sha.outputs.sha }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.sha.outputs.sha }}
+            org.opencontainers.image.revision=${{ steps.sha.outputs.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - id: key
+        env:
+          KEY: ${{ secrets.READING_DASHBOARD_DEPLOY_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No READING_DASHBOARD_DEPLOY_KEY secret: the image is built, the rollout is skipped (docs/deploy.md)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.key.outputs.ok == 'true'
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Deploy
+        if: steps.key.outputs.ok == 'true'
+        env:
+          KEY: ${{ secrets.READING_DASHBOARD_DEPLOY_KEY }}
+          TARGET: ${{ vars.DEPLOY_TARGET || 'reading-dashboard@docker-host' }}
+          SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          install -m 600 /dev/null key
+          printf '%s\n' "$KEY" > key
+          # the host script deploys exactly this build and checks it's this app's image
+          ssh -i key -o StrictHostKeyChecking=accept-new "$TARGET" "deploy $SHA" | tee out
+          grep -q '^DEPLOY OK ' out
