@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: chorsnell/workflows/.github/workflows/deploy.yml@main
+    uses: chorsnell/workflows/.github/workflows/deploy.yml@a3ca6a56e9b6a2c5887ad9d92d7031f38815d345  # last ubuntu-latest version: @main runs on a self-hosted runner this repo has none of
     with:
       app: reading-dashboard  # the app folder on docker-host
     secrets: inherit
