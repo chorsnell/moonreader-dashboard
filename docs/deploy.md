@@ -14,6 +14,19 @@ notice on the run.
 
 ## One-time host setup
 
+**Short way:** on the host, run this and follow what it prints at the end (it's safe to run again):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/chorsnell/moonreader-dashboard/main/scripts/deploy/setup-host.sh | sudo bash
+```
+
+It finds the app folder from the running container and makes the `reading-dashboard` user. It
+installs `host-deploy.sh` and deploys once as a test. Then it makes the key, locks it to the script,
+and prints the private half to paste into the `READING_DASHBOARD_DEPLOY_KEY` secret. The steps
+below are what it does, if you'd rather do them by hand.
+
+### By hand
+
 On the host (`docker-host`), as an admin:
 
 ```sh
