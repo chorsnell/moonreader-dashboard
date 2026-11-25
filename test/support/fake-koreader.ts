@@ -48,6 +48,6 @@ export function makeKoreaderDb(path: string, { old = false } = {}): void {
   for (let p = 1; p <= 30; p++) read(2, p, at('2024-01-10T12:00:00Z') + p * 60, 60, 300);
   for (let p = 100; p <= 120; p++) read(2, p, at('2026-02-01T12:00:00Z') + p * 60, 60, 300);
   for (let p = 121; p <= 150; p++) read(2, p, at('2026-02-02T12:00:00Z') + p * 60, 60, 300);
-  for (let p = 40; p <= 49; p++) read(4, p, at('2026-03-02T12:00:00Z') + p * 60, 60, 100);
+  for (let p = 40; p <= 49; p++) read(4, p, at('2026-03-02T12:00:07Z') + p * 60, 60, 100);
   db.close();
 }

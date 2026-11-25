@@ -3,6 +3,8 @@ import type {
   BookHistory,
   BookStatus,
   Catalogue,
+  DayEntry,
+  DaySource,
   ReadEntry,
 } from '../backup-import/reading-history.types';
 import { parseIsbn } from '../metadata/isbn';
@@ -63,8 +65,8 @@ export interface ToReadImport {
 
 /**
  * Adds imported books to the reading history, in place. A book matches one already there
- * by ISBN, then by title and author; it brings its rating, shelves, days and reads Moon+
- * didn't have, and highlights. Books nothing else knows become books of their own (source
+ * by ISBN, then by title and author; it brings its rating, shelves, reading time, reads Moon+
+ * didn't have, and highlights. Time from different sources on one day adds up. Books nothing else knows become books of their own (source
  * set), unless they're only on a to-read shelf.
  */
 export function mergeImports(
@@ -191,6 +193,47 @@ export function mergeImports(
 }
 
 const sum = (xs: (number | null)[]) => round1(xs.reduce<number>((s, x) => s + (x ?? 0), 0));
+/** Adds two figures a source may not have: null only when neither does. */
+const plus = (a: number | null, b: number | null) =>
+  a === null && b === null ? null : round1((a ?? 0) + (b ?? 0));
+const highest = (a: number | null, b: number | null) =>
+  a === null ? b : b === null ? a : Math.max(a, b);
+
+/**
+ * Adds one source's days to a book: minutes and words are added to what other sources have for
+ * the date, progress is the furthest. A rebuild starts again from each source's own data (one
+ * import file per source), so nothing is counted twice.
+ */
+function addDays(b: BookHistory, days: DayEntry[], source: DaySource): void {
+  const byDate = new Map(b.daily.map((d) => [d.date, d]));
+  for (const d of days) {
+    let day = byDate.get(d.date);
+    if (!day) {
+      day = { date: d.date, minutes: null, words: null, progress: null, by_source: {} };
+      byDate.set(d.date, day);
+      b.daily.push(day);
+    }
+    // a day no import has touched yet is Moon+'s
+    day.by_source ??= { moonplus: { minutes: day.minutes, words: day.words } };
+    const had = day.by_source[source];
+    day.by_source[source] = {
+      minutes: plus(had?.minutes ?? null, d.minutes),
+      words: plus(had?.words ?? null, d.words),
+    };
+    day.minutes = plus(day.minutes, d.minutes);
+    day.words = plus(day.words, d.words);
+    day.progress = highest(day.progress, d.progress);
+  }
+  b.daily.sort((x, y) => (x.date < y.date ? -1 : 1));
+  b.total_minutes = round1(b.total_minutes + sum(days.map((d) => d.minutes)));
+  b.total_words += days.reduce((s, d) => s + (d.words ?? 0), 0);
+}
+
+/** The days a book has within a read, and their minutes. */
+function within(b: BookHistory, r: ReadEntry): { days: number; minutes: number } {
+  const days = b.daily.filter((d) => d.date >= r.start && d.date <= r.end);
+  return { days: days.length, minutes: sum(days.map((d) => d.minutes)) };
+}
 
 /** Gives a book what an import knows: rating, shelves, ISBN, days, reads and highlights. */
 function enrich(
@@ -209,32 +252,40 @@ function enrich(
   b.isbn10 ??= isbn.isbn10;
   for (const h of ib.highlights ?? []) highlights.push({ ...h, book_id: b.id, source });
 
-  // days: whatever Moon+ (or an earlier import) has for a day stands
-  let changed = false;
-  const have = new Set(b.daily.map((d) => d.date));
-  const days = (ib.daily ?? []).filter((d) => !have.has(d.date));
-  if (days.length) {
-    b.daily.push(...days.map((d) => ({ ...d })));
-    b.daily.sort((x, y) => (x.date < y.date ? -1 : 1));
-    b.total_minutes = round1(b.total_minutes + sum(days.map((d) => d.minutes)));
-    b.total_words += days.reduce((s, d) => s + (d.words ?? 0), 0);
-    changed = true;
+  // what each read's days came to before this import, to add only what it brings
+  const before = new Map(b.reads.map((r) => [r, within(b, r)]));
+  let days = ib.daily ?? [];
+  // an older KOReader import may still hold copies of Moon+ days: only fill the gaps
+  if (source === 'koreader' && !ib.synthetic_removed) {
+    const have = new Set(b.daily.map((d) => d.date));
+    days = days.filter((d) => !have.has(d.date));
   }
+  const timed = !!ib.daily?.length;
+  let changed = days.length > 0;
+  if (days.length) addDays(b, days, source);
 
   const near = (r: ReadEntry, day: string) =>
     daysBetween(r.end, day) <= SAME_READ_DAYS && daysBetween(day, r.start) <= SAME_READ_DAYS;
+  /** Reads this import carried at least as far as they'd got. */
+  const carried = new Set<ReadEntry>();
   for (const r of ib.reads) {
     const start = r.start ?? r.end;
+    // a read with no day data (Kobo without events) still has its time
+    if (!timed && r.minutes) b.total_minutes = round1(b.total_minutes + r.minutes);
     const same = b.reads.find((x) => near(x, start) || near(x, r.end));
     if (same) {
       // the same read, carried on (or finished) in another app
+      if (r.end >= same.end) {
+        carried.add(same);
+        if (r.progress != null) same.progress = highest(same.progress, r.progress);
+      }
       if (start < same.start) same.start = start;
       if (r.end > same.end) same.end = r.end;
       if (r.finished === true && same.finished !== true) {
         same.finished = true;
         same.progress = 100;
       }
-      if (r.minutes && !days.length) same.minutes = round1((same.minutes ?? 0) + r.minutes);
+      if (!timed && r.minutes) same.minutes = plus(same.minutes, r.minutes);
       changed = true;
       continue;
     }
@@ -248,23 +299,22 @@ function enrich(
       finished: r.finished,
       source,
     });
-    // a book with no days of its own (Kobo without day data) still has its time
-    if (!days.length && r.minutes && b.source) {
-      b.total_minutes = round1(b.total_minutes + r.minutes);
-    }
     changed = true;
   }
   if (changed && b.reads.length) {
     b.reads.sort((x, y) => (x.start < y.start ? -1 : x.start > y.start ? 1 : 0));
     b.reads.forEach((r, i) => {
       r.read_no = i + 1;
-      // the days now known for an imported read
-      if (r.source || days.length) {
-        const inRead = b.daily.filter((d) => d.date >= r.start && d.date <= r.end);
-        if (inRead.length) {
-          r.days_read = inRead.length;
-          if (r.source) r.minutes = sum(inRead.map((d) => d.minutes)) || r.minutes;
-        }
+      const now = within(b, r);
+      const was = before.get(r);
+      if (was) {
+        if (now.days > was.days) r.days_read = now.days;
+        const added = round1(now.minutes - was.minutes);
+        if (added > 0) r.minutes = plus(r.minutes, added);
+      } else if (now.days) {
+        // a new read: its days, plus its own time when that isn't among them
+        r.days_read = now.days;
+        r.minutes = plus(timed ? 0 : r.minutes, now.minutes) || r.minutes;
       }
     });
     const first = [b.reads[0].start, b.daily[0]?.date ?? b.reads[0].start].sort()[0];
@@ -276,7 +326,11 @@ function enrich(
     if (latest.finished === true && b.status !== 'finished') {
       b.status = 'finished';
       b.progress = 100;
-    } else if (b.status !== 'finished' && ib.progress != null && latest.source === source) {
+    } else if (
+      b.status !== 'finished' &&
+      ib.progress != null &&
+      (latest.source === source || carried.has(latest))
+    ) {
       b.progress = Math.max(b.progress ?? 0, ib.progress);
       if (b.status === 'unknown' || b.status === 'not_started') b.status = 'in_progress';
     }

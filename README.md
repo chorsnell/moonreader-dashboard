@@ -170,7 +170,7 @@ The same **Imports** section takes e-reader data; files are recognised by their 
 - **Kindle reading sessions:** `Kindle.Devices.ReadingSession.csv` from Amazon's "Request your data" export: minutes per day for each book. It names books only by ASIN, so upload any CSV with `ASIN` and `Title` columns (your digital orders) or name them in **Catalogue** (`kindle:<ASIN>`).
 - **KOReader:** `koreader/settings/statistics.sqlite3` from the device (or [the plugin](#the-koreader-plugin), which syncs it): minutes and progress for every day read, from its page statistics, and reads split where a book was left for a year. A single page entry over four hours (the device left on) is ignored.
 
-For a day Moon+ already has, Moon+'s figures stand; imports fill in the other days. With no Moon+ backup at all, the dashboard is built from the imports alone.
+Time read in different apps on the same day adds up (progress is the furthest any of them got), and `daily.json` says what each recorded in `by_source`. Moon+ history the KOReader plugin copied into KOReader isn't counted again. With no Moon+ backup at all, the dashboard is built from the imports alone.
 
 ### The KOReader plugin
 

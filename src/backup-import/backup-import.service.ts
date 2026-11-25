@@ -311,6 +311,7 @@ export class BackupImportService {
           minutes: d.minutes,
           words: d.words,
           progress: d.progress,
+          ...(d.by_source ? { by_source: d.by_source } : {}),
         });
       }
     }
