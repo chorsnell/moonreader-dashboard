@@ -77,6 +77,7 @@ local stubs = {
             return (s:gsub("%%(%d)", function(i) return tostring(args[tonumber(i)]) end))
         end,
     },
+    ["ffi/sha2"] = { md5 = function(s) return "md5:" .. s end },
     ["ui/data/css_tweaks"] = { DEFAULT_GLOBAL_STYLE_TWEAKS = { ["footnote-inpage_epub"] = true } },
 }
 for name, mod in pairs(stubs) do
@@ -246,6 +247,11 @@ describe("main", function()
         function ui.document:getPageXPointer(page) return "/body/DocFragment[1]/body/p[" .. page .. "]" end
         function ui.document:getTextFromXPointers() return "abc" end
         local p = newPlugin(tmpdir .. "/none", ui)
+        p.settings.url, p.settings.token = "https://host", "t"
+        ReadingDashboard.layout_queue_obj = nil
+        local NetworkMgr = package.loaded["ui/network/manager"]
+        local offline = NetworkMgr.isOnline
+        NetworkMgr.isOnline = function() return true end
         local posted = {}
         p.getClient = function()
             return { postJSON = function(_, path, body) table.insert(posted, { path, body }) return true, {} end }
@@ -265,6 +271,70 @@ describe("main", function()
         pages = 4
         p:sendLayout()
         assert_eq(#posted, 2)
+        NetworkMgr.isOnline = offline
+    end)
+
+    it("keeps a layout measured offline until it can be sent", function()
+        local ui = newReaderUI()
+        ui.doc_settings = fakeSettings({ partial_md5_checksum = "fedcba9876543210fedcba9876543210" })
+        ui.document.info = { has_pages = false }
+        function ui.document:getPageCount() return 1 end
+        function ui.document:getPageXPointer() return "/body/DocFragment[1]/body/p[1]" end
+        function ui.document:getTextFromXPointers() return "" end
+        local p = newPlugin(tmpdir .. "/none", ui)
+        p.settings.url, p.settings.token = "https://host", "t"
+        p.settings.layouts = nil
+        ReadingDashboard.layout_queue_obj = nil
+        local posted, answer = 0, { false, "timeout" }
+        p.getClient = function()
+            return { postJSON = function() posted = posted + 1 return answer[1], answer[2], answer[3] end }
+        end
+        local NetworkMgr = package.loaded["ui/network/manager"]
+        local offline = NetworkMgr.isOnline
+
+        p:sendLayout()
+        assert_eq(posted, 0)
+
+        NetworkMgr.isOnline = function() return true end
+        p:flushLayouts() -- the server can't be reached: it stays
+        assert_eq(posted, 1)
+        answer = { true, {} }
+        ui.document = nil -- the book has been closed since
+        p:flushLayouts()
+        p:flushLayouts()
+        assert_eq(posted, 2)
+        NetworkMgr.isOnline = offline
+    end)
+
+    it("sets up Progress sync from a download with the password, once, over nothing", function()
+        local f = io.open(tmpdir .. "/plugin/defaults.lua", "w")
+        f:write('return { url = "https://host/books/", token = "abc123" }')
+        f:close()
+        local LuaSettings = package.loaded["luasettings"]
+        local open = LuaSettings.open
+        local kosync = fakeSettings()
+        LuaSettings.open = function(_, path)
+            if path:match("/kosync%.lua$") then return kosync end
+            return fakeSettings()
+        end
+
+        local p = newPlugin(tmpdir .. "/plugin", newReaderUI())
+        local s = kosync.data.settings
+        assert_eq(s.custom_server, "https://host/books/kosync")
+        assert_eq(s.userkey, "md5:abc123")
+        assert_eq(s.checksum_method, 1)
+        assert_eq(s.sync_forward, 2)
+        assert_eq(s.sync_backward, 1)
+        assert_true(s.auto_sync)
+        assert_true(kosync.flushed)
+        assert_true(p.settings.progress_sync_prefilled)
+
+        kosync = fakeSettings({ settings = { custom_server = "https://mine" } })
+        newPlugin(tmpdir .. "/plugin", newReaderUI())
+        assert_same(kosync.data.settings, { custom_server = "https://mine" })
+
+        LuaSettings.open = open
+        os.remove(tmpdir .. "/plugin/defaults.lua")
     end)
 
     it("asks for configuration before a manual sync", function()

@@ -35,6 +35,13 @@ describe("moon+ apply", function()
         assert_nil(MoonPlus.unopenedSidecar({ progress = nil, status = "unknown" }, "m"))
     end)
 
+    it("leaves the position to Progress sync when that's set up", function()
+        assert_nil(MoonPlus.unopenedSidecar({ progress = 40, status = "in_progress" }, "m", true))
+        local d = MoonPlus.unopenedSidecar({ progress = 100, status = "finished" }, "m", true)
+        assert_nil(d.last_percent)
+        assert_eq(d.summary.status, "complete")
+    end)
+
     it("names collections after the genre", function()
         assert_eq(MoonPlus.collectionName({ genre = " Science Fiction " }), "Science Fiction")
         assert_nil(MoonPlus.collectionName({ genre = "" }))

@@ -7,6 +7,7 @@ import { AdminOnly } from '../access/admin.guard';
 import { RequestBodyError, saveRequestBody } from '../common/http/request-body';
 import { LayoutError, parseLayout } from './layout';
 import { LayoutStore } from './layout-store';
+import { ProgressSyncService } from './progress-sync.service';
 
 /** A long book's layout is a few hundred kB. */
 const MAX_LAYOUT_BYTES = 5 * 1024 * 1024;
@@ -18,7 +19,10 @@ const MAX_LAYOUT_BYTES = 5 * 1024 * 1024;
 @Controller('api/koreader')
 @AdminOnly({ denied: 'Only the admin can do this.', off: 'Set UPLOAD_TOKEN to sync KOReader.' })
 export class LayoutController {
-  constructor(private readonly layouts: LayoutStore) {}
+  constructor(
+    private readonly layouts: LayoutStore,
+    private readonly progress: ProgressSyncService,
+  ) {}
 
   @Post('layout')
   @HttpCode(200)
@@ -47,6 +51,7 @@ export class LayoutController {
         throw e;
       }
       await this.layouts.put(layout);
+      await this.progress.layoutArrived(layout);
       return { ok: true, pages: layout.pages.length };
     } finally {
       await rm(tmp, { recursive: true, force: true });

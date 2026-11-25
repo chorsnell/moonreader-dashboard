@@ -321,7 +321,8 @@ function applySyncedPositions(
     // Moon+'s own time says when the position was saved, but it can be months stale (seen:
     // a March stamp on a position uploaded in October). A position stamped before the last day
     // the backup logged for this book would be thrown away, so use when it reached this server.
-    let ms = stamped ?? file.mtimeMs;
+    // (on a file the dashboard wrote the stamp is Moon+'s, kept: only the arrival says when)
+    let ms = file.ownWrite ? file.mtimeMs : (stamped ?? file.mtimeMs);
     const lastLogged = [...b.days.keys()].sort().at(-1);
     if (lastLogged && localDateTime(new Date(ms)).slice(0, 10) < lastLogged) {
       ms = Math.max(ms, file.mtimeMs);

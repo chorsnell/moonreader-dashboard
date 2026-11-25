@@ -196,6 +196,70 @@ describe('writing for Moon+', () => {
   });
 });
 
+describe("Moon+'s chapters and stamp", () => {
+  // a cover and a title page the contents don't list, then two chapters of ten pages
+  const sizes = [1, 1, 10, 10];
+  const at = (fragment: number, p: number) => page(fragment, p + 1);
+  let n = 0;
+  const novel = parseLayout({
+    md5: PARTIAL,
+    file: 'Dune.epub',
+    pages: sizes.flatMap((size, f) =>
+      Array.from({ length: size }, (_, p) => ({
+        xp: at(f + 1, p),
+        offset: p * 1000,
+        pct: ++n / 22,
+      })),
+    ),
+    toc: [
+      { fragment: 3, offset: 0 },
+      { fragment: 4, offset: 0 },
+    ],
+    lengths: [1000, 1000, 10000],
+  });
+  const early = '1700000000000*0@0#0:1.0%';
+
+  it("writes the contents' chapter and keeps Moon+'s first number", async () => {
+    await layouts.put(novel);
+    await moonSyncs(early, 60_000);
+    await push(at(3, 4), 7 / 22);
+    expect(await read(PO)).toBe('1700000000000*1@0#4000:31.8%');
+  });
+
+  it('writes the spine item once a Moon+ position showed this book goes by the spine', async () => {
+    await layouts.put(novel);
+    await moonSyncs('1700000000000*3@0#4000:74.0%', 60_000);
+    await push(at(3, 4), 7 / 22);
+    expect(await read(PO)).toBe('1700000000000*2@0#4000:31.8%');
+  });
+
+  it("gives a new file the first number Moon+'s others have", async () => {
+    await layouts.put(novel);
+    await moonSyncs(early, 0, `${CACHE}/other.epub.po`);
+    await push(at(3, 4), 7 / 22);
+    expect(await read(PO)).toBe('1700000000000*1@0#4000:31.8%');
+  });
+
+  it('rewrites the position when the layout arrives after it', async () => {
+    await moonSyncs(early, 60_000);
+    await push(at(3, 4), 7 / 22);
+    expect(await read(PO)).toBe('1700000000000*2@0#0:31.8%');
+    await layouts.put(novel);
+    await service.layoutArrived(novel);
+    expect(await read(PO)).toBe('1700000000000*1@0#4000:31.8%');
+  });
+
+  it('leaves a position Moon+ saved since', async () => {
+    await moonSyncs(early, 60_000);
+    await push(at(3, 4), 7 / 22);
+    const moon = '1700000000000*2@0#100:60.0%';
+    await moonSyncsLater(moon);
+    await layouts.put(novel);
+    await service.layoutArrived(novel);
+    expect(await read(PO)).toBe(moon);
+  });
+});
+
 describe('what KOReader sends', () => {
   it('takes metadata for the file name and title', () => {
     expect(
