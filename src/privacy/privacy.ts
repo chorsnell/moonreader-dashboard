@@ -7,6 +7,7 @@
  */
 
 import { firstAuthor, seriesNameKey } from '../common/book-match';
+import { coverage, sumTimeOfDay, type SessionsFile } from '../sessions/sessions';
 
 export type DateGranularity = 'day' | 'week' | 'month';
 export type ViewerRole = 'public' | 'reader' | 'friends';
@@ -338,6 +339,7 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
   if (DIARY_FILES.has(name) && !p.diary) return [];
   // daily weather at home only means something with exact days, and narrows down where you live
   if (name === 'weather.json' && (!p.diary || p.dates !== 'day')) return [];
+  if (name === SESSIONS_FILE) return filterSessions(data, ctx);
   if (name === BIBLIOGRAPHY_FILE) return filterBibliography(data, ctx);
   if (name === GENRE_PICKS_FILE) return filterGenrePicks(data, ctx);
   const dates = effectiveDates(name, p);
@@ -399,6 +401,46 @@ export function filterDataFile(name: string, data: unknown, ctx: FilterContext):
     return mergeDays(filtered as Record<string, unknown>[]);
   }
   return filtered;
+}
+
+/** KOReader's page-by-page reading (src/sessions). */
+const SESSIONS_FILE = 'sessions.json';
+
+/**
+ * sessions.json is a diary with clock times, so it's served empty when the diary is hidden.
+ * Private books are left out whichever the private mode (page numbers say which book it is),
+ * and so are books being read now when that's hidden; the totals are added up again from
+ * what's left. Without exact days (rounded dates, or streaks hidden) there are no sessions,
+ * progress curves or dated stalls. Device names are only for the admin.
+ */
+function filterSessions(data: unknown, ctx: FilterContext): unknown {
+  const p = ctx.policy;
+  const file = data as SessionsFile | null;
+  if (!p.diary || !Array.isArray(file?.books) || !Array.isArray(file.sessions)) return [];
+  const dates: DateGranularity = !p.streaks && p.dates === 'day' ? 'week' : p.dates;
+  const exact = dates === 'day';
+  const day = (d: string) => coarsenDate(d, dates).slice(0, 10);
+  const shown = (id: string) => !ctx.private.has(id) && (p.current || !ctx.current.has(id));
+  const books = file.books.filter((b) => shown(b.book_id));
+  const sessions = exact
+    ? file.sessions.filter((s) => shown(s.book_id)).map((s) => ({ ...s, device: null }))
+    : [];
+  const rows = books.map((b) => ({
+    ...b,
+    since: day(b.since),
+    until: day(b.until),
+    eta: b.eta && { ...b.eta, finish: b.eta.finish && day(b.eta.finish) },
+    progress: exact ? b.progress : [],
+    stalls: b.stalls.map((s) => ({ ...s, date: day(s.date) })),
+  }));
+  return {
+    ...file,
+    generated: coarsenDate(file.generated, dates),
+    coverage: coverage(rows, sessions),
+    sessions,
+    time_of_day: sumTimeOfDay(rows),
+    books: rows,
+  };
 }
 
 /** Books by your authors and in your series that you don't have (BOO-103). */

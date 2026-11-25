@@ -11,12 +11,15 @@ import { findFiles, mtimeMs } from '../common/files';
 import { localDate, localDateTime, round1 } from '../common/time';
 import { CoverStore } from '../covers/cover-store.service';
 import { ImportsStore } from '../imports/imports.store';
+import type { ImportedBook } from '../imports/imports.types';
 import { mergeImports, type MergeResult } from '../imports/merge';
 import { buildToRead, type ToReadRow } from '../imports/to-read';
 import { normaliseText } from '../koreader-sync/koreader-books';
 import { LibraryService } from '../library/library.service';
 import { bookFacts } from '../metadata/merge';
 import { MetadataStore } from '../metadata/metadata-store.service';
+import { bookMatcher, readPageEntries } from '../sessions/page-entries';
+import { buildSessions, type SessionsFile } from '../sessions/sessions';
 import { WantStore } from '../want-to-read/want-to-read.store';
 import type { MetadataFile } from '../metadata/metadata.types';
 import { readBackup } from './backup-archive';
@@ -144,6 +147,13 @@ export class BackupImportService {
         });
       }
 
+      // page-by-page views from KOReader's statistics; the daily totals above don't use them
+      const pages = await this.pageSessions(
+        result.books,
+        importFiles.find((f) => f.source === 'koreader')?.books ?? [],
+        catalogue,
+      );
+
       let newCovers = 0;
       for (const book of result.books) {
         for (const file of book.source_files) {
@@ -166,6 +176,7 @@ export class BackupImportService {
         result.unmatchedSyncs,
         importFiles.map((f) => ({ source: f.source, file: f.file, imported: f.imported })),
         toRead,
+        pages.file,
       );
       // The watcher rebuilds when an input is newer than meta.json. Date it to when this
       // build started reading its inputs, so a position synced (or a catalogue saved) while
@@ -179,6 +190,14 @@ export class BackupImportService {
           (newCovers ? `, ${newCovers} new cover(s) from the backup` : ''),
       ];
       if (toRead.length) lines.push(`To-read pile: ${toRead.length} book(s) not started yet`);
+      if (pages.file.coverage.since) {
+        lines.push(
+          `KOReader page data: ${pages.file.sessions.length} sessions in ${pages.file.coverage.books} books since ${pages.file.coverage.since}`,
+        );
+      }
+      if (pages.unreadable.length) {
+        lines.push(`Unreadable KOReader statistics left out: ${pages.unreadable.join(', ')}`);
+      }
       if (imported) {
         lines.push(
           `Imports (${imported.sources.join(', ')}): ${imported.matched} matched, ${imported.added} added` +
@@ -224,6 +243,26 @@ export class BackupImportService {
     }
   }
 
+  /** data/sessions.json, from the statistics databases KOReader devices sent. */
+  private async pageSessions(
+    books: BookHistory[],
+    imported: ImportedBook[],
+    catalogue: Catalogue,
+  ): Promise<{ file: SessionsFile; unreadable: string[] }> {
+    const dir = join(this.library.root, 'koreader');
+    let links: Record<string, { book_id: string }> = {};
+    try {
+      links = JSON.parse(await readFile(join(dir, 'links.json'), 'utf8')) as typeof links;
+    } catch {
+      // nothing matched by the plugin yet
+    }
+    const { entries, unreadable } = await readPageEntries(
+      join(dir, 'statistics'),
+      bookMatcher(books, imported, catalogue, links),
+    );
+    return { file: buildSessions(entries, books), unreadable };
+  }
+
   /** The .po files Moon+ synced over WebDAV. */
   private async readSyncedPositions(): Promise<SyncedPositionFile[]> {
     const out: SyncedPositionFile[] = [];
@@ -249,6 +288,7 @@ export class BackupImportService {
     unmatchedSyncs: string[],
     imports: { source: string; file: string; imported: string }[] = [],
     toRead: ToReadRow[] = [],
+    sessions: SessionsFile = buildSessions([], []),
   ): Promise<Pick<ImportSummary, 'books' | 'reads' | 'readingDays' | 'highlights'>> {
     const booksRows = [];
     const readsRows = [];
@@ -327,6 +367,7 @@ export class BackupImportService {
     await this.dump('highlights.json', highlights);
     // books waiting to be read that the library doesn't otherwise have
     await this.dump('to_read.json', toRead);
+    await this.dump('sessions.json', sessions);
     // books by your authors and in your series that you don't have (BOO-103)
     const bibliography = await this.bibliography.read();
     await this.dump('bibliography.json', buildBibliography(booksRows, toRead, bibliography));

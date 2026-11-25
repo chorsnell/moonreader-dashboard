@@ -107,6 +107,85 @@ curl -s -c jar -H 'Content-Type: application/json' -d '{"password":"…"}' https
 curl -s -b jar https://reading.example.com/api/stats/year/2025
 ```
 
+## Page-level reading: sessions.json
+
+`/data/sessions.json` is what KOReader's page-by-page statistics add to the daily totals.
+The build writes it (`src/sessions/`) from the database each device sent
+(`library/koreader/statistics/`). **Daily totals (`daily.json` and everything worked out
+from it) stay the source of truth**: this file only feeds page-level views, covers only
+KOReader reading, and says from when. Don't fill the days before `since` from other files.
+
+```json
+{
+  "schema_version": 1,
+  "generated": "2026-11-26T09:00:00",
+  "session_gap_minutes": 10,
+  "recent_days": 14,
+  "coverage": { "since": "2026-11-26", "until": "2026-12-20", "books": 4,
+                "sessions_since": "2026-11-26" },
+  "sessions": [
+    { "book_id": "dracula", "device": "kobo-libra-2-ab12", "start": "2026-11-26T21:04:10",
+      "end": "2026-11-26T21:38:02", "minutes": 33.1, "pages": 24, "first_page": 101,
+      "last_page": 124, "total_pages": 418 }
+  ],
+  "time_of_day": [[0, 0, "… 24 hours"], "… 7 weekdays, Monday first"],
+  "books": [
+    {
+      "book_id": "dracula", "since": "2026-11-26", "until": "2026-12-20", "minutes": 412.5,
+      "total_pages": 418, "page": 240, "pages_left": 178,
+      "minutes_per_page": 1.32, "pages_per_hour": 45.5,
+      "eta": { "minutes_left": 235, "recent_minutes": 190.5, "minutes_per_day": 13.6,
+               "finish": "2027-01-07" },
+      "progress": [["2026-11-26T21:04", 24.2], ["2026-11-26T21:06", 24.4]],
+      "reread": { "pages": 3, "ranges": [[12, 14, 2]] },
+      "stalls": [{ "page": 31, "minutes": 6.5, "date": "2026-12-02" }],
+      "time_of_day": [[3, 21, 55.2]]
+    }
+  ]
+}
+```
+
+Times are local to the server, as everywhere else, with no time zone.
+
+- **Left out:** the Moon+ history the plugin copies into KOReader (`moonplus:` books, and
+  rows out of 100 pages, at most an hour, starting on a quarter hour, which covers "local
+  noon, an hour each" in any time zone); entries over four hours; books with no dashboard
+  book (or excluded in `catalogue.json`). A page entry in several devices' databases (same
+  book, page and start time) counts once.
+- **`sessions`** (oldest first, newest 3000): one book's page turns with no gap over
+  `session_gap_minutes`, split also when the device changes. `device` is the name the plugin
+  sent, as a slug; `null` for WebDAV and uploaded files, and for turns two devices both hold.
+  `minutes` is time on pages, not `end - start`. `pages` counts different pages read.
+  `first_page` and `last_page` are where it started and stopped (not the lowest and highest),
+  in `total_pages`, the page count at the end of the session. Pages are `null` when unknown.
+- **`time_of_day`**: minutes, `[weekday 0 = Monday][hour]`. Each book's own is sparse:
+  `[weekday, hour, minutes]`.
+- **`books`** (latest read first). Page numbers are in `total_pages`, the layout last used;
+  pages from other font sizes are scaled to it.
+  - `page` is the last page turned, or further if `books.json` has read on elsewhere since
+    `until`.
+  - `minutes_per_page` is the mean time per page with the quickest and slowest tenth left
+    out (`null` under 10 pages); `pages_per_hour` is the same speed.
+  - `eta` is `null` when finished (or 99% through) or without a speed. "~4 h left" is
+    `minutes_left`. `finish` is when it ends at the average of the last `recent_days` days
+    before `generated` (`null` with no reading then, or over a year off). It is worked out
+    at build time, so a view should check `finish` isn't already past.
+  - `progress`: `[time, % through]`, at most 200 points, evenly thinned.
+  - `reread`: pages gone back to after reading on (glances under 10 s don't count), as
+    `[from, to, times read]` (at most 100 ranges; `pages` counts them all).
+  - `stalls`: pages stayed on at least a minute and 3× the book's typical page in one
+    session, the longest 20, in page order. KOReader caps the time it records per page (2
+    minutes by default), so with its default settings long stalls can't show.
+- **`coverage`**: the first and last day with page data. `sessions_since` is later than
+  `since` when old sessions are cut. Per book, `since` and `until`.
+
+With no KOReader statistics the lists are empty and `since` is `null`. A missing or hidden
+file should be treated the same way: visitors get `[]` when the diary is hidden. Otherwise
+private books are left out (also in "anonymise" mode, since page numbers give a book away),
+as are books being read now when that's hidden; totals are added up again from what's left.
+Without exact days (rounded dates, or streaks hidden) `sessions` and `progress` are empty and
+dates are rounded. `device` is `null` for visitors.
+
 ## Reading challenges
 
 The challenges on the Overview (`challenge_progress` above gives their progress) are set by

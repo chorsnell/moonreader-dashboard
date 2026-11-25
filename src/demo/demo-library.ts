@@ -2,7 +2,7 @@
  * A library folder holding the demo's made-up history, imported exactly as on the server:
  * a catalogue.json, a fake Moon+ backup and the data/*.json the import writes from it.
  */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { BackupImportService, type ImportSummary } from '../backup-import/backup-import.service';
@@ -23,6 +23,7 @@ import { demoMediaCatalogue, simulateAudiobookshelf, simulateNetflix } from './d
 import { demoBibliography } from './demo-bibliography';
 import { demoMetadata } from './demo-metadata';
 import { demoPrices } from './demo-prices';
+import { demoSessions } from './demo-sessions';
 import { DemoModule } from './demo.module';
 import { demoWant } from './demo-want';
 import { demoWeather } from './demo-weather';
@@ -110,6 +111,13 @@ export async function buildDemoLibrary(
   await writeFile(join(lib, 'want_to_read.json'), JSON.stringify(demoWant(lastDay)), 'utf8');
   await writeDemoMedia(lib, seed, log, firstDay, days);
   const summary = await importInto(lib, backup, { lookUpCovers, media: true });
+  // page-by-page reading, as if KOReader had timed the recent months (data/sessions.json)
+  const data = async (name: string) =>
+    JSON.parse(await readFile(join(lib, 'data', name), 'utf8')) as never;
+  await writeFile(
+    join(lib, 'data', 'sessions.json'),
+    JSON.stringify(demoSessions(await data('books.json'), await data('daily.json'), today, seed)),
+  );
   // what the server writes from library/prices.json
   const prices = servedPrices(demoPrices(log, firstDay, seed));
   await writeFile(join(lib, 'data', 'prices.json'), JSON.stringify(prices));
