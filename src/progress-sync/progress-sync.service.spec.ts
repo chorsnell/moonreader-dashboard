@@ -9,12 +9,16 @@ const po = (path: string): PoFile => ({
 });
 
 describe('conversions', () => {
-  it('turns a Moon+ position into the start of its chapter for KOReader', () => {
+  it('gives KOReader the page with its own percentage for it', () => {
+    const there = { xp: '/body/DocFragment[5]', page: 3, pct: 0.92 };
     expect(
-      moonToKosync({ time: 1, chapter: 4, split: 0, offset: 99, percent: 30 }, 2_500_000),
+      moonToKosync(
+        { ...there, method: 'exact', decisive: false, furthest: 3, readings: {} },
+        2_500_000,
+      ),
     ).toEqual({
       progress: '/body/DocFragment[5]',
-      percentage: 0.3,
+      percentage: 0.92,
       device: 'Moon+ Reader',
       device_id: 'moonplus',
       timestamp: 2500,

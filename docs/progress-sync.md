@@ -74,11 +74,13 @@ The `.po` file is found by, in order:
 4. for reading only, the title the plugin or KOReader reported: the whole of the `.po` file's
    name, or one side of a " - " in it (`Dune - Frank Herbert.epub`).
 
-Without the plugin's page layout (below), a Moon+ position takes KOReader to the start of its
-chapter: Moon+ counts characters, KOReader points at elements, and only the book itself can
-turn one into the other. Moon+'s chapter is then taken to be the EPUB's spine item
-(DocFragment) of the same number, counted from 0, which for many books is wrong (see
-**Moon+'s chapters** below).
+**This needs the plugin's page layout (below).** Without it a Moon+ position isn't offered at
+all: Moon+ counts characters from the start of a chapter, numbers chapters its own way and can
+have its percentage badly wrong, so any page chosen would be a guess. Once the layout arrives,
+the next pull offers it.
+
+The percentage KOReader is given is its own for that page, not Moon+'s, so "further on" and
+"further back" are judged on the right scale.
 
 ## KOReader into Moon+ Reader
 
@@ -92,13 +94,19 @@ other paged documents, before Moon+ has synced any book, or over a file that isn
 
 Moon+'s own place is left alone when KOReader is on the same page (it has only gone where
 Moon+ was). KOReader takes Moon+ **backwards** only after a device has been given that Moon+
-position. Until then (a book opened on the Kobo for the first time, before the dashboard knows
-which file it is) Moon+'s file is kept, and the next time KOReader asks it gets Moon+'s place.
+position; until then Moon+'s file is kept, and the next pull offers Moon+'s place. "Backwards"
+goes by the pages the two are on, never by Moon+'s percentage. Where Moon+'s place can't be
+found, or could be either of two, the position has to be past it (or past both). Without a page
+layout a position Moon+ saved is never written over; one that turns out to be further on is
+written when the layout arrives.
 
-Without a page layout, the position written is the start of KOReader's chapter with
-KOReader's percentage. Within the chapter Moon+ is already in, it moves on only when
-KOReader's percentage is more than 4 points ahead, to a rough offset (2,000 characters per
-point, meant to fall short rather than overshoot).
+In a file the dashboard itself last wrote (or starts), a position without a layout is the start
+of KOReader's chapter, moved on within that chapter by a rough offset (2,000 characters per
+percentage point).
+
+The percentage written is KOReader's. Moon+ seems to find its place by chapter and character
+and to work its percentage out itself, but that isn't documented; making up a number on
+Moon+'s scale for a book it counts wrongly would be a second guess on top.
 
 The places the dashboard writes are remembered in `library/progress-sync/moonplus-written.json`,
 so they aren't taken for Moon+'s own, by a KOReader device or by the dashboard's rebuild. The
@@ -123,12 +131,18 @@ Moon+ doesn't document its numbering. Two readings are tried:
   list belong to the chapter before, and anything before the first entry is chapter 0;
 - **spine**: one chapter per spine item.
 
-A reading fits when its chapter is long enough to hold Moon+'s character and the page there is
-within 4 points of Moon+'s percentage. When only one fits, it is remembered for the book
-(`library/progress-sync/mappings.json`) and used for writing too. When both fit, what was
-remembered stands; with no history it's the contents, unless the spine is over 1.5 points
-closer. **Chapters shorter than a few percent of the book can't always be told apart**, until
-a position somewhere in the book settles it.
+The chapter, split and character decide; the percentage is only a hint, because Moon+ can
+have it very wrong (47 points, in one real book). A reading fits when its chapter is long
+enough to hold the character. When one fits, it is used. When both do, what was remembered for
+the book stands (`library/progress-sync/mappings.json`); with no history, it's the one whose
+page is within 4 points of Moon+'s percentage (the contents unless the spine is over 1.5
+points closer), and if neither is, the contents. A reading is remembered when only it fits, or
+only it agrees with the percentage, and is used for writing too. **When both fit and the
+percentage is wrong, the contents are assumed**, which is wrong for a book Moon+ numbers by
+its files.
+
+Each pull writes a line to `library/update.log` with Moon+'s position, whether there was a
+layout, the reading used, the page each reading gives and whose position was given.
 
 A chapter over about 80,000 characters is taken to be split by Moon+ (it splits at 100,000
 characters of HTML, so this is an estimate): `split` counts parts of that size, and the offset
@@ -136,8 +150,9 @@ is from the part's start.
 
 With a layout:
 
-- **Moon+ → KOReader**: the page holding that place. If no reading fits, the page at Moon+'s
-  percentage within its chapter, and failing that in the book.
+- **Moon+ → KOReader**: the page holding that place. If the chapter is too short for the
+  character, a page in that chapter (at Moon+'s percentage if that falls inside it, else its
+  end). Only if the book has no such chapter, the page at Moon+'s percentage.
 - **KOReader → Moon+**: KOReader syncs the top of the page. A measured page start, or a place
   in the same paragraph's text as one, gives an exact character count. Anything else (another
   font size) falls back to the start of the page at KOReader's percentage.

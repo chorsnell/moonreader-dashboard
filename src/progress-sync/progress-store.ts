@@ -29,12 +29,22 @@ export interface KosyncProgress {
   title?: string;
   /** What each device last sent. */
   sent?: Sent[];
-  /** Behind a Moon+ position no device had been offered: Moon+'s is the one to give. */
-  held?: boolean;
+  /**
+   * Not written over Moon+'s position: 'behind' it, with no device yet offered it, or
+   * 'unmeasured', with no layout to compare them by. True is an earlier version's 'behind'.
+   */
+  held?: Held | true;
 }
+
+export type Held = 'behind' | 'unmeasured';
 
 /** The last Moon+ position a document's devices were given. */
 export interface Served {
+  /**
+   * 2 since Moon+'s chapter and character have decided the page offered. Earlier offers went
+   * by its percentage, so may not have shown where Moon+ was, and don't count.
+   */
+  v: 2;
   /** The .po file's path under dav/. */
   key: string;
   place: WrittenPlace;
