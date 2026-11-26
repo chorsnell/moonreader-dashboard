@@ -141,6 +141,11 @@ only it agrees with the percentage, and is used for writing too. **When both fit
 percentage is wrong, the contents are assumed**, which is wrong for a book Moon+ numbers by
 its files.
 
+`library/update.log` also has a line for each push (written, with the old and new `.po` line,
+or why not), each layout received, and what WebDAV clients do with `.po` files: downloads
+(with any 304), uploads, moves and listings of `.Moon+/Cache`, with the app's user agent.
+Identical downloads within a minute are counted, not repeated.
+
 Each pull writes a line to `library/update.log` with Moon+'s position, whether there was a
 layout, the reading used, the page each reading gives and whose position was given.
 

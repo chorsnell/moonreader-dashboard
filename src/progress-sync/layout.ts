@@ -344,6 +344,14 @@ export function moonPlace(
   return { chapter, split, offset: into - split * PART_CHARS };
 }
 
+/** The page of the layout (from 0) a KOReader position is on, or null when it can't say. */
+export function pageOf(layout: Layout, xp: string, percentage: number): number | null {
+  const fragment = xpointerFragment(xp);
+  if (fragment === null || !layout.pages.length) return null;
+  const r = ruler(layout);
+  return indexAt(r.pages, r.at({ fragment, offset: xpointerOffset(layout, xp, percentage) }));
+}
+
 /**
  * Whether Moon+'s position is already on the page KOReader is on, so writing KOReader's over
  * it would only lose Moon+'s own place within the page.

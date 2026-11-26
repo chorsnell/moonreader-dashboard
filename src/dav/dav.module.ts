@@ -3,11 +3,12 @@ import { AccessModule } from '../access/access.module';
 import { KoreaderSyncModule } from '../koreader-sync/koreader-sync.module';
 import { LibraryModule } from '../library/library.module';
 import { DavController } from './dav.controller';
+import { DavPositionLog } from './dav-position-log';
 import { DavService } from './dav.service';
 
 @Module({
   imports: [AccessModule, LibraryModule, KoreaderSyncModule],
   controllers: [DavController],
-  providers: [DavService],
+  providers: [DavService, DavPositionLog],
 })
 export class DavModule {}
