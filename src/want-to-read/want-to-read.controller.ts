@@ -24,7 +24,9 @@ import {
   editBook,
   MAX_BOOKS,
   MAX_HIDDEN,
+  moveInOrder,
   toHiddenKey,
+  toOrderKey,
   toNewBook,
   WantError,
 } from './want-to-read';
@@ -164,5 +166,28 @@ export class WantToReadController {
     });
     this.library.changed('want-to-read');
     return { ok: true };
+  }
+
+  /**
+   * Up next: { key, to } moves a pile book to place `to` (0 = first), { key, to: null } takes
+   * it out, { reset: true } clears the order. Returns the new order.
+   */
+  @Post('order')
+  @HttpCode(200)
+  async order(@Body() body: unknown) {
+    const b = (body && typeof body === 'object' ? body : {}) as {
+      key?: unknown;
+      to?: unknown;
+      reset?: unknown;
+    };
+    const order = await this.store.update((file) => {
+      if (b.reset === true) return { file: { ...file, order: [] }, result: [] as string[] };
+      const key = checked(() => toOrderKey(b.key));
+      const to = b.to === null ? null : typeof b.to === 'number' ? b.to : NaN;
+      const next = checked(() => moveInOrder(file.order, key, to));
+      return { file: { ...file, order: next }, result: next };
+    });
+    this.library.changed('want-to-read');
+    return { ok: true, order };
   }
 }

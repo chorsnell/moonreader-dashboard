@@ -142,4 +142,24 @@ describe('the to-read pile', () => {
       ['goodreads:9', ['goodreads', 'mine']],
     ]);
   });
+
+  it('marks the books you put up next, by any id merged into them', () => {
+    const want = {
+      ...emptyWant(),
+      books: [mine({ id: 'mine:kim', title: 'Kim', author: 'Kipling' })],
+      order: ['goodreads:2', 'gone', 'mine:kim'],
+    };
+    const rows = buildToRead(
+      [],
+      [],
+      [
+        shelved({ id: '1', title: 'Kim', author: 'Kipling' }),
+        shelved({ id: '2', title: 'Emma', author: 'Austen' }),
+        shelved({ id: '3', title: 'Dune', author: 'Herbert' }),
+      ],
+      want,
+    );
+    const at = (title: string) => rows.find((r) => r.title === title)?.up_next;
+    expect([at('Emma'), at('Kim'), at('Dune')]).toEqual([1, 3, undefined]);
+  });
 });

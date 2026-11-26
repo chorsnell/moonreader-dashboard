@@ -37,6 +37,7 @@
           if (r.added && (!same.added || r.added < same.added)) same.added = r.added;
           if (same.price == null && r.price != null) same.price = r.price;
           if (!same.want_id && r.want_id) { same.want_id = r.want_id; same.note = r.note; }
+          if (r.up_next != null && !(same.up_next <= r.up_next)) same.up_next = r.up_next;
           return;
         }
         out.push(r);
@@ -51,6 +52,8 @@
           in_library: !!o.in_library, words: words || null, estimated: !(o.words > 0),
           // on your own list: its id there, and your note (the admin's view only)
           want_id: o.want_id || null, note: o.note || '',
+          // its place in your Up next order (1 = first), or null
+          up_next: o.up_next ?? null,
         };
       };
       // books opened but not started (no progress yet): from a Moon+ backup
@@ -221,6 +224,10 @@
         const meta = el('div', 'meta', [age, r.words ? `${r.estimated ? '≈ ' : ''}${kWords(r.words)} words` : null].filter(Boolean).join(' · '));
         const acts = pileActions(r);
         if (acts) meta.append(acts);
+        const next = upNextButton(r);
+        if (next) meta.append(next);
+        const links = rh.searchLinks && rh.searchLinks(r, 'small');
+        if (links) meta.append(links);
         li.append(ttl, meta);
         ul.append(li);
       });
@@ -304,7 +311,51 @@
     });
     return b;
   }
-  rh.wantToRead = { enabled: () => isAdmin, has, add, button };
+  // Up next (the order What to read next starts with): the live order while signed in, moves
+  // shown straight away and saved behind the scenes
+  const orderOf = () => (isAdmin && list && Array.isArray(list.order) ? list.order : null);
+  const inOrder = (r, order) => {
+    const i = order.findIndex((k) => k === r.book_id || (r.want_id && k === r.want_id));
+    return i < 0 ? null : i;
+  };
+  async function move(r, to) {
+    if (!isAdmin || !list) return;
+    const key = r.book_id, before = list.order || [];
+    const rest = before.filter((k) => k !== key && k !== r.want_id);
+    list.order = to == null ? rest : [...rest.slice(0, to), key, ...rest.slice(to)];
+    rh.redraw();
+    try {
+      // the server's copy may still have it under its list id: take that out first
+      if (r.want_id && r.want_id !== key && before.includes(r.want_id)) await call('POST', 'api/admin/want/order', { key: r.want_id, to: null });
+      const res = await call('POST', 'api/admin/want/order', { key, to });
+      list.order = res.order;
+      afterChange();
+    } catch (e) {
+      list.order = before;
+      rh.redraw();
+      window.alert(e.message);
+    }
+  }
+  async function resetOrder() {
+    if (!isAdmin || !list) return;
+    const before = list.order;
+    list.order = [];
+    rh.redraw();
+    try { await call('POST', 'api/admin/want/order', { reset: true }); afterChange(); }
+    catch (e) { list.order = before; rh.redraw(); window.alert(e.message); }
+  }
+  // "Up next" / "On Up next" for any pile book, for the admin
+  function upNextButton(r) {
+    const order = orderOf();
+    if (!order) return null;
+    const b = el('button', 'tr-btn', inOrder(r, order) != null ? 'On Up next' : 'Up next');
+    b.type = 'button';
+    b.title = 'Put it at the end of your Up next order, at the top of What to read next';
+    if (inOrder(r, order) != null) b.disabled = true;
+    else b.addEventListener('click', (e) => { e.stopPropagation(); move(r, order.length); });
+    return b;
+  }
+  rh.wantToRead = { enabled: () => isAdmin, has, add, button, order: orderOf, inOrder, move, resetOrder, upNextButton };
 
   // Keep and Hide on the pile's shelf rows and unopened Moon+ files
   function pileActions(r) {

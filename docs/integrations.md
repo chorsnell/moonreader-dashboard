@@ -108,7 +108,9 @@ what the dashboard speaks (`/api/v1/book`, `/api/v1/author`, `/api/v1/book/looku
 ## Anna's Archive (BOO-54)
 
 **Decision: no integration. There is no live lookup, no dump import, and the dashboard
-never links to Anna's Archive.** To fill in a book's ISBN, year or page count by hand, set
+ships no link to Anna's Archive.** Since then, Admin → Search links lets the owner add
+their own "search this book on…" links to any site; which sites is the owner's choice, and
+the dashboard only builds the link (it never fetches from them). To fill in a book's ISBN, year or page count by hand, set
 the ISBN in Admin → Catalogue, or add `published_year` and `pages` to its `catalogue.json`
 entry (see "Publication years, pages and authors" in the README); what you set always wins
 over a lookup.

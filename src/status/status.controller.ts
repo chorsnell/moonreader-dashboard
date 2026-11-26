@@ -11,6 +11,7 @@ import { LibraryService } from '../library/library.service';
 import { StatusService } from '../library/status.service';
 import { filterCovers, filterDataFile } from '../privacy/privacy';
 import { PrivacyService } from '../privacy/privacy.service';
+import { linksFor, readSearchLinks, SEARCH_LINKS_SECTION } from '../search-links/search-links';
 
 /** Small JSON endpoints for Docker's health check and for the page. */
 @Controller()
@@ -68,6 +69,11 @@ export class StatusController {
       // what's hidden from this viewer (null: nothing), and the role an admin is previewing as
       privacy: await this.privacy.summary(viewer, ctx),
       preview: viewer.preview,
+      // the admin's "look this book up on…" links: the visitors' ones for anyone else
+      search_links: linksFor(
+        readSearchLinks(await this.settings.section(SEARCH_LINKS_SECTION)),
+        admin && !viewer.preview,
+      ),
       building,
       last_build: admin ? last_build : null, // its time of day is the last sync's
       last_error: admin ? last_error : null,

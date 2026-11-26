@@ -2,9 +2,12 @@ import {
   duplicateOf,
   editBook,
   emptyWant,
+  MAX_ORDER,
+  moveInOrder,
   normaliseWant,
   toHiddenKey,
   toNewBook,
+  toOrderKey,
   WantError,
   type WantFile,
   wantId,
@@ -122,5 +125,34 @@ describe('the want-to-read list', () => {
   it('slugs ids from titles', () => {
     expect(wantId('Les Misérables!', [])).toBe('mine:les-miserables');
     expect(wantId('???', [])).toBe('mine:book');
+  });
+});
+
+describe('Up next', () => {
+  it('moves a book to a place, takes it out, and keeps one copy', () => {
+    let o: string[] = [];
+    o = moveInOrder(o, 'a', 0);
+    o = moveInOrder(o, 'b', 5); // past the end: last
+    o = moveInOrder(o, 'c', 0);
+    expect(o).toEqual(['c', 'a', 'b']);
+    expect(moveInOrder(o, 'b', 0)).toEqual(['b', 'c', 'a']);
+    expect(moveInOrder(o, 'c', 2)).toEqual(['a', 'b', 'c']);
+    expect(moveInOrder(o, 'a', null)).toEqual(['c', 'b']);
+    expect(() => moveInOrder(o, 'd', -1)).toThrow(WantError);
+    expect(() => moveInOrder(o, 'd', 1.5)).toThrow(WantError);
+  });
+
+  it('holds a limited number, and checks keys', () => {
+    const full = Array.from({ length: MAX_ORDER }, (_, i) => `k${i}`);
+    expect(() => moveInOrder(full, 'new', 0)).toThrow(WantError);
+    expect(moveInOrder(full, 'k5', 0)[0]).toBe('k5'); // moving within is fine
+    expect(toOrderKey(' mine:kim ')).toBe('mine:kim');
+    expect(() => toOrderKey('')).toThrow(WantError);
+    expect(() => toOrderKey('a\nb')).toThrow(WantError);
+  });
+
+  it('is read leniently, and an old file has none', () => {
+    expect(normaliseWant({ books: [] }).order).toEqual([]);
+    expect(normaliseWant({ order: ['a', 3, 'a', 'b'] }).order).toEqual(['a', 'b']);
   });
 });
