@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, rm, stat, utimes, writeFile } from 'node:fs/pr
 import { basename, dirname, join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { findFiles, mtimeMs } from '../common/files';
+import { oneLine } from '../common/log-text';
 import { KoreaderSyncService } from '../koreader-sync/koreader-sync.service';
 import { ActivityLogService } from '../library/activity-log.service';
 import { LibraryService } from '../library/library.service';
@@ -13,6 +14,7 @@ import {
   locate,
   type Mapping,
   moonPlace,
+  pageOf,
   samePlace,
 } from './layout';
 import { LayoutStore } from './layout-store';
@@ -121,6 +123,15 @@ function describe(moon: MoonPosition, layout: Layout | null, there: Located | nu
   );
 }
 
+/** What writing a position for Moon+ came to: why Moon+'s was kept, and a line for the log. */
+interface WriteResult {
+  held?: Held;
+  note: string;
+}
+
+const failure = (e: unknown) =>
+  `error: ${oneLine(e instanceof Error ? e.message : String(e), 300)}`;
+
 /** Whether a KOSync position is a page number (PDFs, comics) rather than an xpointer. */
 const isPageNumber = (progress: string) => /^\d+$/.test(progress.trim());
 
@@ -190,16 +201,27 @@ export class ProgressSyncService {
       const stored = (await Promise.all(documents.map((d) => this.store.get(d))))
         .flatMap((p, i) => (p ? [{ ...p, document: documents[i] }] : []))
         .sort((a, b) => (b.at ?? 0) - (a.at ?? 0))[0];
+      const say = (what: string) =>
+        this.activity.log(
+          `Progress layout ${layout.md5} "${oneLine(layout.file ?? '')}": ` +
+            `${layout.pages.length} pages received; ${what}`,
+        );
+      if (!stored) return say('no KOReader position to write');
       // one found behind Moon+ is not to be written, even now Moon+'s has been offered since
-      if (!stored || (stored.held && stored.held !== 'unmeasured')) return;
+      if (stored.held && stored.held !== 'unmeasured') {
+        return say('not written: the last push is behind Moon+ and was not offered');
+      }
       try {
-        const held = await this.writeForMoonplus(stored, stored.at ?? stored.timestamp * 1000);
+        const since = stored.at ?? stored.timestamp * 1000;
+        const { held, note } = await this.writeForMoonplus(stored, since);
+        say(`last push ${note}`);
         if (stored.held) {
           // measured now: either written (or not needed), or behind
           const { document, held: _, ...record } = stored;
           await this.store.put(document, { ...record, ...(held ? { held } : {}) });
         }
       } catch (e) {
+        say(failure(e));
         this.log.warn(`Couldn't write the Moon+ position for ${stored.document}: ${String(e)}`);
       }
     });
@@ -210,9 +232,11 @@ export class ProgressSyncService {
     const stored = await this.store.get(document);
     const device = update.device_id || update.device;
     const last = stored?.sent?.find((s) => s.device_id === device);
+    const say = await this.pushLine(update);
     // KOReader pushes on closing a book and going to sleep whether or not you've moved. The
     // same place from the same device is not news, and mustn't beat what was read since.
     if (last && last.progress === update.progress && last.percentage === update.percentage) {
+      say('not written: repeat of the same place');
       return stored!.timestamp;
     }
     const at = Date.now();
@@ -234,7 +258,8 @@ export class ProgressSyncService {
       percentage: update.percentage,
     };
     try {
-      const held = await this.writeForMoonplus(update);
+      const { held, note } = await this.writeForMoonplus(update);
+      say(note);
       // only now, so a failed write is tried again when the device repeats itself
       await this.store.put(document, {
         ...position,
@@ -243,9 +268,26 @@ export class ProgressSyncService {
       });
     } catch (e) {
       // KOReader's position is saved; Moon+ just doesn't get this one
+      say(failure(e));
       this.log.warn(`Couldn't write the Moon+ position for ${document}: ${String(e)}`);
     }
     return timestamp;
+  }
+
+  /** Starts a push's line for update.log; the returned function ends it with the outcome. */
+  private async pushLine(update: ProgressUpdate): Promise<(outcome: string) => void> {
+    let on = '';
+    try {
+      const layout = await this.layouts.get(update.document);
+      const page = layout && pageOf(layout, update.progress, update.percentage);
+      if (typeof page === 'number') on = `, page ${page + 1}/${layout!.pages.length}`;
+    } catch {
+      // a line without the page is better than a push that fails for its log
+    }
+    const at =
+      `Progress push ${update.document} from "${oneLine(update.device, 60)}" ` +
+      `${(update.percentage * 100).toFixed(1)}%${on}`;
+    return (outcome) => this.activity.log(`${at}: ${outcome}`);
   }
 
   /** How Moon+'s chapters fit the book, learning from one of its positions if given. */
@@ -264,52 +306,74 @@ export class ProgressSyncService {
   /**
    * Writes a KOReader position into the book's .po file: the one Moon+ synced, or a new one
    * named after the device's file, next to Moon+'s other .po files. With `since`, a Moon+
-   * position that arrived after it is left alone. Says why when Moon+'s own position was kept
-   * for the next pull to offer: the new one is behind it, or can't be compared with it.
+   * position that arrived after it is left alone. The result says what happened, and `held`
+   * why Moon+'s own position was kept for the next pull to offer: the new one is behind it, or
+   * can't be compared with it.
    */
   private async writeForMoonplus(
     update: Pick<ProgressUpdate, 'document' | 'progress' | 'percentage'>,
     since: number | null = null,
-  ): Promise<Held | void> {
-    if (isPageNumber(update.progress) || xpointerFragment(update.progress) === null) return;
+  ): Promise<WriteResult> {
+    const kept = (why: string, held?: Held): WriteResult => ({
+      note: `not written: ${why}`,
+      ...(held ? { held } : {}),
+    });
+    if (isPageNumber(update.progress)) return kept('paged book');
+    if (xpointerFragment(update.progress) === null) return kept('not an EPUB position');
     const layout = await this.layouts.get(update.document);
     const files = await this.poFiles();
     const hint = await this.hint(update.document);
     const existing = ownPoFile(update.document, hint, files);
     const path = existing?.path ?? newPoPath(hint.file ?? null, files);
-    if (!path) return;
+    if (!path) {
+      const why = !hint.file
+        ? 'the file name is unknown'
+        : !files.length
+          ? 'Moon+ has synced no .po yet'
+          : `none for "${oneLine(hint.file)}"`;
+      return kept(`no .po path (${why})`);
+    }
     const key = writtenKey(this.library.dav, path);
     const before = await stat(path).catch(() => null);
     const text = before ? (await readFile(path, 'utf8')).slice(0, PO_READ_LIMIT) : '';
     const found = parseMoonPosition(text);
+    const old = `"${oneLine(text)}"`;
     // something that isn't a position we understand is left alone
-    if (!found && text.trim()) return;
+    if (!found && text.trim()) return kept(`unreadable .po ${key} ${old}`);
     const moons = found && !isWritten(await this.store.writtenFor(key), found) ? found : null;
-    if (moons && since !== null && before!.mtimeMs > since) return;
+    if (moons && since !== null && before!.mtimeMs > since) {
+      return kept(`Moon+ saved ${key} since, ${old}`);
+    }
     // there's no knowing which of two places is further on without the book's layout
-    if (moons && !layout) return 'unmeasured';
+    if (moons && !layout) {
+      return kept(`no layout to compare with Moon+'s ${key} ${old}`, 'unmeasured');
+    }
     const known = await this.mappingFor(layout, moons);
     // write the way Moon+'s own position was read
     const mapping = known ?? (layout && moons && locate(layout, moons)?.mapping) ?? null;
     let position = kosyncToMoon(update.progress, update.percentage, Date.now(), layout, mapping);
-    if (!position) return;
+    if (!position) return kept('not an EPUB position');
     if (moons && layout) {
       // KOReader went where Moon+ is (or never left): keep Moon+'s exact place
-      if (samePlace(layout, moons, update.progress, position, known)) return;
+      if (samePlace(layout, moons, update.progress, position, known)) {
+        return kept(`same place as Moon+ in ${key} ${old}`);
+      }
       if (isBehind(layout, moons, update.progress, update.percentage, known)) {
         const served = await this.store.served(update.document);
         const offered =
           served?.v === 2 &&
           served.key === key &&
           (isWritten([served.place], moons) || served.mtimeMs >= before!.mtimeMs);
-        if (!offered) return 'behind';
+        if (!offered) return kept(`behind Moon+ and not offered, ${key} ${old}`, 'behind');
       }
     }
     if (!layout && found && found.chapter === position.chapter) {
       position = { ...position, ...furtherInChapter(found, position) };
     }
     // writing what's already there would only look like news to Moon+
-    if (found && isWritten([placeOf(position)], found)) return;
+    if (found && isWritten([placeOf(position)], found)) {
+      return kept(`already there, ${key} ${old}`);
+    }
     // remembered before the file appears, so nothing can read it as Moon+'s
     await this.store.wrote(key, placeOf(position));
     await mkdir(dirname(path), { recursive: true });
@@ -318,7 +382,8 @@ export class ProgressSyncService {
     try {
       // Moon+'s own first number is kept; a new file gets the one most of its files have
       const stamp = before ? moonStamp(text) : commonStamp(files);
-      await writeFile(tmp, formatMoonPosition(position, stamp));
+      const line = formatMoonPosition(position, stamp);
+      await writeFile(tmp, line);
       if (before) {
         // WebDAV's Last-Modified counts in whole seconds: make sure Moon+ sees it change
         const next = (Math.floor(before.mtimeMs / 1000) + 1) * 1000;
@@ -326,6 +391,8 @@ export class ProgressSyncService {
         await utimes(tmp, time, time);
       }
       await rename(tmp, path);
+      const was = !before ? '(new file)' : `${old} (${moons ? "Moon+'s" : "the dashboard's"})`;
+      return { note: `written ${key}: ${was} -> "${line}"` };
     } finally {
       await rm(tmp, { force: true });
     }

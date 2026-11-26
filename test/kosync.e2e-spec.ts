@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { readFile, utimes } from 'node:fs/promises';
 import request from 'supertest';
-import { DAV_AUTH, TOKEN, TestDashboard } from './support/test-dashboard';
+import { DAV_AUTH, TOKEN, TestDashboard, waitFor } from './support/test-dashboard';
 
 const md5 = (s: string) => createHash('md5').update(s).digest('hex');
 const KOSYNC = {
@@ -281,6 +281,47 @@ describe('KOReader positions for Moon+', () => {
     await push(dash, md5('Dune.epub'), '42', 0.5);
     await push(dash, 'unknown', '/body/DocFragment[2]', 0.1);
     expect(await readFile(dash.path(...CACHE, 'Dune.epub.po'), 'utf8')).toBe('1*2@0#50:10%');
+  });
+});
+
+describe('what update.log shows', () => {
+  it('has the push, and what Moon+ was then given over WebDAV', async () => {
+    dash = await TestDashboard.start();
+    const url = '/dav/Apps/Books/.Moon+/Cache/Dune.epub.po';
+    const moon = () => request(dash!.server).get(url).set('Authorization', DAV_AUTH);
+    await request(dash.server)
+      .put(url)
+      .set('Authorization', DAV_AUTH)
+      .set('User-Agent', 'MoonReader')
+      .send('1700000000000*1@0#0:20.0%')
+      .expect(201);
+    await measured(dash);
+    await request(dash.server)
+      .put('/kosync/syncs/progress')
+      .set(KOSYNC)
+      .send({
+        document: md5('Dune.epub'),
+        progress: '/body/DocFragment[7]',
+        percentage: 0.7,
+        device: 'Kobo',
+        device_id: 'K1',
+      })
+      .expect(200);
+    const first = await moon().expect(200);
+    await moon().set('If-None-Match', first.headers.etag).expect(304);
+
+    let log = '';
+    await waitFor(async () => {
+      log = await readFile(dash!.path('update.log'), 'utf8');
+      return log.includes('-> 304');
+    });
+    expect(log).toMatch(/WebDAV PUT .*Dune\.epub\.po -> 201 \| "1700000000000\*1@0#0:20\.0%"/);
+    expect(log).toMatch(/Progress layout .*10 pages received/);
+    expect(log).toMatch(/Progress push .*70\.0%.*written Apps.*-> "1700000000000\*6@0#0:70\.0%"/);
+    expect(log).toMatch(/WebDAV GET .* -> 200 \| "1700000000000\*6@0#0:70\.0%"/);
+    expect(log).toContain('(not modified: the client keeps its copy)');
+    expect(log).not.toContain(TOKEN);
+    expect(log).not.toContain(DAV_AUTH.split(' ')[1]);
   });
 });
 
